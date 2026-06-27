@@ -1,0 +1,20 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Clean Minimalist Flow Chevron (Dark) -->
+    <path
+        android:strokeColor="#1E293B"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M42,38 L58,54 L42,70" />
+
+    <!-- Modern Violet Accent Dot -->
+    <path
+        android:fillColor="#6366F1"
+        android:pathData="M66,54 A3.5,3.5 0 1,1 65.9,54 Z" />
+</vector>

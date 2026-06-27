@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "423806921515",
+    "project_id": "leadflow-crm-5b05c",
+    "storage_bucket": "leadflow-crm-5b05c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:423806921515:android:b410df93075a4c88bfb36e",
+        "android_client_info": {
+          "package_name": "com.enterprise.leadflow"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "423806921515-8jsu5acruuv54pej5f9mjupbg1hac13r.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAyGnnrYRgTWO54esnpW1lsnqsOv8PvOKs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "423806921515-8jsu5acruuv54pej5f9mjupbg1hac13r.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
