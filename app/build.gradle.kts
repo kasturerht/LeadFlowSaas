@@ -11,7 +11,7 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.enterprise.leadflow"
+        applicationId = "com.enterprise.leadflow.saas"
         minSdk = 24
         targetSdk = 36
         versionCode = 1
