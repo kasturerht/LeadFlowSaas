@@ -7,11 +7,11 @@ plugins {
 }
 
 android {
-    namespace = "com.enterprise.leadflow"
+    namespace = "com.nexaleads.app"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.enterprise.leadflow.saas"
+        applicationId = "com.nexaleads.app"
         minSdk = 24
         targetSdk = 36
         versionCode = 1
