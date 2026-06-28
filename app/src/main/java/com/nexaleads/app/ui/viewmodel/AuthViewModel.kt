@@ -39,8 +39,14 @@ class AuthViewModel @Inject constructor(
                 try {
                     val doc = db.collection("users").document(currentUser.uid).get().await()
                     if (doc.exists() && doc.getString("role") == "telecaller") {
-                        val name = doc.getString("name") ?: "Agent"
-                        _authState.value = AuthState.Authenticated(currentUser.uid, name)
+                        val isActive = doc.getBoolean("isActive") ?: true
+                        if (isActive) {
+                            val name = doc.getString("name") ?: "Agent"
+                            _authState.value = AuthState.Authenticated(currentUser.uid, name)
+                        } else {
+                            auth.signOut()
+                            _authState.value = AuthState.Unauthenticated("Your account has been disabled by Admin.")
+                        }
                     } else {
                         auth.signOut()
                         _authState.value = AuthState.Unauthenticated("Invalid role or user not found.")

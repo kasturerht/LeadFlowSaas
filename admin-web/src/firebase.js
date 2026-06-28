@@ -12,7 +12,11 @@ const firebaseConfig = {
   measurementId: "G-22WNM5CXYR"
 };
 
-// Initialize Firebase
+// Initialize Primary Firebase
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
+
+// Initialize Secondary Firebase (Used exclusively for creating users without logging out admin)
+const secondaryApp = initializeApp(firebaseConfig, "Secondary");
+export const secondaryAuth = getAuth(secondaryApp);

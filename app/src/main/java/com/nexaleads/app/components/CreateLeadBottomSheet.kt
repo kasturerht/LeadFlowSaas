@@ -33,6 +33,7 @@ import com.nexaleads.app.utils.PhoneUtils
 import com.nexaleads.app.ui.theme.*
 import com.nexaleads.app.ui.viewmodel.CallingViewModel
 import com.nexaleads.app.utils.CallLogEntry
+import com.nexaleads.app.utils.ContactUtils
 import com.nexaleads.app.utils.getRecentCallLogs
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -63,10 +64,27 @@ fun CreateLeadBottomSheet(
     var followUpDate by remember { mutableStateOf("") }
     var showDatePicker by remember { mutableStateOf(false) }
     var isVisitToggleOn by remember { mutableStateOf(false) }
+    var isSaveToContactsToggleOn by remember { mutableStateOf(true) }
     var isSaving by remember { mutableStateOf(false) }
     var isCheckingDuplicate by remember { mutableStateOf(false) }
 
+    // Logic to save the lead and contact
+    var pendingPhoneForContact by remember { mutableStateOf("") }
+    var pendingNameForContact by remember { mutableStateOf("") }
+    var pendingSubmitFn by remember { mutableStateOf<(() -> Unit)?>(null) }
+
     val sources = listOf("Facebook Ad", "Direct Inbound", "Walk-in", "WhatsApp", "Reference", "Other")
+
+    val writeContactsLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        coroutineScope.launch {
+            if (isGranted) {
+                ContactUtils.saveContactSilently(context, pendingNameForContact, pendingPhoneForContact)
+            }
+            pendingSubmitFn?.invoke()
+        }
+    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -340,6 +358,29 @@ fun CreateLeadBottomSheet(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
+                            Text("Save Client to Phonebook", fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 14.sp)
+                            Text("Auto-saves the name & number so you know when they call back.", color = TextSecondary, fontSize = 11.sp, lineHeight = 14.sp)
+                        }
+                        Switch(
+                            checked = isSaveToContactsToggleOn,
+                            onCheckedChange = { isSaveToContactsToggleOn = it },
+                            colors = SwitchDefaults.colors(checkedThumbColor = CleanWhite, checkedTrackColor = ModernViolet)
+                        )
+                    }
+                }
+                
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(SurfaceLight)
+                            .border(1.dp, BorderSubtle, RoundedCornerShape(10.dp))
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
                             Text("Client visited office today?", fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 14.sp)
                             Text("Turn this on if they came but rejected/converted instantly.", color = TextSecondary, fontSize = 11.sp, lineHeight = 14.sp)
                         }
@@ -408,6 +449,28 @@ fun CreateLeadBottomSheet(
                                 )
                             }
 
+                            val processSaveLogic = {
+                                if (isSaveToContactsToggleOn) {
+                                    val permissionStatus = androidx.core.content.ContextCompat.checkSelfPermission(
+                                        context,
+                                        Manifest.permission.WRITE_CONTACTS
+                                    )
+                                    if (permissionStatus == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                                        coroutineScope.launch {
+                                            ContactUtils.saveContactSilently(context, clientName.trim(), purePhone)
+                                            submitFn()
+                                        }
+                                    } else {
+                                        pendingNameForContact = clientName.trim()
+                                        pendingPhoneForContact = purePhone
+                                        pendingSubmitFn = submitFn
+                                        writeContactsLauncher.launch(Manifest.permission.WRITE_CONTACTS)
+                                    }
+                                } else {
+                                    submitFn()
+                                }
+                            }
+
                             if (manualMode) {
                                 isSaving = true
                                 coroutineScope.launch {
@@ -419,11 +482,12 @@ fun CreateLeadBottomSheet(
                                         onExistingLeadFound(dup)
                                         return@launch
                                     } else {
-                                        submitFn()
+                                        isSaving = false
+                                        processSaveLogic()
                                     }
                                 }
                             } else {
-                                submitFn()
+                                processSaveLogic()
                             }
                         }
                     ) {
