@@ -40,6 +40,8 @@ import com.nexaleads.app.utils.CallLogEntry
 import com.nexaleads.app.utils.ContactUtils
 import com.nexaleads.app.utils.getRecentCallLogs
 import kotlinx.coroutines.launch
+import androidx.compose.runtime.collectAsState
+import com.nexaleads.app.ui.viewmodel.LeadFormDraft
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -56,31 +58,96 @@ fun CreateLeadBottomSheet(
     val haptic = LocalHapticFeedback.current
     val coroutineScope = rememberCoroutineScope()
 
+    val draft by viewModel.leadDraft.collectAsState()
+    val productsList by viewModel.products.collectAsState()
+    val pricesMap = remember(productsList) { productsList.associate { it.name to it.price } }
+
     var callLogs by remember { mutableStateOf<List<CallLogEntry>>(emptyList()) }
-    var selectedNumber by remember { mutableStateOf("") }
-    var manualMode by remember { mutableStateOf(false) }
+    var selectedNumber by remember { mutableStateOf(draft.selectedNumber) }
+    var manualMode by remember { mutableStateOf(draft.manualMode) }
 
     // Form State
-    var clientName by remember { mutableStateOf("") }
-    var source by remember { mutableStateOf("") }
+    var clientName by remember { mutableStateOf(draft.clientName) }
+    var source by remember { mutableStateOf(draft.source) }
     var showSourcePopup by remember { mutableStateOf(false) }
-    var selectedProduct by remember { mutableStateOf("") }
+    var selectedProduct by remember { mutableStateOf(draft.selectedProduct) }
     var showProductPopup by remember { mutableStateOf(false) }
-    var selectedStatus by remember { mutableStateOf("") }
-    var remarkNotes by remember { mutableStateOf("") }
-    var followUpDate by remember { mutableStateOf("") }
+    var selectedStatus by remember { mutableStateOf(draft.selectedStatus) }
+    var selectedSubStatus by remember { mutableStateOf(draft.selectedSubStatus) }
+    var selectedTimeSlot by remember { mutableStateOf(draft.selectedTimeSlot) }
+    var selectedPaymentStatus by remember { mutableStateOf(draft.selectedPaymentStatus) }
+    var remarkNotes by remember { mutableStateOf(draft.remarkNotes) }
+    var followUpDate by remember { mutableStateOf(draft.followUpDate) }
     var showDatePicker by remember { mutableStateOf(false) }
     
     // Order Dispatch Fields
-    var shippingAddress by remember { mutableStateOf("") }
-    var shippingCity by remember { mutableStateOf("") }
-    var shippingPincode by remember { mutableStateOf("") }
-    var paymentMethod by remember { mutableStateOf("") }
-    var orderAmount by remember { mutableStateOf("") }
+    var shippingAddress by remember { mutableStateOf(draft.shippingAddress) }
+    var shippingCity by remember { mutableStateOf(draft.shippingCity) }
+    var shippingPincode by remember { mutableStateOf(draft.shippingPincode) }
+    var paymentMethod by remember { mutableStateOf(draft.paymentMethod) }
+    var orderAmount by remember { mutableStateOf(draft.orderAmount) }
 
-    var isSaveToContactsToggleOn by remember { mutableStateOf(true) }
+    val calculatedTotal = remember(selectedProduct, pricesMap) { calculateTotalAmount(selectedProduct, pricesMap) }
+
+    LaunchedEffect(calculatedTotal) {
+        if (calculatedTotal > 0) {
+            orderAmount = calculatedTotal.toInt().toString()
+        }
+    }
+
+    LaunchedEffect(
+        selectedNumber, manualMode, clientName, source, selectedProduct, 
+        selectedStatus, selectedSubStatus, selectedTimeSlot, selectedPaymentStatus,
+        remarkNotes, followUpDate, shippingAddress, shippingCity, shippingPincode,
+        paymentMethod, orderAmount
+    ) {
+        viewModel.saveDraft(
+            LeadFormDraft(
+                selectedNumber = selectedNumber,
+                manualMode = manualMode,
+                clientName = clientName,
+                source = source,
+                selectedProduct = selectedProduct,
+                selectedStatus = selectedStatus,
+                selectedSubStatus = selectedSubStatus,
+                selectedTimeSlot = selectedTimeSlot,
+                selectedPaymentStatus = selectedPaymentStatus,
+                remarkNotes = remarkNotes,
+                followUpDate = followUpDate,
+                shippingAddress = shippingAddress,
+                shippingCity = shippingCity,
+                shippingPincode = shippingPincode,
+                paymentMethod = paymentMethod,
+                orderAmount = orderAmount
+            )
+        )
+    }
+
+    val saveToContactsPref by viewModel.saveToContactsPreference.collectAsState()
+    var isSaveToContactsToggleOn by remember(saveToContactsPref) { mutableStateOf(saveToContactsPref) }
+
+    LaunchedEffect(isSaveToContactsToggleOn) {
+        viewModel.setSaveToContactsPreference(isSaveToContactsToggleOn)
+    }
+    
     var isSaving by remember { mutableStateOf(false) }
     var isCheckingDuplicate by remember { mutableStateOf(false) }
+
+    // WhatsApp Automation State
+    var autoLaunchWhatsApp by remember { mutableStateOf(true) }
+    var includeAddress by remember { mutableStateOf(true) }
+    var includePaymentLink by remember { mutableStateOf(false) }
+    var includeDispatchNote by remember { mutableStateOf(true) }
+    var includeSupportPhone by remember { mutableStateOf(true) }
+    var selectedLanguage by remember { mutableStateOf("English") }
+
+    LaunchedEffect(paymentMethod, selectedPaymentStatus) {
+        if (selectedPaymentStatus == "⏳ UPI Link Sent" || selectedPaymentStatus.contains("Link", ignoreCase = true)) {
+            includePaymentLink = true
+        } else if (paymentMethod.equals("COD", ignoreCase = true) || selectedPaymentStatus == "✅ Payment Verified") {
+            includePaymentLink = false
+        }
+    }
 
     // Logic to save the lead and contact
     var pendingPhoneForContact by remember { mutableStateOf("") }
@@ -137,7 +204,13 @@ fun CreateLeadBottomSheet(
     }
 
     if (showDatePicker) {
-        val datePickerState = rememberDatePickerState()
+        val datePickerState = rememberDatePickerState(
+            selectableDates = object : SelectableDates {
+                override fun isSelectableDate(utcTimeMillis: Long): Boolean {
+                    return utcTimeMillis >= System.currentTimeMillis() - 86400000L
+                }
+            }
+        )
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
@@ -244,7 +317,36 @@ fun CreateLeadBottomSheet(
                 contentPadding = PaddingValues(24.dp)
             ) {
                 item {
-                    Text("New Lead Registration", fontWeight = FontWeight.Black, color = TextPrimary, fontSize = 22.sp)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("New Lead Registration", fontWeight = FontWeight.Black, color = TextPrimary, fontSize = 22.sp)
+                        TextButton(
+                            onClick = {
+                                viewModel.clearDraft()
+                                selectedNumber = ""
+                                manualMode = false
+                                clientName = ""
+                                source = ""
+                                selectedProduct = ""
+                                selectedStatus = ""
+                                selectedSubStatus = ""
+                                selectedTimeSlot = ""
+                                selectedPaymentStatus = ""
+                                remarkNotes = ""
+                                followUpDate = ""
+                                shippingAddress = ""
+                                shippingCity = ""
+                                shippingPincode = ""
+                                paymentMethod = ""
+                                orderAmount = ""
+                            }
+                        ) {
+                            Text("Clear", color = ModernViolet, fontWeight = FontWeight.Bold)
+                        }
+                    }
                 }
 
                 item {
@@ -303,15 +405,27 @@ fun CreateLeadBottomSheet(
                             selectedOption = source,
                             iconData = sourceIcons[source],
                             onClick = { showSourcePopup = true },
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
+                            onClear = { source = "" }
                         )
                         
                         SmartTriggerChip(
                             label = "Add Product",
                             selectedOption = selectedProduct,
-                            iconData = productIcons[selectedProduct],
+                            iconData = getIconForSelection(selectedProduct, productIcons),
+                            emojiData = getEmojiForSelection(selectedProduct, productsList.associate { it.name to it.emojiIcon }),
                             onClick = { showProductPopup = true },
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
+                            onClear = { selectedProduct = "" }
+                        )
+                    }
+                    if (calculatedTotal > 0) {
+                        Text(
+                            text = "Total Order Value: ₹${calculatedTotal.toInt()}",
+                            color = ModernViolet,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(start = 4.dp, top = 8.dp)
                         )
                     }
                 }
@@ -326,31 +440,37 @@ fun CreateLeadBottomSheet(
                                     rowItems.forEach { option ->
                                         val isSelected = selectedStatus == option
                                         val iconData = statusIcons[option]
-                                        val labelText = indianStatusLabels[option]?.substringAfter(" ") ?: option
+                                        val labelText = indianStatusLabels[option] ?: option
                                         
                                         Box(
                                             modifier = Modifier
                                                 .weight(1f)
-                                                .clip(RoundedCornerShape(12.dp))
+                                                .clip(RoundedCornerShape(16.dp))
                                                 .background(if (isSelected) (iconData?.tint ?: ModernViolet).copy(alpha = 0.08f) else SurfaceLight)
-                                                .border(1.dp, if (isSelected) (iconData?.tint ?: ModernViolet) else BorderSubtle, RoundedCornerShape(12.dp))
+                                                .border(1.dp, if (isSelected) (iconData?.tint ?: ModernViolet) else BorderSubtle, RoundedCornerShape(16.dp))
                                                 .clickable { 
                                                     haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
-                                                    selectedStatus = option
+                                                    val newStatus = if (selectedStatus == option) "" else option
+                                                    selectedStatus = newStatus
+                                                    if (newStatus == Constants.STATUS_INQUIRY || newStatus == "Product Inquiry Only" || newStatus == "Product Inquiry" || newStatus == Constants.STATUS_ORDER_PLACED || newStatus == "Order Placed" || newStatus == Constants.STATUS_FOLLOW_UP || newStatus == "Follow-up") {
+                                                        if (selectedProduct.isEmpty()) {
+                                                            showProductPopup = true
+                                                        }
+                                                    }
                                                 }
-                                                .padding(horizontal = 6.dp, vertical = 8.dp),
+                                                .padding(horizontal = 12.dp, vertical = 14.dp),
                                             contentAlignment = Alignment.Center
                                         ) {
-                                            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                                 if (iconData != null) {
                                                     Icon(
                                                         imageVector = iconData.icon,
                                                         contentDescription = null,
                                                         tint = if (isSelected) iconData.tint else TextSecondary,
-                                                        modifier = Modifier.size(20.dp)
+                                                        modifier = Modifier.size(24.dp)
                                                     )
                                                 }
-                                                Text(labelText, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (isSelected) TextPrimary else TextSecondary, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                                Text(labelText, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = if (isSelected) TextPrimary else TextSecondary, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                             }
                                         }
                                     }
@@ -361,14 +481,46 @@ fun CreateLeadBottomSheet(
                     }
                 }
 
+                // SECTION: SUB-STATUS (Conditional for Call Not Answered)
+                if (selectedStatus == Constants.STATUS_CALL_NOT_ANSWERED || selectedStatus == "No Answer" || selectedStatus == "Busy") {
+                    item {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("CALL OUTCOME REASON", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFFF43F5E), letterSpacing = 1.2.sp)
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                listOf("🔔 Ringing", "🔴 Busy", "📵 Switched Off").forEach { sub ->
+                                    val isSelected = selectedSubStatus == sub
+                                    Box(
+                                        modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(if (isSelected) Color(0xFFF43F5E) else SurfaceLight).border(1.dp, if (isSelected) Color(0xFFF43F5E) else BorderSubtle, RoundedCornerShape(12.dp)).clickable { selectedSubStatus = if (selectedSubStatus == sub) "" else sub }.padding(horizontal = 8.dp, vertical = 12.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(sub, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (isSelected) CleanWhite else TextPrimary, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // Product dropdown replaced by animated side-by-side chip above
 
                 if (selectedStatus == "Follow-up") {
                     item {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             Text("FOLLOW-UP DATE", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextSecondary, letterSpacing = 1.2.sp)
                             Box(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(SurfaceLight).border(1.dp, BorderSubtle, RoundedCornerShape(10.dp)).clickable { showDatePicker = true }.padding(14.dp)) {
                                 Text(if (followUpDate.isEmpty()) "Select Date" else followUpDate, color = if (followUpDate.isEmpty()) TextSecondary else TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                            }
+                            Text("PREFERRED TIME SLOT", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextSecondary, letterSpacing = 1.2.sp)
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                listOf("🌅 Morning", "☀️ Afternoon", "🌙 Evening").forEach { slot ->
+                                    val isSelected = selectedTimeSlot == slot
+                                    Box(
+                                        modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(if (isSelected) StatusWarning else SurfaceLight).border(1.dp, if (isSelected) StatusWarning else BorderSubtle, RoundedCornerShape(12.dp)).clickable { selectedTimeSlot = if (selectedTimeSlot == slot) "" else slot }.padding(horizontal = 8.dp, vertical = 12.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(slot, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (isSelected) CleanWhite else TextPrimary, textAlign = TextAlign.Center, maxLines = 1)
+                                    }
+                                }
                             }
                         }
                     }
@@ -403,10 +555,43 @@ fun CreateLeadBottomSheet(
                                 listOf("COD", "Prepaid").forEach { pm ->
                                     val isSelected = paymentMethod == pm
                                     Box(
-                                        modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(if (isSelected) ModernViolet else SurfaceLight).border(1.dp, if (isSelected) ModernViolet else BorderSubtle, RoundedCornerShape(8.dp)).clickable { paymentMethod = pm }.padding(horizontal = 14.dp, vertical = 10.dp)
+                                        modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(if (isSelected) ModernViolet else SurfaceLight).border(1.dp, if (isSelected) ModernViolet else BorderSubtle, RoundedCornerShape(8.dp)).clickable { paymentMethod = if (paymentMethod == pm) "" else pm }.padding(horizontal = 14.dp, vertical = 10.dp)
                                     ) { Text(pm, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (isSelected) CleanWhite else TextSecondary) }
                                 }
                             }
+                            if (paymentMethod.equals("Prepaid", ignoreCase = true)) {
+                                Text("PREPAID PAYMENT VERIFICATION", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = StatusSuccess, letterSpacing = 1.2.sp)
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    listOf("⏳ UPI Link Sent", "✅ Payment Verified").forEach { pStatus ->
+                                        val isSelected = selectedPaymentStatus == pStatus
+                                        Box(
+                                            modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(if (isSelected) StatusSuccess else SurfaceLight).border(1.dp, if (isSelected) StatusSuccess else BorderSubtle, RoundedCornerShape(12.dp)).clickable { selectedPaymentStatus = if (selectedPaymentStatus == pStatus) "" else pStatus }.padding(horizontal = 8.dp, vertical = 12.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(pStatus, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (isSelected) CleanWhite else TextPrimary, textAlign = TextAlign.Center, maxLines = 1)
+                                        }
+                                    }
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            SmartWhatsAppOrderCard(
+                                customerName = clientName.trim(),
+                                products = selectedProduct,
+                                address = listOf(shippingAddress, shippingCity, shippingPincode).filter { it.isNotBlank() }.joinToString(", "),
+                                paymentMode = if (paymentMethod.equals("Prepaid", ignoreCase = true)) "$paymentMethod - $selectedPaymentStatus" else paymentMethod,
+                                autoLaunch = autoLaunchWhatsApp,
+                                onAutoLaunchChange = { autoLaunchWhatsApp = it },
+                                includeAddress = includeAddress,
+                                onIncludeAddressChange = { includeAddress = it },
+                                includePaymentLink = includePaymentLink,
+                                onIncludePaymentLinkChange = { includePaymentLink = it },
+                                includeDispatchNote = includeDispatchNote,
+                                onIncludeDispatchNoteChange = { includeDispatchNote = it },
+                                includeSupportPhone = includeSupportPhone,
+                                onIncludeSupportPhoneChange = { includeSupportPhone = it },
+                                selectedLanguage = selectedLanguage,
+                                onLanguageChange = { selectedLanguage = it }
+                            )
                         }
                     }
                 }
@@ -472,22 +657,59 @@ fun CreateLeadBottomSheet(
 
                             val submitFn = {
                                 isSaving = true
+                                
+                                // Data Sanitization based on final status
+                                val isProductRelevant = selectedStatus in listOf(Constants.STATUS_INQUIRY, "Product Inquiry Only", "Product Inquiry", Constants.STATUS_ORDER_PLACED, "Order Placed", Constants.STATUS_FOLLOW_UP, "Follow-up")
+                                val isFollowUpRelevant = selectedStatus in listOf(Constants.STATUS_FOLLOW_UP, "Follow-up")
+                                val isOrderRelevant = selectedStatus in listOf(Constants.STATUS_ORDER_PLACED, "Order Placed")
+                                val isSubStatusRelevant = selectedStatus in listOf(Constants.STATUS_CALL_NOT_ANSWERED, "No Answer", "Busy")
+
+                                val finalSubStatus = if (isSubStatusRelevant) selectedSubStatus else ""
+                                val finalProduct = if (isProductRelevant) selectedProduct else ""
+                                val finalFollowUpDate = if (isFollowUpRelevant && followUpDate.isNotEmpty()) followUpDate else null
+                                val finalTimeSlot = if (isFollowUpRelevant) selectedTimeSlot else ""
+                                val finalShippingAddress = if (isOrderRelevant) shippingAddress else ""
+                                val finalShippingCity = if (isOrderRelevant) shippingCity else ""
+                                val finalShippingPincode = if (isOrderRelevant) shippingPincode else ""
+                                val finalPaymentMethod = if (isOrderRelevant) paymentMethod else ""
+                                val finalPaymentStatus = if (isOrderRelevant) selectedPaymentStatus else ""
+                                val finalOrderAmount = if (isOrderRelevant) orderAmount else ""
+
                                 viewModel.createManualLead(
                                     name = clientName.trim(),
                                     phone = purePhone,
                                     source = source,
                                     status = selectedStatus,
+                                    subStatus = finalSubStatus,
                                     notes = remarkNotes,
-                                    followUpDate = if (selectedStatus == "Follow-up" && followUpDate.isNotEmpty()) followUpDate else null,
-                                    product = selectedProduct,
-                                    address = shippingAddress,
-                                    city = shippingCity,
-                                    pincode = shippingPincode,
-                                    paymentMethod = paymentMethod,
-                                    orderAmount = orderAmount,
+                                    followUpDate = finalFollowUpDate,
+                                    followUpTimeSlot = finalTimeSlot,
+                                    product = finalProduct,
+                                    address = finalShippingAddress,
+                                    city = finalShippingCity,
+                                    pincode = finalShippingPincode,
+                                    paymentMethod = finalPaymentMethod,
+                                    orderAmount = finalOrderAmount,
+                                    paymentStatus = finalPaymentStatus,
                                     onSuccess = {
                                         isSaving = false
+                                        viewModel.clearDraft()
                                         Toast.makeText(context, "Lead saved successfully!", Toast.LENGTH_SHORT).show()
+                                        if (selectedStatus == "Order Placed" && autoLaunchWhatsApp) {
+                                            com.nexaleads.app.utils.WhatsAppSender.sendOrderConfirmation(
+                                                context = context,
+                                                phone = purePhone,
+                                                customerName = clientName.trim(),
+                                                products = selectedProduct,
+                                                address = listOf(shippingAddress, shippingCity, shippingPincode).filter { it.isNotBlank() }.joinToString(", "),
+                                                paymentMode = if (paymentMethod.equals("Prepaid", ignoreCase = true)) "$paymentMethod - $selectedPaymentStatus" else paymentMethod,
+                                                includeAddress = includeAddress,
+                                                includePaymentLink = includePaymentLink,
+                                                includeDispatchNote = includeDispatchNote,
+                                                includeSupportPhone = includeSupportPhone,
+                                                language = selectedLanguage
+                                            )
+                                        }
                                         onDismiss()
                                     },
                                     onError = { err ->
@@ -555,17 +777,23 @@ fun CreateLeadBottomSheet(
             title = "Select Lead Source",
             options = sources,
             icons = sourceIcons,
+            selectedOption = source,
             onSelect = { source = it; showSourcePopup = false },
             onDismiss = { showSourcePopup = false }
         )
     }
 
     if (showProductPopup) {
+        val productNames = productsList.map { it.name }.ifEmpty { Constants.PRODUCTS }
         SmartGridPopup(
             title = "Select Product",
-            options = Constants.PRODUCTS,
+            options = productNames,
             icons = productIcons,
-            onSelect = { selectedProduct = it; showProductPopup = false },
+            emojis = productsList.associate { it.name to it.emojiIcon },
+            prices = pricesMap,
+            selectedOption = selectedProduct,
+            isMultiSelect = true,
+            onSelect = { selectedProduct = it },
             onDismiss = { showProductPopup = false }
         )
     }

@@ -425,15 +425,20 @@ fun TodayCallingListScreen(
                                         val rawName = getDisplayLeadName(item)
                                         val displayName = rawName.split(" ").joinToString(" ") { it.replaceFirstChar { char -> if (char.isLowerCase()) char.titlecase(Locale.ROOT) else char.toString() } }
                                         Text(displayName, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = TextPrimary, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                                        if (item.isSuspiciousShortCall) {
+                                            Text("⚠️", fontSize = 13.sp)
+                                        }
                                     }
                                     val statusColor = statusColors[item.status] ?: ModernViolet
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                        modifier = Modifier.clip(RoundedCornerShape(20.dp)).background(statusColor.copy(alpha = 0.1f)).padding(horizontal = 6.dp, vertical = 2.dp)
+                                        modifier = Modifier.clip(RoundedCornerShape(20.dp)).background(statusColor.copy(alpha = 0.1f)).padding(horizontal = 8.dp, vertical = 4.dp)
                                     ) {
                                         Box(modifier = Modifier.size(6.dp).background(statusColor, CircleShape))
-                                        Text(indianStatusLabels[item.status] ?: item.status, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = statusColor)
+                                        val statusLabel = indianStatusLabels[item.status] ?: item.status
+                                        val fullStatusLabel = if (!item.subStatus.isNullOrEmpty()) "$statusLabel • ${item.subStatus}" else statusLabel
+                                        Text(fullStatusLabel, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = statusColor)
                                     }
                                 }
                                 Spacer(modifier = Modifier.height(6.dp))
@@ -456,7 +461,8 @@ fun TodayCallingListScreen(
                                     } catch (e: Exception) {
                                         "📅 ${item.followUpDate}"
                                     }
-                                    metaParts.add(formattedDate)
+                                    val dateWithSlot = if (!item.followUpTimeSlot.isNullOrEmpty()) "$formattedDate (${item.followUpTimeSlot})" else formattedDate
+                                    metaParts.add(dateWithSlot)
                                 }
                                 
                                 if (metaParts.isNotEmpty()) {

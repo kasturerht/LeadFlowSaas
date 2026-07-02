@@ -2,7 +2,7 @@ import React from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebase';
-import { Users, PhoneCall, TrendingUp, LogOut } from 'lucide-react';
+import { Users, PhoneCall, TrendingUp, LogOut, Tag } from 'lucide-react';
 
 export default function Layout() {
   const navigate = useNavigate();
@@ -44,6 +44,11 @@ export default function Layout() {
           <NavLink to="/history" style={navLinkStyle}>
             <PhoneCall size={20} />
             <span>Call History</span>
+          </NavLink>
+          
+          <NavLink to="/products" style={navLinkStyle}>
+            <Tag size={20} />
+            <span>Products</span>
           </NavLink>
         </div>
 

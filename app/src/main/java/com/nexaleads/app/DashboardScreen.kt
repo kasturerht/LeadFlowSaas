@@ -14,6 +14,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.ExitToApp
+import androidx.compose.material.icons.rounded.Business
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -72,6 +74,7 @@ fun DashboardScreen(
     var showMediaPromptForLead by remember { mutableStateOf<Lead?>(null) }
     var sendBrochureChecked by remember { mutableStateOf(true) }
     var sendVisitingCardChecked by remember { mutableStateOf(true) }
+    var showLogoutDialog by remember { mutableStateOf(false) }
     
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -168,68 +171,129 @@ fun DashboardScreen(
                 .padding(bottom = 40.dp) // Extra breathing room for the fade out
         ) {
             
-            // HEADER
+            // ULTRA PREMIUM SILICON VALLEY HEADER
+            val firstName = callerName.split(" ").firstOrNull()?.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() } ?: callerName
+            
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp, vertical = 24.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
-                    Text(
-                        text = greeting.uppercase(),
-                        fontSize = 12.sp,
-                        color = TextSecondary,
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = 1.5.sp
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = callerName,
-                        fontSize = 28.sp,
-                        fontWeight = FontWeight.Black,
-                        color = TextPrimary,
-                        letterSpacing = (-0.5).sp
-                    )
+                // LEFT SIDE: Organization Branding (Reference Screenshot Style)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Organization Logo
+                    Box(
+                        modifier = Modifier
+                            .size(46.dp)
+                            .clip(CircleShape)
+                            .background(
+                                brush = androidx.compose.ui.graphics.Brush.linearGradient(
+                                    colors = listOf(Color(0xFF4ADE80), Color(0xFF16A34A)) 
+                                )
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("S", color = CleanWhite, fontSize = 24.sp, fontWeight = FontWeight.Black)
+                    }
                     
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.width(10.dp))
                     
+                    Column {
+                        Text(
+                            text = "SUJATA",
+                            fontSize = 20.sp,
+                            color = Color(0xFF1E40AF), // Deep Blue like the reference
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 1.sp
+                        )
+                        Text(
+                            text = "Health & Wellness",
+                            fontSize = 12.sp,
+                            color = TextSecondary,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+                
+                // RIGHT SIDE: User Profile (Reference Screenshot Style)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.clickable { showLogoutDialog = true } // Make the whole block clickable for logout
+                ) {
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            text = "Hi, $firstName",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = TextPrimary
+                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(StatusSuccess)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Online",
+                                fontSize = 12.sp,
+                                color = TextSecondary,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.width(12.dp))
+                    
+                    // User Avatar
                     Surface(
                         shape = CircleShape,
-                        color = StatusSuccess.copy(alpha = 0.1f),
-                        border = androidx.compose.foundation.BorderStroke(0.5.dp, StatusSuccess.copy(alpha = 0.2f))
+                        color = ModernViolet,
+                        modifier = Modifier.size(46.dp)
                     ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Text("🏆", fontSize = 14.sp)
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                             Text(
-                                text = "$convertedCount Orders Closed",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = StatusSuccess
+                                text = firstName.take(1).uppercase(),
+                                color = CleanWhite,
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold
                             )
                         }
                     }
                 }
-                
-                Surface(
-                    shape = CircleShape,
-                    color = StatusDanger.copy(alpha = 0.08f),
-                    onClick = onLogout,
-                    border = androidx.compose.foundation.BorderStroke(0.5.dp, StatusDanger.copy(alpha = 0.15f))
-                ) {
-                    Text(
-                        "Logout", 
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp), 
-                        color = StatusDanger, 
-                        fontWeight = FontWeight.Bold, 
-                        fontSize = 12.sp
-                    )
-                }
+            }
+
+            if (showLogoutDialog) {
+                AlertDialog(
+                    onDismissRequest = { showLogoutDialog = false },
+                    title = {
+                        Text("Log Out", fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 20.sp)
+                    },
+                    text = {
+                        Text("Are you sure you want to log out of your session?", color = TextSecondary)
+                    },
+                    containerColor = SurfaceLight,
+                    confirmButton = {
+                        Button(
+                            onClick = { 
+                                showLogoutDialog = false
+                                onLogout() 
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = StatusDanger),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text("Yes, Log Out", color = CleanWhite, fontWeight = FontWeight.Bold)
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showLogoutDialog = false }) {
+                            Text("Cancel", color = TextSecondary, fontWeight = FontWeight.Medium)
+                        }
+                    }
+                )
             }
             
             // TOP ZONE: Focus Metrics

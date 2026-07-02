@@ -4,12 +4,8 @@ service cloud.firestore {
   match /databases/{database}/documents {
     
     // Function to check if the user is an Admin
-    // (Assuming the web app admin logs in with an email we can hardcode, 
-    // or we check if their role == 'admin' in the users collection)
     function isAdmin() {
-      // For a safer setup, you should add a document in the 'users' collection 
-      // for the admin with role: 'admin'.
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      return request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
     // Function to check if the user is a logged-in Telecaller
@@ -19,31 +15,28 @@ service cloud.firestore {
 
     // 1. Users Collection
     match /users/{userId} {
-      // Only admins can read/write the full users collection
       allow read, write: if isAdmin();
-      // Telecallers can only read their own profile
       allow read: if request.auth.uid == userId;
     }
 
     // 2. Leads Collection
     match /leads/{leadId} {
-      // Admins can see and edit all leads
       allow read, write: if isAdmin();
       
-      // Telecallers can ONLY read and update leads ASSIGNED to them
       allow read, update: if isTelecaller() && resource.data.assignedTo == request.auth.uid;
       
-      // Prevent telecallers from creating or deleting leads directly, or uncomment if they should
-      allow create: if isTelecaller();
+      // Telecallers can create leads assigned to them
+      allow create: if isTelecaller() && request.resource.data.assignedTo == request.auth.uid;
     }
 
     // 3. Interactions (Call History) Collection
     match /interactions/{interactionId} {
-      // Admins can see all call history
       allow read, write: if isAdmin();
       
-      // Telecallers can only read and write their own call logs
-      allow read, create: if isTelecaller() && request.resource.data.telecallerId == request.auth.uid;
+      allow read, update, delete: if isTelecaller() && resource.data.callerId == request.auth.uid;
+      
+      // Telecallers can create their own call logs
+      allow create: if isTelecaller() && request.resource.data.callerId == request.auth.uid;
     }
   }
 }

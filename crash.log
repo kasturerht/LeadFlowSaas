@@ -1,0 +1,1144 @@
+--------- beginning of crash
+06-27 13:34:43.822 26989 27045 F libc    : FORTIFY: pthread_mutex_lock called on a destroyed mutex (0x7943b895a8)
+06-27 13:34:43.823 26989 27045 F libc    : Fatal signal 6 (SIGABRT), code -1 (SI_QUEUE) in tid 27045 (hwuiTask0), pid 26989 (rprise.leadflow)
+06-27 20:14:22.412 19274 19399 E AndroidRuntime: FATAL EXCEPTION: McsHandler
+06-27 20:14:22.412 19274 19399 E AndroidRuntime: Process: com.mgoogle.android.gms:persistent, PID: 19274
+06-27 20:14:22.412 19274 19399 E AndroidRuntime: java.lang.NullPointerException: Attempt to invoke virtual method 'java.lang.String android.net.NetworkInfo.getTypeName()' on a null object reference
+06-27 20:14:22.412 19274 19399 E AndroidRuntime: 	at org.microg.gms.gcm.McsService.connect(:46)
+06-27 20:14:22.412 19274 19399 E AndroidRuntime: 	at org.microg.gms.gcm.McsService.handleMessage(:279)
+06-27 20:14:22.412 19274 19399 E AndroidRuntime: 	at android.os.Handler.dispatchMessage(Handler.java:111)
+06-27 20:14:22.412 19274 19399 E AndroidRuntime: 	at android.os.Looper.loopOnce(Looper.java:302)
+06-27 20:14:22.412 19274 19399 E AndroidRuntime: 	at android.os.Looper.loop(Looper.java:412)
+06-27 20:14:22.412 19274 19399 E AndroidRuntime: 	at org.microg.gms.gcm.McsService$HandlerThread.run(:85)
+06-27 20:24:09.420 17977 17996 E AndroidRuntime: FATAL EXCEPTION: McsHandler
+06-27 20:24:09.420 17977 17996 E AndroidRuntime: Process: com.mgoogle.android.gms:persistent, PID: 17977
+06-27 20:24:09.420 17977 17996 E AndroidRuntime: java.lang.NullPointerException: Attempt to invoke virtual method 'java.lang.String android.net.NetworkInfo.getTypeName()' on a null object reference
+06-27 20:24:09.420 17977 17996 E AndroidRuntime: 	at org.microg.gms.gcm.McsService.connect(:46)
+06-27 20:24:09.420 17977 17996 E AndroidRuntime: 	at org.microg.gms.gcm.McsService.handleMessage(:279)
+06-27 20:24:09.420 17977 17996 E AndroidRuntime: 	at android.os.Handler.dispatchMessage(Handler.java:111)
+06-27 20:24:09.420 17977 17996 E AndroidRuntime: 	at android.os.Looper.loopOnce(Looper.java:302)
+06-27 20:24:09.420 17977 17996 E AndroidRuntime: 	at android.os.Looper.loop(Looper.java:412)
+06-27 20:24:09.420 17977 17996 E AndroidRuntime: 	at org.microg.gms.gcm.McsService$HandlerThread.run(:85)
+06-29 13:53:18.041 21256 21325 E AndroidRuntime: FATAL EXCEPTION: McsHandler
+06-29 13:53:18.041 21256 21325 E AndroidRuntime: Process: com.mgoogle.android.gms:persistent, PID: 21256
+06-29 13:53:18.041 21256 21325 E AndroidRuntime: java.lang.NullPointerException: Attempt to invoke virtual method 'java.lang.String android.net.NetworkInfo.getTypeName()' on a null object reference
+06-29 13:53:18.041 21256 21325 E AndroidRuntime: 	at org.microg.gms.gcm.McsService.connect(:46)
+06-29 13:53:18.041 21256 21325 E AndroidRuntime: 	at org.microg.gms.gcm.McsService.handleMessage(:279)
+06-29 13:53:18.041 21256 21325 E AndroidRuntime: 	at android.os.Handler.dispatchMessage(Handler.java:111)
+06-29 13:53:18.041 21256 21325 E AndroidRuntime: 	at android.os.Looper.loopOnce(Looper.java:302)
+06-29 13:53:18.041 21256 21325 E AndroidRuntime: 	at android.os.Looper.loop(Looper.java:412)
+06-29 13:53:18.041 21256 21325 E AndroidRuntime: 	at org.microg.gms.gcm.McsService$HandlerThread.run(:85)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: FATAL EXCEPTION: main
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: Process: com.enterprise.leadflow, PID: 2940
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: java.lang.NullPointerException
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at com.enterprise.leadflow.DashboardScreenKt.DashboardScreen$lambda$139$lambda$138(DashboardScreen.kt:590)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at com.enterprise.leadflow.DashboardScreenKt$$ExternalSyntheticLambda8.invoke(D8$$SyntheticClass:0)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at com.enterprise.leadflow.components.LeadDetailsBottomSheetKt.LeadDetailsBottomSheet$lambda$15$lambda$14$lambda$13$lambda$12(LeadDetailsBottomSheet.kt:126)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at com.enterprise.leadflow.components.LeadDetailsBottomSheetKt$$ExternalSyntheticLambda4.invoke(D8$$SyntheticClass:0)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at androidx.compose.foundation.ClickableNode.onPointerEvent-H0pRuoY(Clickable.kt:935)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at androidx.compose.ui.input.pointer.Node.dispatchMainEventPass(HitPathTracker.kt:446)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at androidx.compose.ui.input.pointer.Node.dispatchMainEventPass(HitPathTracker.kt:432)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at androidx.compose.ui.input.pointer.Node.dispatchMainEventPass(HitPathTracker.kt:432)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at androidx.compose.ui.input.pointer.NodeParent.dispatchMainEventPass(HitPathTracker.kt:285)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at androidx.compose.ui.input.pointer.HitPathTracker.dispatchChanges(HitPathTracker.kt:181)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at androidx.compose.ui.input.pointer.PointerInputEventProcessor.process-BIzXfog(PointerInputEventProcessor.kt:118)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at androidx.compose.ui.platform.AndroidComposeView.sendMotionEvent-8iAsVTc(AndroidComposeView.android.kt:2685)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at androidx.compose.ui.platform.AndroidComposeView.handleMotionEvent-8iAsVTc(AndroidComposeView.android.kt:2629)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at androidx.compose.ui.platform.AndroidComposeView.dispatchTouchEvent(AndroidComposeView.android.kt:2467)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at android.view.ViewGroup.dispatchTransformedTouchEvent(ViewGroup.java:3223)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at android.view.ViewGroup.dispatchTouchEvent(ViewGroup.java:2892)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at android.view.ViewGroup.dispatchTransformedTouchEvent(ViewGroup.java:3223)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at android.view.ViewGroup.dispatchTouchEvent(ViewGroup.java:2892)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at android.view.ViewGroup.dispatchTransformedTouchEvent(ViewGroup.java:3223)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at android.view.ViewGroup.dispatchTouchEvent(ViewGroup.java:2892)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at android.view.ViewGroup.dispatchTransformedTouchEvent(ViewGroup.java:3223)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at android.view.ViewGroup.dispatchTouchEvent(ViewGroup.java:2892)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at com.android.internal.policy.DecorView.superDispatchTouchEvent(DecorView.java:569)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at com.android.internal.policy.PhoneWindow.superDispatchTouchEvent(PhoneWindow.java:2098)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at android.app.Dialog.dispatchTouchEvent(Dialog.java:986)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at com.android.internal.policy.DecorView.dispatchTouchEvent(DecorView.java:517)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at android.view.View.dispatchPointerEvent(View.java:17203)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at android.view.ViewRootImpl$ViewPostImeInputStage.processPointerEvent(ViewRootImpl.java:9368)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at android.view.ViewRootImpl$ViewPostImeInputStage.onProcess(ViewRootImpl.java:9037)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at android.view.ViewRootImpl$InputStage.deliver(ViewRootImpl.java:8401)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at android.view.ViewRootImpl$InputStage.onDeliverToNext(ViewRootImpl.java:8465)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at android.view.ViewRootImpl$InputStage.forward(ViewRootImpl.java:8424)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at android.view.ViewRootImpl$AsyncInputStage.forward(ViewRootImpl.java:8597)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at android.view.ViewRootImpl$InputStage.apply(ViewRootImpl.java:8432)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at android.view.ViewRootImpl$AsyncInputStage.apply(ViewRootImpl.java:8654)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at android.view.ViewRootImpl$InputStage.deliver(ViewRootImpl.java:8405)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at android.view.ViewRootImpl$InputStage.onDeliverToNext(ViewRootImpl.java:8465)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at android.view.ViewRootImpl$InputStage.forward(ViewRootImpl.java:8424)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at android.view.ViewRootImpl$InputStage.apply(ViewRootImpl.java:8432)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at android.view.ViewRootImpl$InputStage.deliver(ViewRootImpl.java:8405)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at android.view.ViewRootImpl.deliverInputEvent(ViewRootImpl.java:11913)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at android.view.ViewRootImpl.doProcessInputEvents(ViewRootImpl.java:11860)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at android.view.ViewRootImpl.enqueueInputEvent(ViewRootImpl.java:11805)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at android.view.ViewRootImpl.processRawInputEvent(ViewRootImpl.java:12304)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at android.view.ViewRootImpl$WindowInputEventReceiver.onInputEvent(ViewRootImpl.java:12043)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at android.view.InputEventReceiver.dispatchInputEvent(InputEventReceiver.java:321)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at android.os.MessageQueue.nativePollOnce(Native Method)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at android.os.MessageQueue.nextLegacy(MessageQueue.java:934)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at android.os.MessageQueue.next(MessageQueue.java:1046)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at android.os.Looper.loopOnce(Looper.java:221)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at android.os.Looper.loop(Looper.java:412)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at android.app.ActivityThread.main(ActivityThread.java:9998)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at java.lang.reflect.Method.invoke(Native Method)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:613)
+06-30 16:59:16.586  2940  2940 E AndroidRuntime: 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1074)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: FATAL EXCEPTION: main
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: Process: com.enterprise.leadflow, PID: 4680
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: java.lang.NullPointerException
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at com.enterprise.leadflow.DashboardScreenKt.DashboardScreen$lambda$139$lambda$138(DashboardScreen.kt:590)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at com.enterprise.leadflow.DashboardScreenKt$$ExternalSyntheticLambda8.invoke(D8$$SyntheticClass:0)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at com.enterprise.leadflow.components.LeadDetailsBottomSheetKt.LeadDetailsBottomSheet$lambda$15$lambda$14$lambda$13$lambda$12(LeadDetailsBottomSheet.kt:126)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at com.enterprise.leadflow.components.LeadDetailsBottomSheetKt$$ExternalSyntheticLambda4.invoke(D8$$SyntheticClass:0)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at androidx.compose.foundation.ClickableNode.onPointerEvent-H0pRuoY(Clickable.kt:935)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at androidx.compose.ui.input.pointer.Node.dispatchMainEventPass(HitPathTracker.kt:446)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at androidx.compose.ui.input.pointer.Node.dispatchMainEventPass(HitPathTracker.kt:432)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at androidx.compose.ui.input.pointer.Node.dispatchMainEventPass(HitPathTracker.kt:432)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at androidx.compose.ui.input.pointer.NodeParent.dispatchMainEventPass(HitPathTracker.kt:285)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at androidx.compose.ui.input.pointer.HitPathTracker.dispatchChanges(HitPathTracker.kt:181)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at androidx.compose.ui.input.pointer.PointerInputEventProcessor.process-BIzXfog(PointerInputEventProcessor.kt:118)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at androidx.compose.ui.platform.AndroidComposeView.sendMotionEvent-8iAsVTc(AndroidComposeView.android.kt:2685)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at androidx.compose.ui.platform.AndroidComposeView.handleMotionEvent-8iAsVTc(AndroidComposeView.android.kt:2629)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at androidx.compose.ui.platform.AndroidComposeView.dispatchTouchEvent(AndroidComposeView.android.kt:2467)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at android.view.ViewGroup.dispatchTransformedTouchEvent(ViewGroup.java:3223)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at android.view.ViewGroup.dispatchTouchEvent(ViewGroup.java:2892)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at android.view.ViewGroup.dispatchTransformedTouchEvent(ViewGroup.java:3223)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at android.view.ViewGroup.dispatchTouchEvent(ViewGroup.java:2892)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at android.view.ViewGroup.dispatchTransformedTouchEvent(ViewGroup.java:3223)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at android.view.ViewGroup.dispatchTouchEvent(ViewGroup.java:2892)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at android.view.ViewGroup.dispatchTransformedTouchEvent(ViewGroup.java:3223)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at android.view.ViewGroup.dispatchTouchEvent(ViewGroup.java:2892)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at com.android.internal.policy.DecorView.superDispatchTouchEvent(DecorView.java:569)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at com.android.internal.policy.PhoneWindow.superDispatchTouchEvent(PhoneWindow.java:2098)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at android.app.Dialog.dispatchTouchEvent(Dialog.java:986)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at com.android.internal.policy.DecorView.dispatchTouchEvent(DecorView.java:517)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at android.view.View.dispatchPointerEvent(View.java:17203)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at android.view.ViewRootImpl$ViewPostImeInputStage.processPointerEvent(ViewRootImpl.java:9368)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at android.view.ViewRootImpl$ViewPostImeInputStage.onProcess(ViewRootImpl.java:9037)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at android.view.ViewRootImpl$InputStage.deliver(ViewRootImpl.java:8401)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at android.view.ViewRootImpl$InputStage.onDeliverToNext(ViewRootImpl.java:8465)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at android.view.ViewRootImpl$InputStage.forward(ViewRootImpl.java:8424)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at android.view.ViewRootImpl$AsyncInputStage.forward(ViewRootImpl.java:8597)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at android.view.ViewRootImpl$InputStage.apply(ViewRootImpl.java:8432)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at android.view.ViewRootImpl$AsyncInputStage.apply(ViewRootImpl.java:8654)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at android.view.ViewRootImpl$InputStage.deliver(ViewRootImpl.java:8405)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at android.view.ViewRootImpl$InputStage.onDeliverToNext(ViewRootImpl.java:8465)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at android.view.ViewRootImpl$InputStage.forward(ViewRootImpl.java:8424)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at android.view.ViewRootImpl$InputStage.apply(ViewRootImpl.java:8432)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at android.view.ViewRootImpl$InputStage.deliver(ViewRootImpl.java:8405)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at android.view.ViewRootImpl.deliverInputEvent(ViewRootImpl.java:11913)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at android.view.ViewRootImpl.doProcessInputEvents(ViewRootImpl.java:11860)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at android.view.ViewRootImpl.enqueueInputEvent(ViewRootImpl.java:11805)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at android.view.ViewRootImpl.processRawInputEvent(ViewRootImpl.java:12304)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at android.view.ViewRootImpl$WindowInputEventReceiver.onInputEvent(ViewRootImpl.java:12043)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at android.view.InputEventReceiver.dispatchInputEvent(InputEventReceiver.java:321)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at android.os.MessageQueue.nativePollOnce(Native Method)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at android.os.MessageQueue.nextLegacy(MessageQueue.java:934)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at android.os.MessageQueue.next(MessageQueue.java:1046)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at android.os.Looper.loopOnce(Looper.java:221)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at android.os.Looper.loop(Looper.java:412)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at android.app.ActivityThread.main(ActivityThread.java:9998)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at java.lang.reflect.Method.invoke(Native Method)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:613)
+06-30 16:59:34.846  4680  4680 E AndroidRuntime: 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1074)
+07-02 15:40:40.381 22387 22414 E AndroidRuntime: FATAL EXCEPTION: McsHandler
+07-02 15:40:40.381 22387 22414 E AndroidRuntime: Process: com.mgoogle.android.gms:persistent, PID: 22387
+07-02 15:40:40.381 22387 22414 E AndroidRuntime: java.lang.NullPointerException: Attempt to invoke virtual method 'java.lang.String android.net.NetworkInfo.getTypeName()' on a null object reference
+07-02 15:40:40.381 22387 22414 E AndroidRuntime: 	at org.microg.gms.gcm.McsService.connect(:46)
+07-02 15:40:40.381 22387 22414 E AndroidRuntime: 	at org.microg.gms.gcm.McsService.handleMessage(:279)
+07-02 15:40:40.381 22387 22414 E AndroidRuntime: 	at android.os.Handler.dispatchMessage(Handler.java:111)
+07-02 15:40:40.381 22387 22414 E AndroidRuntime: 	at android.os.Looper.loopOnce(Looper.java:302)
+07-02 15:40:40.381 22387 22414 E AndroidRuntime: 	at android.os.Looper.loop(Looper.java:412)
+07-02 15:40:40.381 22387 22414 E AndroidRuntime: 	at org.microg.gms.gcm.McsService$HandlerThread.run(:85)
+--------- beginning of system
+07-02 16:37:57.914  2262  2262 E ScreenIntentReceiver: notifyChange failed
+07-02 16:37:58.254  2262  2456 E OplusScreenTimeEvent: Error calculating screen on time java.lang.NumberFormatException: empty String
+07-02 16:37:58.793  2262  3868 E OplusCustomizeRestrictionManagerService: isHomeButtonDisabled start
+07-02 16:37:58.852  2262  2423 E QosSceneRecognizer[ActivityStartScene]: notifyActivityStart get launchedFromUid failed through AppManager! launchedFromPackage: null, pkg: com.android.launcher
+07-02 16:37:58.874  2262  2262 E MBrainLocalService: notifyAppSwitch failed
+07-02 16:37:58.884  2262  2262 E MBrainLocalService: notifyAppSwitch failed
+07-02 16:37:58.903  2262  2661 E FlexibleWindowManagerService: notifyTaskObserverToAttachController not need to notify!
+07-02 16:37:58.904  2262  2661 E FlexibleWindowManagerService: notifyTaskObserverToAttachController not need to notify!
+07-02 16:37:58.906  2262  2661 E OplusAppQuickStart_AppQuickStartController: not start from launcher transition:8983
+07-02 16:37:58.912  2262  2661 E FlexibleWindowManagerService: notifyTaskObserverToAttachController not need to notify!
+07-02 16:37:58.922  2262  4103 E OplusCustomizeRestrictionManagerService: isBiometricDisabled start
+07-02 16:37:58.924  2262  2440 E OplusThermalStats: Error getting package info: com.android.launcher
+07-02 16:37:59.003  2262  3868 E Biometrics/FingerprintProvider/FingerprintServiceProviderExtImpl: current client is null.
+07-02 16:37:59.005  2262  3868 E Biometrics/FingerprintProvider/FingerprintServiceProviderExtImpl: current client is null.
+07-02 16:37:59.142  2262  3846 E AppWidgetServiceImplExtImpl: FEATURE_COTA_APPWIDGET_UPDATE_RETRY Feature is disbaled not need to resend broadcast
+07-02 16:37:59.174  2262  3443 E AppWidgetServiceImplExtImpl: FEATURE_COTA_APPWIDGET_UPDATE_RETRY Feature is disbaled not need to resend broadcast
+07-02 16:37:59.208  2262  3853 E AppWidgetServiceImplExtImpl: FEATURE_COTA_APPWIDGET_UPDATE_RETRY Feature is disbaled not need to resend broadcast
+07-02 16:37:59.403  2262  2262 E ChargeIntentReceiver: notifyChange failed
+07-02 16:37:59.625  2262  2415 E FlexibleWindowManagerService: notifyTaskObserverToAttachController not need to notify!
+07-02 16:37:59.747  2262  2440 E BatteryStatsImplExtImpl: get RefreshCounts failed
+07-02 16:37:59.785  2262  2415 E FlexibleWindowManagerService: notifyTaskObserverToAttachController not need to notify!
+07-02 16:38:01.640  2262  2619 E JobScheduler.Background: Couldn't determine stopped state for unknown package: com.oplus.onet
+07-02 16:38:01.671  2262  2428 E NotificationVibratorHelper: Error creating vibration waveform with pattern: [0]
+07-02 16:38:01.681  4354  4471 E OplusCustomizeRestrictionManager: sInstance is null, start a new sInstance
+07-02 16:38:03.680  2262  2619 E JobScheduler.Background: Couldn't determine stopped state for unknown package: com.oplus.onet
+07-02 16:38:04.909  2262  3366 E ShortcutService: Invalid icon type in shortcut 120363153886466708@g.us. Bitmaps are not allowed in long-lived shortcuts. Use Resource icons, or Uri-based icons instead.
+07-02 16:38:05.639  2262  2599 E OplusAppQuickStart_AppQuickStartController: notifyStartActivity intent:Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10200000 xflg=0x4 cmp=com.nexaleads.app/.MainActivity bnds=[642,753][846,1032] (has extras) }
+07-02 16:38:05.663  2262  2262 E MBrainLocalService: notifyAppSwitch failed
+07-02 16:38:05.671  2262  2262 E MBrainLocalService: notifyAppSwitch failed
+07-02 16:38:05.679  2262  2599 E FlexibleWindowManagerService: notifyTaskObserverToAttachController not need to notify!
+07-02 16:38:05.679  2262  2599 E FlexibleWindowManagerService: notifyTaskObserverToAttachController not need to notify!
+07-02 16:38:05.688  2262  2440 E OplusThermalStats: Error getting package info: com.nexaleads.app
+07-02 16:38:05.746  2262  3970 E FlexibleWindowManagerService: notifyTaskObserverToAttachController not need to notify!
+07-02 16:38:06.140  2262  2415 E FlexibleWindowManagerService: notifyTaskObserverToAttachController not need to notify!
+07-02 16:38:08.661  2262  9177 E TaskPersister: File error accessing recents directory (directory doesn't exist?).
+07-02 16:38:11.647  2262  2619 E JobScheduler.Background: Couldn't determine stopped state for unknown package: com.oplus.onet
+07-02 16:38:13.822  2262  2262 E MBrainLocalService: notifyAppSwitch failed
+07-02 16:38:13.829  2262  3868 E FlexibleWindowManagerService: notifyTaskObserverToAttachController not need to notify!
+07-02 16:38:13.830  2262  3868 E FlexibleWindowManagerService: notifyTaskObserverToAttachController not need to notify!
+07-02 16:38:13.834  2262  2440 E OplusThermalStats: Error getting package info: com.android.launcher
+07-02 16:38:13.839  2262  2415 E OplusAppQuickStart_AppQuickStartController: not start from launcher transition:8985
+07-02 16:38:13.864  2262  4098 E FlexibleWindowManagerService: notifyTaskObserverToAttachController not need to notify!
+07-02 16:38:13.986  2262  3971 E AppOps  : Bad call made by uid 1000. Package "com.google.android.apps.photos" does not belong to uid 1000.
+07-02 16:38:14.343  2262  3853 E FlexibleWindowManagerService: notifyTaskObserverToAttachController not need to notify!
+07-02 16:38:14.721  2262  2423 E QosSceneRecognizer[ActivityStartScene]: notifyActivityStart get launchedFromUid failed through AppManager! launchedFromPackage: com.android.shell, pkg: com.nexaleads.app
+07-02 16:38:14.795  2262  2415 E OplusAppQuickStart_AppQuickStartController: not start from launcher transition:8986
+07-02 16:38:14.804  2262  2415 E FlexibleWindowManagerService: notifyTaskObserverToAttachController not need to notify!
+07-02 16:38:14.942  2262  2599 E FlexibleWindowManagerService: notifyTaskObserverToAttachController not need to notify!
+07-02 16:38:14.949  2262  2262 E MBrainLocalService: notifyAppSwitch failed
+07-02 16:38:14.959  2262  2440 E OplusThermalStats: Error getting package info: com.nexaleads.app
+07-02 16:38:15.119  2262  2415 E FlexibleWindowManagerService: notifyTaskObserverToAttachController not need to notify!
+07-02 16:38:15.120  2262  2415 E FlexibleWindowManagerService: notifyTaskObserverToAttachController not need to notify!
+07-02 16:38:16.011  2262  2415 E FlexibleWindowManagerService: notifyTaskObserverToAttachController not need to notify!
+07-02 16:38:16.423  2262  3850 E FlexibleWindowManagerService: notifyTaskObserverToAttachController not need to notify!
+07-02 16:38:17.423  5020  5020 E AndroidRuntime: FATAL EXCEPTION: main
+07-02 16:38:17.423  5020  5020 E AndroidRuntime: Process: com.nexaleads.app, PID: 5020
+07-02 16:38:17.423  5020  5020 E AndroidRuntime: com.google.firebase.firestore.FirebaseFirestoreException: PERMISSION_DENIED: Missing or insufficient permissions.
+07-02 16:38:17.423  5020  5020 E AndroidRuntime: 	at com.google.firebase.firestore.util.Util.exceptionFromStatus(Util.java:113)
+07-02 16:38:17.423  5020  5020 E AndroidRuntime: 	at com.google.firebase.firestore.core.EventManager.onError(EventManager.java:247)
+07-02 16:38:17.423  5020  5020 E AndroidRuntime: 	at com.google.firebase.firestore.core.SyncEngine.removeAndCleanupTarget(SyncEngine.java:642)
+07-02 16:38:17.423  5020  5020 E AndroidRuntime: 	at com.google.firebase.firestore.core.SyncEngine.handleRejectedListen(SyncEngine.java:478)
+07-02 16:38:17.423  5020  5020 E AndroidRuntime: 	at com.google.firebase.firestore.core.MemoryComponentProvider$RemoteStoreCallback.handleRejectedListen(MemoryComponentProvider.java:130)
+07-02 16:38:17.423  5020  5020 E AndroidRuntime: 	at com.google.firebase.firestore.remote.RemoteStore.processTargetError(RemoteStore.java:591)
+07-02 16:38:17.423  5020  5020 E AndroidRuntime: 	at com.google.firebase.firestore.remote.RemoteStore.handleWatchChange(RemoteStore.java:474)
+07-02 16:38:17.423  5020  5020 E AndroidRuntime: 	at com.google.firebase.firestore.remote.RemoteStore.access$100(RemoteStore.java:60)
+07-02 16:38:17.423  5020  5020 E AndroidRuntime: 	at com.google.firebase.firestore.remote.RemoteStore$1.onWatchChange(RemoteStore.java:183)
+07-02 16:38:17.423  5020  5020 E AndroidRuntime: 	at com.google.firebase.firestore.remote.WatchStream.onNext(WatchStream.java:109)
+07-02 16:38:17.423  5020  5020 E AndroidRuntime: 	at com.google.firebase.firestore.remote.WatchStream.onNext(WatchStream.java:38)
+07-02 16:38:17.423  5020  5020 E AndroidRuntime: 	at com.google.firebase.firestore.remote.AbstractStream$StreamObserver.lambda$onNext$1$com-google-firebase-firestore-remote-AbstractStream$StreamObserver(AbstractStream.java:119)
+07-02 16:38:17.423  5020  5020 E AndroidRuntime: 	at com.google.firebase.firestore.remote.AbstractStream$StreamObserver$$ExternalSyntheticLambda0.run(D8$$SyntheticClass:0)
+07-02 16:38:17.423  5020  5020 E AndroidRuntime: 	at com.google.firebase.firestore.remote.AbstractStream$CloseGuardedRunner.run(AbstractStream.java:67)
+07-02 16:38:17.423  5020  5020 E AndroidRuntime: 	at com.google.firebase.firestore.remote.AbstractStream$StreamObserver.onNext(AbstractStream.java:110)
+07-02 16:38:17.423  5020  5020 E AndroidRuntime: 	at com.google.firebase.firestore.remote.FirestoreChannel$1.onMessage(FirestoreChannel.java:140)
+07-02 16:38:17.423  5020  5020 E AndroidRuntime: 	at io.grpc.internal.DelayedClientCall$DelayedListener.onMessage(DelayedClientCall.java:473)
+07-02 16:38:17.423  5020  5020 E AndroidRuntime: 	at io.grpc.internal.ClientCallImpl$ClientStreamListenerImpl$1MessagesAvailable.runInternal(ClientCallImpl.java:660)
+07-02 16:38:17.423  5020  5020 E AndroidRuntime: 	at io.grpc.internal.ClientCallImpl$ClientStreamListenerImpl$1MessagesAvailable.runInContext(ClientCallImpl.java:647)
+07-02 16:38:17.423  5020  5020 E AndroidRuntime: 	at io.grpc.internal.ContextRunnable.run(ContextRunnable.java:37)
+07-02 16:38:17.423  5020  5020 E AndroidRuntime: 	at io.grpc.internal.SerializingExecutor.run(SerializingExecutor.java:133)
+07-02 16:38:17.423  5020  5020 E AndroidRuntime: 	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:520)
+07-02 16:38:17.423  5020  5020 E AndroidRuntime: 	at java.util.concurrent.FutureTask.run(FutureTask.java:328)
+07-02 16:38:17.423  5020  5020 E AndroidRuntime: 	at java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:323)
+07-02 16:38:17.423  5020  5020 E AndroidRuntime: 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1100)
+07-02 16:38:17.423  5020  5020 E AndroidRuntime: 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:624)
+07-02 16:38:17.423  5020  5020 E AndroidRuntime: 	at com.google.firebase.firestore.util.AsyncQueue$SynchronizedShutdownAwareExecutor$DelayedStartFactory.run(AsyncQueue.java:235)
+07-02 16:38:17.423  5020  5020 E AndroidRuntime: 	at java.lang.Thread.run(Thread.java:1572)
+07-02 16:38:17.423  5020  5020 E AndroidRuntime: 	Suppressed: kotlinx.coroutines.internal.DiagnosticCoroutineContextException: [StandaloneCoroutine{Cancelling}@b18867a, Dispatchers.Main.immediate]
+07-02 16:38:17.423  5020  5020 E AndroidRuntime: Caused by: io.grpc.StatusException: PERMISSION_DENIED: Missing or insufficient permissions.
+07-02 16:38:17.423  5020  5020 E AndroidRuntime: 	at io.grpc.Status.asException(Status.java:545)
+07-02 16:38:17.423  5020  5020 E AndroidRuntime: 	at com.google.firebase.firestore.util.Util.exceptionFromStatus(Util.java:111)
+07-02 16:38:17.423  5020  5020 E AndroidRuntime: 	... 27 more
+07-02 16:38:17.449  2262  2262 E MBrainLocalService: notifyAppSwitch failed
+07-02 16:38:17.461  2262  2262 E MBrainLocalService: notifyAppSwitch failed
+07-02 16:38:17.464  2262  3846 E FlexibleWindowManagerService: notifyTaskObserverToAttachController not need to notify!
+07-02 16:38:17.465  2262  3846 E FlexibleWindowManagerService: notifyTaskObserverToAttachController not need to notify!
+07-02 16:38:17.474  2262  2440 E OplusThermalStats: Error getting package info: com.android.launcher
+07-02 16:38:17.635  2262  2415 E OplusAppQuickStart_AppQuickStartController: not start from launcher transition:8987
+07-02 16:38:17.651  2262  2415 E FlexibleWindowManagerService: notifyTaskObserverToAttachController not need to notify!
+07-02 16:38:17.905  2262  3971 E OCvtSystemService: Cannot get map: android.system.ErrnoException: nativeBpfFdGet failed: ENOENT (No such file or directory)
+07-02 16:38:18.122  2262  3853 E FlexibleWindowManagerService: notifyTaskObserverToAttachController not need to notify!
+07-02 16:38:18.859  2262  9177 E TaskPersister: File error accessing recents directory (directory doesn't exist?).
+07-02 16:38:19.943  2262  3850 E OCvtSystemService: Cannot get map: android.system.ErrnoException: nativeBpfFdGet failed: ENOENT (No such file or directory)
+07-02 16:38:25.177  2262  2423 E QosSceneRecognizer[ActivityStartScene]: notifyActivityStart get launchedFromUid failed through AppManager! launchedFromPackage: com.android.shell, pkg: com.nexaleads.app
+07-02 16:38:25.194  2262  2262 E MBrainLocalService: notifyAppSwitch failed
+07-02 16:38:25.249  2262  2415 E OplusAppQuickStart_AppQuickStartController: not start from launcher transition:8988
+07-02 16:38:25.262  2262  2415 E FlexibleWindowManagerService: notifyTaskObserverToAttachController not need to notify!
+07-02 16:38:25.296  2262  4103 E FlexibleWindowManagerService: notifyTaskObserverToAttachController not need to notify!
+07-02 16:38:25.302  2262  2262 E MBrainLocalService: notifyAppSwitch failed
+07-02 16:38:25.309  2262  2440 E OplusThermalStats: Error getting package info: com.nexaleads.app
+07-02 16:38:25.579  2262  2415 E FlexibleWindowManagerService: notifyTaskObserverToAttachController not need to notify!
+07-02 16:38:25.579  2262  2415 E FlexibleWindowManagerService: notifyTaskObserverToAttachController not need to notify!
+07-02 16:38:26.348  2262  2415 E FlexibleWindowManagerService: notifyTaskObserverToAttachController not need to notify!
+07-02 16:38:26.736  2262  4103 E FlexibleWindowManagerService: notifyTaskObserverToAttachController not need to notify!
+07-02 16:38:27.478  5321  5321 E AndroidRuntime: FATAL EXCEPTION: main
+07-02 16:38:27.478  5321  5321 E AndroidRuntime: Process: com.nexaleads.app, PID: 5321
+07-02 16:38:27.478  5321  5321 E AndroidRuntime: com.google.firebase.firestore.FirebaseFirestoreException: PERMISSION_DENIED: Missing or insufficient permissions.
+07-02 16:38:27.478  5321  5321 E AndroidRuntime: 	at com.google.firebase.firestore.util.Util.exceptionFromStatus(Util.java:113)
+07-02 16:38:27.478  5321  5321 E AndroidRuntime: 	at com.google.firebase.firestore.core.EventManager.onError(EventManager.java:247)
+07-02 16:38:27.478  5321  5321 E AndroidRuntime: 	at com.google.firebase.firestore.core.SyncEngine.removeAndCleanupTarget(SyncEngine.java:642)
+07-02 16:38:27.478  5321  5321 E AndroidRuntime: 	at com.google.firebase.firestore.core.SyncEngine.handleRejectedListen(SyncEngine.java:478)
+07-02 16:38:27.478  5321  5321 E AndroidRuntime: 	at com.google.firebase.firestore.core.MemoryComponentProvider$RemoteStoreCallback.handleRejectedListen(MemoryComponentProvider.java:130)
+07-02 16:38:27.478  5321  5321 E AndroidRuntime: 	at com.google.firebase.firestore.remote.RemoteStore.processTargetError(RemoteStore.java:591)
+07-02 16:38:27.478  5321  5321 E AndroidRuntime: 	at com.google.firebase.firestore.remote.RemoteStore.handleWatchChange(RemoteStore.java:474)
+07-02 16:38:27.478  5321  5321 E AndroidRuntime: 	at com.google.firebase.firestore.remote.RemoteStore.access$100(RemoteStore.java:60)
+07-02 16:38:27.478  5321  5321 E AndroidRuntime: 	at com.google.firebase.firestore.remote.RemoteStore$1.onWatchChange(RemoteStore.java:183)
+07-02 16:38:27.478  5321  5321 E AndroidRuntime: 	at com.google.firebase.firestore.remote.WatchStream.onNext(WatchStream.java:109)
+07-02 16:38:27.478  5321  5321 E AndroidRuntime: 	at com.google.firebase.firestore.remote.WatchStream.onNext(WatchStream.java:38)
+07-02 16:38:27.478  5321  5321 E AndroidRuntime: 	at com.google.firebase.firestore.remote.AbstractStream$StreamObserver.lambda$onNext$1$com-google-firebase-firestore-remote-AbstractStream$StreamObserver(AbstractStream.java:119)
+07-02 16:38:27.478  5321  5321 E AndroidRuntime: 	at com.google.firebase.firestore.remote.AbstractStream$StreamObserver$$ExternalSyntheticLambda0.run(D8$$SyntheticClass:0)
+07-02 16:38:27.478  5321  5321 E AndroidRuntime: 	at com.google.firebase.firestore.remote.AbstractStream$CloseGuardedRunner.run(AbstractStream.java:67)
+07-02 16:38:27.478  5321  5321 E AndroidRuntime: 	at com.google.firebase.firestore.remote.AbstractStream$StreamObserver.onNext(AbstractStream.java:110)
+07-02 16:38:27.478  5321  5321 E AndroidRuntime: 	at com.google.firebase.firestore.remote.FirestoreChannel$1.onMessage(FirestoreChannel.java:140)
+07-02 16:38:27.478  5321  5321 E AndroidRuntime: 	at io.grpc.internal.DelayedClientCall$DelayedListener.onMessage(DelayedClientCall.java:473)
+07-02 16:38:27.478  5321  5321 E AndroidRuntime: 	at io.grpc.internal.ClientCallImpl$ClientStreamListenerImpl$1MessagesAvailable.runInternal(ClientCallImpl.java:660)
+07-02 16:38:27.478  5321  5321 E AndroidRuntime: 	at io.grpc.internal.ClientCallImpl$ClientStreamListenerImpl$1MessagesAvailable.runInContext(ClientCallImpl.java:647)
+07-02 16:38:27.478  5321  5321 E AndroidRuntime: 	at io.grpc.internal.ContextRunnable.run(ContextRunnable.java:37)
+07-02 16:38:27.478  5321  5321 E AndroidRuntime: 	at io.grpc.internal.SerializingExecutor.run(SerializingExecutor.java:133)
+07-02 16:38:27.478  5321  5321 E AndroidRuntime: 	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:520)
+07-02 16:38:27.478  5321  5321 E AndroidRuntime: 	at java.util.concurrent.FutureTask.run(FutureTask.java:328)
+07-02 16:38:27.478  5321  5321 E AndroidRuntime: 	at java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:323)
+07-02 16:38:27.478  5321  5321 E AndroidRuntime: 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1100)
+07-02 16:38:27.478  5321  5321 E AndroidRuntime: 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:624)
+07-02 16:38:27.478  5321  5321 E AndroidRuntime: 	at com.google.firebase.firestore.util.AsyncQueue$SynchronizedShutdownAwareExecutor$DelayedStartFactory.run(AsyncQueue.java:235)
+07-02 16:38:27.478  5321  5321 E AndroidRuntime: 	at java.lang.Thread.run(Thread.java:1572)
+07-02 16:38:27.478  5321  5321 E AndroidRuntime: 	Suppressed: kotlinx.coroutines.internal.DiagnosticCoroutineContextException: [StandaloneCoroutine{Cancelling}@2179570, Dispatchers.Main.immediate]
+07-02 16:38:27.478  5321  5321 E AndroidRuntime: Caused by: io.grpc.StatusException: PERMISSION_DENIED: Missing or insufficient permissions.
+07-02 16:38:27.478  5321  5321 E AndroidRuntime: 	at io.grpc.Status.asException(Status.java:545)
+07-02 16:38:27.478  5321  5321 E AndroidRuntime: 	at com.google.firebase.firestore.util.Util.exceptionFromStatus(Util.java:111)
+07-02 16:38:27.478  5321  5321 E AndroidRuntime: 	... 27 more
+07-02 16:38:27.488  2262  2262 E MBrainLocalService: notifyAppSwitch failed
+07-02 16:38:27.499  2262  2262 E MBrainLocalService: notifyAppSwitch failed
+07-02 16:38:27.504  2262  3869 E FlexibleWindowManagerService: notifyTaskObserverToAttachController not need to notify!
+07-02 16:38:27.504  2262  3869 E FlexibleWindowManagerService: notifyTaskObserverToAttachController not need to notify!
+07-02 16:38:27.507  2262  2440 E OplusThermalStats: Error getting package info: com.android.launcher
+07-02 16:38:27.596 16457  4057 E ActivityThread: Failed to find provider info for com.oplus.thirdkit
+07-02 16:38:27.600  2262  3867 E OCvtSystemService: Cannot get map: android.system.ErrnoException: nativeBpfFdGet failed: ENOENT (No such file or directory)
+07-02 16:38:28.000  2262  2414 E OplusAppQuickStart_AppQuickStartController: not start from launcher transition:8989
+07-02 16:38:28.021  2262  2414 E FlexibleWindowManagerService: notifyTaskObserverToAttachController not need to notify!
+07-02 16:38:28.490  2262  2415 E FlexibleWindowManagerService: notifyTaskObserverToAttachController not need to notify!
+07-02 16:38:28.701  2262  9177 E TaskPersister: File error accessing recents directory (directory doesn't exist?).
+07-02 16:38:29.619  2262  3322 E OCvtSystemService: Cannot get map: android.system.ErrnoException: nativeBpfFdGet failed: ENOENT (No such file or directory)
+07-02 16:38:32.548  2262  2262 E OplusUAwareInputHelper: Gesture unResponsive msg, reason = bad76f3 com.nexaleads.app/com.nexaleads.app.MainActivity is not responding. Waited 5000ms for FocusEvent(hasFocus=false)
+07-02 16:38:32.582  2262  4103 E OCvtSystemService: Cannot get map: android.system.ErrnoException: nativeBpfFdGet failed: ENOENT (No such file or directory)
+07-02 16:38:34.645  2262  3322 E OCvtSystemService: Cannot get map: android.system.ErrnoException: nativeBpfFdGet failed: ENOENT (No such file or directory)
+07-02 16:38:36.842  2262  3360 E ThermalManagerService: No threshold found for shell_skin
+07-02 16:38:36.842  2262  3360 E ThermalManagerService: No threshold found for shell_skin
+07-02 16:38:37.229  2262  2619 E JobScheduler.Background: Couldn't determine stopped state for unknown package: com.oplus.onet
+07-02 16:38:37.266  2262  2440 E BatteryStatsImplExtImpl: get RefreshCounts failed
+07-02 16:38:41.513  2262  9177 E TaskPersister: File error accessing recents directory (directory doesn't exist?).
+07-02 16:38:43.965  5590  5624 E OplusCustomizeRestrictionManager: sInstance is null, start a new sInstance
+07-02 16:39:10.763  6014  6014 E OplusCustomizePackageManager: mIOplusCustomizePackageManagerService is null
+07-02 16:39:10.764  6014  6014 E OplusCustomizePackageManager: mIOplusCustomizePackageManagerService is null
+07-02 16:39:10.764  6014  6014 E OplusCustomizePackageManager: isOplusCertificatePackage Errorjava.lang.NullPointerException: Attempt to invoke interface method 'boolean android.os.customize.IOplusCustomizePackageManagerService.isOplusCertificatePackage(java.lang.String)' on a null object reference
+07-02 16:39:12.330   702  6257 E keystore2: system/security/keystore2/src/database.rs:1696 - transaction failed Trying to get access tuple.
+07-02 16:39:12.330   702  6257 E keystore2: 
+07-02 16:39:12.330   702  6257 E keystore2: Caused by:
+07-02 16:39:12.330   702  6257 E keystore2:     0: With key.domain = r#APP.
+07-02 16:39:12.330   702  6257 E keystore2:     1: system/security/keystore2/src/database.rs:2176
+07-02 16:39:12.330   702  6257 E keystore2:     2: Error::Rc(r#KEY_NOT_FOUND), name:Some("TX_unbind_key")
+--------- beginning of main
+07-02 16:39:14.978  2262 21680 E OplusStorageUFSBandwidth: Alarm set to trigger in 10 seconds
+07-02 16:39:14.987   702  6257 E keystore2: system/security/keystore2/src/database.rs:1696 - transaction failed Trying to get access tuple.
+07-02 16:39:14.987   702  6257 E keystore2: 
+07-02 16:39:14.987   702  6257 E keystore2: Caused by:
+07-02 16:39:14.987   702  6257 E keystore2:     0: With key.domain = r#APP.
+07-02 16:39:14.987   702  6257 E keystore2:     1: system/security/keystore2/src/database.rs:2176
+07-02 16:39:14.987   702  6257 E keystore2:     2: Error::Rc(r#KEY_NOT_FOUND), name:Some("TX_unbind_key")
+07-02 16:39:15.123  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:39:16.124  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:39:16.271  1489  1571 E ChargerInfo: SingleHyperPath not found
+07-02 16:39:16.307  1489  1571 E ChargerInfo: SingleHyperPath not found
+07-02 16:39:16.559  2262  4098 E SensorService: Required app com.google.ccc.abuse.droidguard.events.b, uid 10111, pid 6014
+07-02 16:39:16.561  2262  4098 E SensorService: Required app com.google.ccc.abuse.droidguard.events.b, uid 10111, pid 6014
+07-02 16:39:16.633   706   706 E TlcKM   : (keymaster_error_t)tci->response.header.returnCode == -1000
+07-02 16:39:16.633   706   706 E TlcKM   : transact(session_handle, tci) == -1000
+07-02 16:39:16.737   702  6257 E keystore2: system/security/keystore2/src/database.rs:1696 - transaction failed Trying to get access tuple.
+07-02 16:39:16.737   702  6257 E keystore2: 
+07-02 16:39:16.737   702  6257 E keystore2: Caused by:
+07-02 16:39:16.737   702  6257 E keystore2:     0: With key.domain = r#APP.
+07-02 16:39:16.737   702  6257 E keystore2:     1: system/security/keystore2/src/database.rs:2176
+07-02 16:39:16.737   702  6257 E keystore2:     2: Error::Rc(r#KEY_NOT_FOUND), name:Some("TX_unbind_key")
+07-02 16:39:16.971  2262 21680 E OplusStorageUFSBandwidth: storage_io_metrics_path is /proc/oplus_storage/io_metrics/forever/
+07-02 16:39:16.971  1485  1501 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_read_size_mb fail
+07-02 16:39:16.972  1485  1501 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_write_size_mb fail
+07-02 16:39:16.973  2262 21680 E OplusStorageUFSBandwidth: Bandwidth - Read: 0.00 MB/s, Write: 0.00 MB/s
+07-02 16:39:16.973  2262 21680 E OplusStorageUFSBandwidth: Task time: 2ms
+07-02 16:39:16.975  2262 21680 E OplusStorageUFSBandwidth: Alarm set to trigger in 10 seconds
+07-02 16:39:17.125  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:39:17.293  5090 16531 E midasd  : getTotalFlipsFromSf mCurFrameCount: 11787479
+07-02 16:39:18.120  1485  1501 E PerformanceService: storage_feature: open /sys/devices/platform/soc/112b0000.ufshci//virtualtlcbuff fail
+07-02 16:39:18.125  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:39:18.311  2262  3366 E SensorService: Required app com.google.ccc.abuse.droidguard.events.b, uid 10111, pid 6014
+07-02 16:39:18.314  2262  3443 E SensorService: Required app com.google.ccc.abuse.droidguard.events.b, uid 10111, pid 6014
+07-02 16:39:18.407   706   706 E TlcKM   : (keymaster_error_t)tci->response.header.returnCode == -1000
+07-02 16:39:18.407   706   706 E TlcKM   : transact(session_handle, tci) == -1000
+07-02 16:39:18.517   702  6257 E keystore2: system/security/keystore2/src/database.rs:1696 - transaction failed Trying to get access tuple.
+07-02 16:39:18.517   702  6257 E keystore2: 
+07-02 16:39:18.517   702  6257 E keystore2: Caused by:
+07-02 16:39:18.517   702  6257 E keystore2:     0: With key.domain = r#APP.
+07-02 16:39:18.517   702  6257 E keystore2:     1: system/security/keystore2/src/database.rs:2176
+07-02 16:39:18.517   702  6257 E keystore2:     2: Error::Rc(r#KEY_NOT_FOUND), name:Some("TX_unbind_key")
+07-02 16:39:18.685  1489  1571 E ChargerInfo: SingleHyperPath not found
+07-02 16:39:18.974  2262 21680 E OplusStorageUFSBandwidth: storage_io_metrics_path is /proc/oplus_storage/io_metrics/forever/
+07-02 16:39:18.974  1485  1501 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_read_size_mb fail
+07-02 16:39:18.979  1485  1500 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_write_size_mb fail
+07-02 16:39:18.979  2262 21680 E OplusStorageUFSBandwidth: Bandwidth - Read: 0.00 MB/s, Write: 0.00 MB/s
+07-02 16:39:18.979  2262 21680 E OplusStorageUFSBandwidth: Task time: 5ms
+07-02 16:39:18.983  2262 21680 E OplusStorageUFSBandwidth: Alarm set to trigger in 10 seconds
+07-02 16:39:19.126  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:39:19.223  1489  1571 E ChargerInfo: SingleHyperPath not found
+07-02 16:39:19.234  1489  1571 E ChargerInfo: SingleHyperPath not found
+07-02 16:39:19.238  1489  1571 E ChargerInfo: SingleHyperPath not found
+07-02 16:39:20.127  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:39:20.162  1448  1448 E SensorManager: Correct handle(2) mindelay: 20000000 old: 10000000
+07-02 16:39:20.166  1448  1448 E SensorManager: Correct handle(2) mindelay: 20000000 old: 10000000
+07-02 16:39:20.170  1448  1448 E SensorManager: Correct handle(2) mindelay: 20000000 old: 10000000
+07-02 16:39:20.178  1448  1448 E HfManager: gyro_config, set cali_gyro_data 0
+07-02 16:39:20.197  3695  3695 E IJankManager: slideSceneEnd unknown scene 1000 mScene:-1
+07-02 16:39:20.211  3695  3695 E [OPLUS_AFS_CONFIG]: Failed to open AFS config file: /proc/oplus_afs_config/afs_config
+07-02 16:39:20.211  3695  3695 E AFS_CONFIG: Failed to get scene config
+07-02 16:39:20.211  3695  3695 E OplusAfsManager: afsConfigSceneConfigGet sceneType is null
+07-02 16:39:20.260  3695  3695 E [OPLUS_AFS_CONFIG]: Failed to open AFS config file: /proc/oplus_afs_config/afs_config
+07-02 16:39:20.260  3695  3695 E AFS_CONFIG: Failed to get scene config
+07-02 16:39:20.260  3695  3695 E OplusAfsManager: afsConfigSceneConfigGet sceneType is null
+07-02 16:39:20.260  3695  3695 E OsenseResClient: osenseClrSceneAction: handle is illegal
+07-02 16:39:20.265  3695  3695 E [OPLUS_AFS_CONFIG]: Failed to open AFS config file: /proc/oplus_afs_config/afs_config
+07-02 16:39:20.265  3695  3695 E AFS_CONFIG: Failed to get scene config
+07-02 16:39:20.265  3695  3695 E OplusAfsManager: afsConfigSceneConfigGet sceneType is null
+07-02 16:39:20.740  3695  3695 E [OPLUS_AFS_CONFIG]: Failed to open AFS config file: /proc/oplus_afs_config/afs_config
+07-02 16:39:20.740  3695  3695 E AFS_CONFIG: Failed to get scene config
+07-02 16:39:20.740  3695  3695 E OplusAfsManager: afsConfigSceneConfigGet sceneType is null
+07-02 16:39:20.753  3695  3695 E [OPLUS_AFS_CONFIG]: Failed to open AFS config file: /proc/oplus_afs_config/afs_config
+07-02 16:39:20.753  3695  3695 E AFS_CONFIG: Failed to get scene config
+07-02 16:39:20.753  3695  3695 E OplusAfsManager: afsConfigSceneConfigGet sceneType is null
+07-02 16:39:20.762  5819  6035 E GoogleApiManager: Failed to get service from broker. 
+07-02 16:39:20.762  5819  6035 E GoogleApiManager: java.lang.SecurityException: Unknown calling package name 'com.google.android.gms'.
+07-02 16:39:20.762  5819  6035 E GoogleApiManager: 	at android.os.Parcel.createExceptionOrNull(Parcel.java:3369)
+07-02 16:39:20.762  5819  6035 E GoogleApiManager: 	at android.os.Parcel.createException(Parcel.java:3353)
+07-02 16:39:20.762  5819  6035 E GoogleApiManager: 	at android.os.Parcel.readException(Parcel.java:3336)
+07-02 16:39:20.762  5819  6035 E GoogleApiManager: 	at android.os.Parcel.readException(Parcel.java:3278)
+07-02 16:39:20.762  5819  6035 E GoogleApiManager: 	at bkhw.a(:com.google.android.gms@262233035@26.22.33 (260400-932714197):36)
+07-02 16:39:20.762  5819  6035 E GoogleApiManager: 	at bkfs.y(:com.google.android.gms@262233035@26.22.33 (260400-932714197):143)
+07-02 16:39:20.762  5819  6035 E GoogleApiManager: 	at bjly.run(:com.google.android.gms@262233035@26.22.33 (260400-932714197):42)
+07-02 16:39:20.762  5819  6035 E GoogleApiManager: 	at android.os.Handler.handleCallback(Handler.java:1027)
+07-02 16:39:20.762  5819  6035 E GoogleApiManager: 	at android.os.Handler.dispatchMessage(Handler.java:108)
+07-02 16:39:20.762  5819  6035 E GoogleApiManager: 	at dcgs.mE(:com.google.android.gms@262233035@26.22.33 (260400-932714197):1)
+07-02 16:39:20.762  5819  6035 E GoogleApiManager: 	at dcgs.dispatchMessage(:com.google.android.gms@262233035@26.22.33 (260400-932714197):5)
+07-02 16:39:20.762  5819  6035 E GoogleApiManager: 	at android.os.Looper.loopOnce(Looper.java:302)
+07-02 16:39:20.762  5819  6035 E GoogleApiManager: 	at android.os.Looper.loop(Looper.java:412)
+07-02 16:39:20.762  5819  6035 E GoogleApiManager: 	at android.os.HandlerThread.run(HandlerThread.java:85)
+07-02 16:39:20.767  2262  3934 E Athena  : AbnormalMemoryAction: init action fail: abnormal_memory_periodic_clear_config_1 not configured.
+07-02 16:39:20.794  3695  3695 E [OPLUS_AFS_CONFIG]: Failed to open AFS config file: /proc/oplus_afs_config/afs_config
+07-02 16:39:20.794  3695  3695 E AFS_CONFIG: Failed to get scene config
+07-02 16:39:20.794  3695  3695 E OplusAfsManager: afsConfigSceneConfigGet sceneType is null
+07-02 16:39:20.794  3695  3695 E OsenseResClient: osenseClrSceneAction: handle is illegal
+07-02 16:39:20.797  3695  3695 E [OPLUS_AFS_CONFIG]: Failed to open AFS config file: /proc/oplus_afs_config/afs_config
+07-02 16:39:20.798  3695  3695 E AFS_CONFIG: Failed to get scene config
+07-02 16:39:20.798  3695  3695 E OplusAfsManager: afsConfigSceneConfigGet sceneType is null
+07-02 16:39:20.827   706   706 E TlcKM   : lookup_operation: op 0xa72506d41dbd8095 not found
+07-02 16:39:20.827   706   706 E TlcKM   : lookup_operation(session, operation_handle, &op) == -28
+07-02 16:39:20.835   706   706 E TlcKM   : lookup_operation: op 0x30d2fc399e6e0a3f not found
+07-02 16:39:20.835   706   706 E TlcKM   : lookup_operation(session, operation_handle, &op) == -28
+07-02 16:39:20.838   706   706 E TlcKM   : lookup_operation: op 0xf435c65936ea2b1a not found
+07-02 16:39:20.838   706   706 E TlcKM   : lookup_operation(session, operation_handle, &op) == -28
+07-02 16:39:20.875  5819  5964 E PhFileGroupPop: Failed to add file group 
+07-02 16:39:20.877  5819  5964 E PhFileGroupPop: Failed to add file group 
+07-02 16:39:20.877  5819  5964 E PhFileGroupPop: Failed to add file group 
+07-02 16:39:20.878  5819  5964 E PhFileGroupPop: Failed to add file group 
+07-02 16:39:20.878  5819  5964 E PhFileGroupPop: Failed to add file group 
+07-02 16:39:20.879  5819  5964 E PhFileGroupPop: Failed to add file group 
+07-02 16:39:20.879  5819  5964 E PhFileGroupPop: Failed to add file group 
+07-02 16:39:20.879  5819  5964 E PhFileGroupPop: Failed to add file group 
+07-02 16:39:20.879  5819  5964 E PhFileGroupPop: Failed to add file group 
+07-02 16:39:20.879  5819  5964 E PhFileGroupPop: Failed to add file group 
+07-02 16:39:20.879  5819  5964 E PhFileGroupPop: Failed to add file group 
+07-02 16:39:20.880  5819  5964 E PhFileGroupPop: Failed to add file group 
+07-02 16:39:20.880  5819  5964 E PhFileGroupPop: Failed to add file group 
+07-02 16:39:20.880  5819  5964 E PhFileGroupPop: Failed to add file group 
+07-02 16:39:20.885  5819  5964 E PhFileGroupPop: Failed to add file group 
+07-02 16:39:20.885  5819  5964 E PhFileGroupPop: Failed to add file group 
+07-02 16:39:20.893  5819  5964 E LogUtil : FileGroupManager: Trying to add expired group webref-model-local-index.
+07-02 16:39:20.894  5819  5964 E PhFileGroupPop: Failed to add file group
+07-02 16:39:20.894  5819  5964 E PhFileGroupPop: eqxk
+07-02 16:39:20.894  5819  5964 E PhFileGroupPop: 	at ergw.a(PG:1027)
+07-02 16:39:20.894  5819  5964 E PhFileGroupPop: 	at ffkk.a(PG:17)
+07-02 16:39:20.894  5819  5964 E PhFileGroupPop: 	at flwz.d(PG:3)
+07-02 16:39:20.894  5819  5964 E PhFileGroupPop: 	at flxb.run(PG:47)
+07-02 16:39:20.894  5819  5964 E PhFileGroupPop: 	at fmbf.run(PG:64)
+07-02 16:39:20.894  5819  5964 E PhFileGroupPop: 	at encx.run(PG:7)
+07-02 16:39:20.894  5819  5964 E PhFileGroupPop: 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1100)
+07-02 16:39:20.894  5819  5964 E PhFileGroupPop: 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:624)
+07-02 16:39:20.894  5819  5964 E PhFileGroupPop: 	at encb.run(PG:13)
+07-02 16:39:20.894  5819  5964 E PhFileGroupPop: 	at java.lang.Thread.run(Thread.java:1572)
+07-02 16:39:20.894  5819  5964 E PhFileGroupPop: 	at endu.run(PG:62)
+07-02 16:39:20.947  2262  2277 E SensorService: Required app com.google.ccc.abuse.droidguard.events.b, uid 10111, pid 6014
+07-02 16:39:20.949  1448  1448 E HfManager: gyro_config, set cali_gyro_data 0
+07-02 16:39:20.958  2262  3853 E SensorService: Required app com.google.ccc.abuse.droidguard.events.b, uid 10111, pid 6014
+07-02 16:39:20.959  1448  1448 E SensorManager: Correct handle(2) mindelay: 20000000 old: 10000000
+07-02 16:39:20.979  2262 21680 E OplusStorageUFSBandwidth: storage_io_metrics_path is /proc/oplus_storage/io_metrics/forever/
+07-02 16:39:20.979  1485  1501 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_read_size_mb fail
+07-02 16:39:20.981  1485  1500 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_write_size_mb fail
+07-02 16:39:20.981  2262 21680 E OplusStorageUFSBandwidth: Bandwidth - Read: 0.00 MB/s, Write: 0.00 MB/s
+07-02 16:39:20.981  2262 21680 E OplusStorageUFSBandwidth: Task time: 3ms
+07-02 16:39:20.987  2262 21680 E OplusStorageUFSBandwidth: Alarm set to trigger in 10 seconds
+07-02 16:39:21.043   706   706 E TlcKM   : (keymaster_error_t)tci->response.header.returnCode == -1000
+07-02 16:39:21.043   706   706 E TlcKM   : transact(session_handle, tci) == -1000
+07-02 16:39:21.073   702 19179 E keystore2: system/security/keystore2/src/database.rs:1696 - transaction failed Trying to get access tuple.
+07-02 16:39:21.073   702 19179 E keystore2: 
+07-02 16:39:21.073   702 19179 E keystore2: Caused by:
+07-02 16:39:21.073   702 19179 E keystore2:     0: With key.domain = r#APP.
+07-02 16:39:21.073   702 19179 E keystore2:     1: system/security/keystore2/src/database.rs:2176
+07-02 16:39:21.073   702 19179 E keystore2:     2: Error::Rc(r#KEY_NOT_FOUND), name:Some("TX_unbind_key")
+07-02 16:39:21.127  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:39:21.174  3695  3695 E [OPLUS_AFS_CONFIG]: Failed to open AFS config file: /proc/oplus_afs_config/afs_config
+07-02 16:39:21.174  3695  3695 E AFS_CONFIG: Failed to get scene config
+07-02 16:39:21.174  3695  3695 E OplusAfsManager: afsConfigSceneConfigGet sceneType is null
+07-02 16:39:21.305  1405  1456 E TetherController: property_get sys.radio.data.modem_share_flag return 0, 1!
+07-02 16:39:21.318  5819  5966 E PhFileGroupPop: Failed to add file group 
+07-02 16:39:21.321  5819  5966 E PhFileGroupPop: Failed to add file group 
+07-02 16:39:21.322  5819  5966 E PhFileGroupPop: Failed to add file group 
+07-02 16:39:21.323  5819  5966 E PhFileGroupPop: Failed to add file group 
+07-02 16:39:21.323  5819  5966 E PhFileGroupPop: Failed to add file group 
+07-02 16:39:21.323  5819  5966 E PhFileGroupPop: Failed to add file group 
+07-02 16:39:21.323  5819  5966 E PhFileGroupPop: Failed to add file group 
+07-02 16:39:21.323  5819  5966 E PhFileGroupPop: Failed to add file group 
+07-02 16:39:21.323  5819  5966 E PhFileGroupPop: Failed to add file group 
+07-02 16:39:21.324  5819  5966 E PhFileGroupPop: Failed to add file group 
+07-02 16:39:21.324  5819  5966 E PhFileGroupPop: Failed to add file group 
+07-02 16:39:21.324  5819  5966 E PhFileGroupPop: Failed to add file group 
+07-02 16:39:21.324  5819  5966 E PhFileGroupPop: Failed to add file group 
+07-02 16:39:21.324  5819  5966 E PhFileGroupPop: Failed to add file group 
+07-02 16:39:21.333  5819  5966 E PhFileGroupPop: Failed to add file group 
+07-02 16:39:21.334  5819  5966 E PhFileGroupPop: Failed to add file group 
+07-02 16:39:21.340  5819  5966 E LogUtil : FileGroupManager: Trying to add expired group webref-model-local-index.
+07-02 16:39:21.341  5819  5966 E PhFileGroupPop: Failed to add file group
+07-02 16:39:21.341  5819  5966 E PhFileGroupPop: eqxk
+07-02 16:39:21.341  5819  5966 E PhFileGroupPop: 	at ergw.a(PG:1027)
+07-02 16:39:21.341  5819  5966 E PhFileGroupPop: 	at ffkk.a(PG:17)
+07-02 16:39:21.341  5819  5966 E PhFileGroupPop: 	at flwz.d(PG:3)
+07-02 16:39:21.341  5819  5966 E PhFileGroupPop: 	at flxb.run(PG:47)
+07-02 16:39:21.341  5819  5966 E PhFileGroupPop: 	at fmbf.run(PG:64)
+07-02 16:39:21.341  5819  5966 E PhFileGroupPop: 	at encx.run(PG:7)
+07-02 16:39:21.341  5819  5966 E PhFileGroupPop: 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1100)
+07-02 16:39:21.341  5819  5966 E PhFileGroupPop: 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:624)
+07-02 16:39:21.341  5819  5966 E PhFileGroupPop: 	at encb.run(PG:13)
+07-02 16:39:21.341  5819  5966 E PhFileGroupPop: 	at java.lang.Thread.run(Thread.java:1572)
+07-02 16:39:21.341  5819  5966 E PhFileGroupPop: 	at endu.run(PG:62)
+07-02 16:39:21.616  1405  1456 E         : destroyAllSocketForUid:10089
+07-02 16:39:22.128  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:39:22.626  2262  2277 E SensorService: Required app com.google.ccc.abuse.droidguard.events.b, uid 10111, pid 6014
+07-02 16:39:22.629  2262  2277 E SensorService: Required app com.google.ccc.abuse.droidguard.events.b, uid 10111, pid 6014
+07-02 16:39:22.708   706   706 E TlcKM   : (keymaster_error_t)tci->response.header.returnCode == -1000
+07-02 16:39:22.708   706   706 E TlcKM   : transact(session_handle, tci) == -1000
+07-02 16:39:22.794   702 19179 E keystore2: system/security/keystore2/src/database.rs:1696 - transaction failed Trying to get access tuple.
+07-02 16:39:22.794   702 19179 E keystore2: 
+07-02 16:39:22.794   702 19179 E keystore2: Caused by:
+07-02 16:39:22.794   702 19179 E keystore2:     0: With key.domain = r#APP.
+07-02 16:39:22.794   702 19179 E keystore2:     1: system/security/keystore2/src/database.rs:2176
+07-02 16:39:22.794   702 19179 E keystore2:     2: Error::Rc(r#KEY_NOT_FOUND), name:Some("TX_unbind_key")
+07-02 16:39:22.982  2262 21680 E OplusStorageUFSBandwidth: storage_io_metrics_path is /proc/oplus_storage/io_metrics/forever/
+07-02 16:39:22.982  1485  1500 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_read_size_mb fail
+07-02 16:39:22.984  1485  1500 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_write_size_mb fail
+07-02 16:39:22.984  2262 21680 E OplusStorageUFSBandwidth: Bandwidth - Read: 0.00 MB/s, Write: 0.00 MB/s
+07-02 16:39:22.984  2262 21680 E OplusStorageUFSBandwidth: Task time: 2ms
+07-02 16:39:22.988  2262 21680 E OplusStorageUFSBandwidth: Alarm set to trigger in 10 seconds
+07-02 16:39:23.119  1485  1500 E PerformanceService: storage_feature: open /sys/devices/platform/soc/112b0000.ufshci//virtualtlcbuff fail
+07-02 16:39:23.128  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:39:24.129  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:39:24.350  1489  1571 E ChargerInfo: SingleHyperPath not found
+07-02 16:39:24.353  1489  1571 E ChargerInfo: SingleHyperPath not found
+07-02 16:39:24.357  2262  2277 E SensorService: Required app com.google.ccc.abuse.droidguard.events.b, uid 10111, pid 6014
+07-02 16:39:24.360  2262  2262 E ChargeIntentReceiver: notifyChange failed
+07-02 16:39:24.361  2262  2277 E SensorService: Required app com.google.ccc.abuse.droidguard.events.b, uid 10111, pid 6014
+07-02 16:39:24.364  7769  7769 E VendorNfcService: changeNfcStateByWirelessCharge: feature WIRELESS_CHARGING = true; mIsWirelessCharging: false; mIsReverseChargingSwitchOpen: false; nfcWorkMode: 0; isOverSeaRegion = true
+07-02 16:39:24.371 16904 15718 E Battery : BatteryCardUtil: widgetCodes is empty !
+07-02 16:39:24.372  5090 16531 E midasd  : getTotalFlipsFromSf mCurFrameCount: 11788115
+07-02 16:39:24.380 16904 17504 E Battery : ChargeProtectionUtils: First Alarm is Thu Jul 02 17:00:00 GMT+05:30 2026, nowRtc  = Thu Jul 02 16:39:24 GMT+05:30 2026, too close , ignore it.
+07-02 16:39:24.380 16904 17504 E Battery : ChargeProtectionUtils: mCanlendarTmp.isEmpty()!
+07-02 16:39:24.401  1405  1456 E TetherController: property_get sys.radio.data.modem_share_flag return 0, 1!
+07-02 16:39:24.430   706   706 E TlcKM   : (keymaster_error_t)tci->response.header.returnCode == -1000
+07-02 16:39:24.430   706   706 E TlcKM   : transact(session_handle, tci) == -1000
+07-02 16:39:24.460  2262  2440 E BatteryStatsImplExtImpl: get RefreshCounts failed
+07-02 16:39:24.468   702 19179 E keystore2: system/security/keystore2/src/database.rs:1696 - transaction failed Trying to get access tuple.
+07-02 16:39:24.468   702 19179 E keystore2: 
+07-02 16:39:24.468   702 19179 E keystore2: Caused by:
+07-02 16:39:24.468   702 19179 E keystore2:     0: With key.domain = r#APP.
+07-02 16:39:24.468   702 19179 E keystore2:     1: system/security/keystore2/src/database.rs:2176
+07-02 16:39:24.468   702 19179 E keystore2:     2: Error::Rc(r#KEY_NOT_FOUND), name:Some("TX_unbind_key")
+07-02 16:39:24.985  2262 21680 E OplusStorageUFSBandwidth: storage_io_metrics_path is /proc/oplus_storage/io_metrics/forever/
+07-02 16:39:24.986  1485  1500 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_read_size_mb fail
+07-02 16:39:24.986  1485  1501 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_write_size_mb fail
+07-02 16:39:24.987  2262 21680 E OplusStorageUFSBandwidth: Bandwidth - Read: 0.00 MB/s, Write: 0.00 MB/s
+07-02 16:39:24.987  2262 21680 E OplusStorageUFSBandwidth: Task time: 2ms
+07-02 16:39:24.991  2262 21680 E OplusStorageUFSBandwidth: Alarm set to trigger in 10 seconds
+07-02 16:39:25.130  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:39:25.582  1049  1049 E fb4a.SlowAppComponent: 0ms: SystemJobService instantiating…
+07-02 16:39:25.582  1049  1049 E fb4a.SlowAppComponent: Main thread was blocked for 24ms in the background starting with SystemJobService
+07-02 16:39:25.598  6209  6209 E book.appmanager: Unknown bits set in runtime_flags: 0x40000000
+07-02 16:39:25.761  6209  6235 E SoLoader: Checking /data/app missing libraries.
+07-02 16:39:25.762  6209  6235 E SoLoader: Successfully recovered from /data/app disk failure.
+07-02 16:39:25.763  6209  6235 E SoLoader: Checking /data/data missing libraries.
+07-02 16:39:25.763  6209  6235 E SoLoader: No libraries missing from unpacking so paths while recovering /data/data failure
+07-02 16:39:25.765  6209  6209 E [UAH_CLIENT]: uahInit enter
+07-02 16:39:25.790  6209  6209 E SchedAssist: open sharedFd failed with error=No such file or directory
+07-02 16:39:25.790  6209  6209 E SchedAssist: open sharedFd failed with error=No such file or directory
+07-02 16:39:25.790  6209  6209 E SchedAssist: open sharedFd failed with error=Permission denied
+07-02 16:39:25.790  6209  6209 E SchedAssist: open sharedFd failed with error=Permission denied
+07-02 16:39:25.949  6254  6254 E facebook.system: Unknown bits set in runtime_flags: 0x40000000
+07-02 16:39:26.089  6209  6252 E ActivityThread: Failed to find provider info for com.facebook.appmanager.nekodirect
+07-02 16:39:26.116  2262  3366 E SensorService: Required app com.google.ccc.abuse.droidguard.events.b, uid 10111, pid 6014
+07-02 16:39:26.118  2262  3366 E SensorService: Required app com.google.ccc.abuse.droidguard.events.b, uid 10111, pid 6014
+07-02 16:39:26.130  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:39:26.144  6209  6270 E ashmem  : Pinning is deprecated since Android Q. Please use trim or other methods.
+07-02 16:39:26.179   706   706 E TlcKM   : (keymaster_error_t)tci->response.header.returnCode == -1000
+07-02 16:39:26.179   706   706 E TlcKM   : transact(session_handle, tci) == -1000
+07-02 16:39:26.275   702 19179 E keystore2: system/security/keystore2/src/database.rs:1696 - transaction failed Trying to get access tuple.
+07-02 16:39:26.275   702 19179 E keystore2: 
+07-02 16:39:26.275   702 19179 E keystore2: Caused by:
+07-02 16:39:26.275   702 19179 E keystore2:     0: With key.domain = r#APP.
+07-02 16:39:26.275   702 19179 E keystore2:     1: system/security/keystore2/src/database.rs:2176
+07-02 16:39:26.275   702 19179 E keystore2:     2: Error::Rc(r#KEY_NOT_FOUND), name:Some("TX_unbind_key")
+07-02 16:39:26.987  2262 21680 E OplusStorageUFSBandwidth: storage_io_metrics_path is /proc/oplus_storage/io_metrics/forever/
+07-02 16:39:26.988  1485  1500 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_read_size_mb fail
+07-02 16:39:26.989  1485  1501 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_write_size_mb fail
+07-02 16:39:26.989  2262 21680 E OplusStorageUFSBandwidth: Bandwidth - Read: 0.00 MB/s, Write: 0.00 MB/s
+07-02 16:39:26.989  2262 21680 E OplusStorageUFSBandwidth: Task time: 2ms
+07-02 16:39:26.997  2262 21680 E OplusStorageUFSBandwidth: Alarm set to trigger in 10 seconds
+07-02 16:39:27.131  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:39:27.188  3695  3794 E PackageUtils[u0]: checkPackageExist Exception: android.content.pm.PackageManager$NameNotFoundException: com.heytap.quicksearchbox
+07-02 16:39:27.202  3612  3612 E SmsApplication: com.android.mms lost android:read_cell_broadcasts:  (fixing)
+07-02 16:39:27.682 22717 24934 E SG::OCSCacheHelper: checkFromPackageReceiver resolvedInfo is empty,pkg = com.facebook.appmanager
+07-02 16:39:27.952  1448  1448 E SensorManager: Correct handle(2) mindelay: 20000000 old: 10000000
+07-02 16:39:27.955  1448  1448 E SensorManager: Correct handle(2) mindelay: 20000000 old: 10000000
+07-02 16:39:27.964  1448  1448 E SensorManager: Correct handle(2) mindelay: 20000000 old: 10000000
+07-02 16:39:27.972  1448  1448 E HfManager: gyro_config, set cali_gyro_data 0
+07-02 16:39:28.059   484   484 E lowmemorykiller: device has enough memory 2203220Kib, freeMemory 210908Kib, cmafree 4468Kib, file_cache 1764096Kib, disable killing (limit_killing:819200Kib)
+07-02 16:39:28.119  1485  1500 E PerformanceService: storage_feature: open /sys/devices/platform/soc/112b0000.ufshci//virtualtlcbuff fail
+07-02 16:39:28.132  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:39:28.363   484   484 E lowmemorykiller: device has enough memory 2203456Kib, freeMemory 252092Kib, cmafree 1572Kib, file_cache 1723352Kib, disable killing (limit_killing:819200Kib)
+07-02 16:39:28.395  5819  5819 E SchedAssist: open sharedFd failed with error=No such file or directory
+07-02 16:39:28.395  5819  5819 E SchedAssist: open sharedFd failed with error=No such file or directory
+07-02 16:39:28.400 17217 12061 E MIDASApplication: MIDASPullAtomManager: onPullAtom 150122
+07-02 16:39:28.767   484   484 E lowmemorykiller: device has enough memory 2199464Kib, freeMemory 248360Kib, cmafree 588Kib, file_cache 1727220Kib, disable killing (limit_killing:819200Kib)
+07-02 16:39:28.992  2262 21680 E OplusStorageUFSBandwidth: storage_io_metrics_path is /proc/oplus_storage/io_metrics/forever/
+07-02 16:39:28.994  1485  1500 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_read_size_mb fail
+07-02 16:39:28.995  1485  1500 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_write_size_mb fail
+07-02 16:39:28.996  2262 21680 E OplusStorageUFSBandwidth: Bandwidth - Read: 0.00 MB/s, Write: 0.00 MB/s
+07-02 16:39:28.997  2262 21680 E OplusStorageUFSBandwidth: Task time: 5ms
+07-02 16:39:29.001  2262 21680 E OplusStorageUFSBandwidth: Alarm set to trigger in 10 seconds
+07-02 16:39:29.073   484   484 E lowmemorykiller: device has enough memory 2202760Kib, freeMemory 250432Kib, cmafree 632Kib, file_cache 1728480Kib, disable killing (limit_killing:819200Kib)
+07-02 16:39:29.133  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:39:29.192  3612  3612 E SmsApplication: com.android.mms lost android:read_cell_broadcasts:  (fixing)
+07-02 16:39:30.135  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:39:30.164   484   484 E lowmemorykiller: device has enough memory 2200632Kib, freeMemory 247668Kib, cmafree 348Kib, file_cache 1729116Kib, disable killing (limit_killing:819200Kib)
+07-02 16:39:30.246  1489  1571 E ChargerInfo: SingleHyperPath not found
+07-02 16:39:30.260  1489  1571 E ChargerInfo: SingleHyperPath not found
+07-02 16:39:30.999  2262 21680 E OplusStorageUFSBandwidth: storage_io_metrics_path is /proc/oplus_storage/io_metrics/forever/
+07-02 16:39:31.000  1485  1500 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_read_size_mb fail
+07-02 16:39:31.002  1485  1501 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_write_size_mb fail
+07-02 16:39:31.003  2262 21680 E OplusStorageUFSBandwidth: Bandwidth - Read: 0.00 MB/s, Write: 0.00 MB/s
+07-02 16:39:31.003  2262 21680 E OplusStorageUFSBandwidth: Task time: 4ms
+07-02 16:39:31.011  2262 21680 E OplusStorageUFSBandwidth: Alarm set to trigger in 10 seconds
+07-02 16:39:31.136  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:39:32.138  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:39:32.909  3612  3612 E SatelliteController: registerForSatelliteModemStateChanged: mSatelliteSessionController is not initialized yet
+07-02 16:39:32.916  3612  3612 E SatelliteController: registerForSatelliteModemStateChanged: mSatelliteSessionController is not initialized yet
+07-02 16:39:33.003  2262 21680 E OplusStorageUFSBandwidth: storage_io_metrics_path is /proc/oplus_storage/io_metrics/forever/
+07-02 16:39:33.003  1485  1501 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_read_size_mb fail
+07-02 16:39:33.004  1485  1501 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_write_size_mb fail
+07-02 16:39:33.005  2262 21680 E OplusStorageUFSBandwidth: Bandwidth - Read: 0.00 MB/s, Write: 0.00 MB/s
+07-02 16:39:33.005  2262 21680 E OplusStorageUFSBandwidth: Task time: 2ms
+07-02 16:39:33.007  2262 21680 E OplusStorageUFSBandwidth: Alarm set to trigger in 10 seconds
+07-02 16:39:33.122  1485  1501 E PerformanceService: storage_feature: open /sys/devices/platform/soc/112b0000.ufshci//virtualtlcbuff fail
+07-02 16:39:33.139  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:39:34.140  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:39:35.007  2262 21680 E OplusStorageUFSBandwidth: storage_io_metrics_path is /proc/oplus_storage/io_metrics/forever/
+07-02 16:39:35.009  1485  1501 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_read_size_mb fail
+07-02 16:39:35.010  1485  1500 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_write_size_mb fail
+07-02 16:39:35.011  2262 21680 E OplusStorageUFSBandwidth: Bandwidth - Read: 0.00 MB/s, Write: 0.00 MB/s
+07-02 16:39:35.011  2262 21680 E OplusStorageUFSBandwidth: Task time: 4ms
+07-02 16:39:35.018  2262 21680 E OplusStorageUFSBandwidth: Alarm set to trigger in 10 seconds
+07-02 16:39:35.142  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:39:35.364  1489  1571 E ChargerInfo: SingleHyperPath not found
+07-02 16:39:35.368  1489  1571 E ChargerInfo: SingleHyperPath not found
+07-02 16:39:36.143  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:39:36.370  1448  1517 E VirtualSensors: pedo minute, step_count = 64882, report_count = 16260 move_statust = 0 ,time_gap = 0 , step_run_count = 2479 , step_walk_count = 62403
+07-02 16:39:36.372  1448  1517 E VirtualSensors: post_events : call
+07-02 16:39:37.013  2262 21680 E OplusStorageUFSBandwidth: storage_io_metrics_path is /proc/oplus_storage/io_metrics/forever/
+07-02 16:39:37.014  1485  1500 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_read_size_mb fail
+07-02 16:39:37.015  1485  1501 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_write_size_mb fail
+07-02 16:39:37.016  2262 21680 E OplusStorageUFSBandwidth: Bandwidth - Read: 0.00 MB/s, Write: 0.00 MB/s
+07-02 16:39:37.017  2262 21680 E OplusStorageUFSBandwidth: Task time: 4ms
+07-02 16:39:37.027  2262 21680 E OplusStorageUFSBandwidth: Alarm set to trigger in 10 seconds
+07-02 16:39:37.145  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:39:38.121  1485  1501 E PerformanceService: storage_feature: open /sys/devices/platform/soc/112b0000.ufshci//virtualtlcbuff fail
+07-02 16:39:38.146  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:39:38.677   701  6779 E android.system.suspend-service: Error opening wakeup28/name for wakeup28: Permission denied
+07-02 16:39:38.677   701  6779 E android.system.suspend-service: Error opening wakeup28/active_count for wakeup28: Permission denied
+07-02 16:39:38.678   701  6779 E android.system.suspend-service: Error opening wakeup28/last_change_ms for wakeup28: Permission denied
+07-02 16:39:38.678   701  6779 E android.system.suspend-service: Error opening wakeup28/max_time_ms for wakeup28: Permission denied
+07-02 16:39:38.678   701  6779 E android.system.suspend-service: Error opening wakeup28/total_time_ms for wakeup28: Permission denied
+07-02 16:39:38.678   701  6779 E android.system.suspend-service: Error opening wakeup28/active_time_ms for wakeup28: Permission denied
+07-02 16:39:38.678   701  6779 E android.system.suspend-service: Error opening wakeup28/event_count for wakeup28: Permission denied
+07-02 16:39:38.678   701  6779 E android.system.suspend-service: Error opening wakeup28/expire_count for wakeup28: Permission denied
+07-02 16:39:38.678   701  6779 E android.system.suspend-service: Error opening wakeup28/prevent_suspend_time_ms for wakeup28: Permission denied
+07-02 16:39:38.679   701  6779 E android.system.suspend-service: Error opening wakeup28/wakeup_count for wakeup28: Permission denied
+07-02 16:39:38.696   701  6779 E android.system.suspend-service: Error opening wakeup30/name for wakeup30: Permission denied
+07-02 16:39:38.696   701  6779 E android.system.suspend-service: Error opening wakeup30/active_count for wakeup30: Permission denied
+07-02 16:39:38.696   701  6779 E android.system.suspend-service: Error opening wakeup30/last_change_ms for wakeup30: Permission denied
+07-02 16:39:38.696   701  6779 E android.system.suspend-service: Error opening wakeup30/max_time_ms for wakeup30: Permission denied
+07-02 16:39:38.696   701  6779 E android.system.suspend-service: Error opening wakeup30/total_time_ms for wakeup30: Permission denied
+07-02 16:39:38.696   701  6779 E android.system.suspend-service: Error opening wakeup30/active_time_ms for wakeup30: Permission denied
+07-02 16:39:38.696   701  6779 E android.system.suspend-service: Error opening wakeup30/event_count for wakeup30: Permission denied
+07-02 16:39:38.696   701  6779 E android.system.suspend-service: Error opening wakeup30/expire_count for wakeup30: Permission denied
+07-02 16:39:38.696   701  6779 E android.system.suspend-service: Error opening wakeup30/prevent_suspend_time_ms for wakeup30: Permission denied
+07-02 16:39:38.696   701  6779 E android.system.suspend-service: Error opening wakeup30/wakeup_count for wakeup30: Permission denied
+07-02 16:39:38.699   701  6779 E android.system.suspend-service: Error opening wakeup29/name for wakeup29: Permission denied
+07-02 16:39:38.699   701  6779 E android.system.suspend-service: Error opening wakeup29/active_count for wakeup29: Permission denied
+07-02 16:39:38.699   701  6779 E android.system.suspend-service: Error opening wakeup29/last_change_ms for wakeup29: Permission denied
+07-02 16:39:38.700   701  6779 E android.system.suspend-service: Error opening wakeup29/max_time_ms for wakeup29: Permission denied
+07-02 16:39:38.700   701  6779 E android.system.suspend-service: Error opening wakeup29/total_time_ms for wakeup29: Permission denied
+07-02 16:39:38.700   701  6779 E android.system.suspend-service: Error opening wakeup29/active_time_ms for wakeup29: Permission denied
+07-02 16:39:38.700   701  6779 E android.system.suspend-service: Error opening wakeup29/event_count for wakeup29: Permission denied
+07-02 16:39:38.700   701  6779 E android.system.suspend-service: Error opening wakeup29/expire_count for wakeup29: Permission denied
+07-02 16:39:38.700   701  6779 E android.system.suspend-service: Error opening wakeup29/prevent_suspend_time_ms for wakeup29: Permission denied
+07-02 16:39:38.700   701  6779 E android.system.suspend-service: Error opening wakeup29/wakeup_count for wakeup29: Permission denied
+07-02 16:39:38.702   701  6779 E android.system.suspend-service: Error opening wakeup27/name for wakeup27: Permission denied
+07-02 16:39:38.702   701  6779 E android.system.suspend-service: Error opening wakeup27/active_count for wakeup27: Permission denied
+07-02 16:39:38.702   701  6779 E android.system.suspend-service: Error opening wakeup27/last_change_ms for wakeup27: Permission denied
+07-02 16:39:38.702   701  6779 E android.system.suspend-service: Error opening wakeup27/max_time_ms for wakeup27: Permission denied
+07-02 16:39:38.702   701  6779 E android.system.suspend-service: Error opening wakeup27/total_time_ms for wakeup27: Permission denied
+07-02 16:39:38.702   701  6779 E android.system.suspend-service: Error opening wakeup27/active_time_ms for wakeup27: Permission denied
+07-02 16:39:38.702   701  6779 E android.system.suspend-service: Error opening wakeup27/event_count for wakeup27: Permission denied
+07-02 16:39:38.702   701  6779 E android.system.suspend-service: Error opening wakeup27/expire_count for wakeup27: Permission denied
+07-02 16:39:38.702   701  6779 E android.system.suspend-service: Error opening wakeup27/prevent_suspend_time_ms for wakeup27: Permission denied
+07-02 16:39:38.702   701  6779 E android.system.suspend-service: Error opening wakeup27/wakeup_count for wakeup27: Permission denied
+07-02 16:39:38.703   701  6779 E android.system.suspend-service: Error opening wakeup17/name for wakeup17: Permission denied
+07-02 16:39:38.703   701  6779 E android.system.suspend-service: Error opening wakeup17/active_count for wakeup17: Permission denied
+07-02 16:39:38.703   701  6779 E android.system.suspend-service: Error opening wakeup17/last_change_ms for wakeup17: Permission denied
+07-02 16:39:38.703   701  6779 E android.system.suspend-service: Error opening wakeup17/max_time_ms for wakeup17: Permission denied
+07-02 16:39:38.703   701  6779 E android.system.suspend-service: Error opening wakeup17/total_time_ms for wakeup17: Permission denied
+07-02 16:39:38.703   701  6779 E android.system.suspend-service: Error opening wakeup17/active_time_ms for wakeup17: Permission denied
+07-02 16:39:38.703   701  6779 E android.system.suspend-service: Error opening wakeup17/event_count for wakeup17: Permission denied
+07-02 16:39:38.703   701  6779 E android.system.suspend-service: Error opening wakeup17/expire_count for wakeup17: Permission denied
+07-02 16:39:38.703   701  6779 E android.system.suspend-service: Error opening wakeup17/prevent_suspend_time_ms for wakeup17: Permission denied
+07-02 16:39:38.703   701  6779 E android.system.suspend-service: Error opening wakeup17/wakeup_count for wakeup17: Permission denied
+07-02 16:39:38.753 16497 16497 E ServiceMessengerHelper: handleSendErrorResponse error 2
+07-02 16:39:38.757  1405 27930 E TetherController: property_get sys.radio.data.modem_share_flag return 0, 1!
+07-02 16:39:39.018  2262 21680 E OplusStorageUFSBandwidth: storage_io_metrics_path is /proc/oplus_storage/io_metrics/forever/
+07-02 16:39:39.019  1485  1501 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_read_size_mb fail
+07-02 16:39:39.019  1485  1501 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_write_size_mb fail
+07-02 16:39:39.019  3316  3316 E IJankManager: slideSceneEnd unknown scene 1000 mScene:-1
+07-02 16:39:39.019  2262 21680 E OplusStorageUFSBandwidth: Bandwidth - Read: 0.00 MB/s, Write: 0.00 MB/s
+07-02 16:39:39.019  2262 21680 E OplusStorageUFSBandwidth: Task time: 1ms
+07-02 16:39:39.025  2262 21680 E OplusStorageUFSBandwidth: Alarm set to trigger in 10 seconds
+07-02 16:39:39.093  3316  3316 E [OPLUS_AFS_CONFIG]: Failed to open AFS config file: /proc/oplus_afs_config/afs_config
+07-02 16:39:39.093  3316  3316 E AFS_CONFIG: Failed to get scene config
+07-02 16:39:39.093  3316  3316 E OplusAfsManager: afsConfigSceneConfigGet sceneType is null
+07-02 16:39:39.093  3316  3316 E IJankManager: latencySceneEnd unknown scene 40 mScene:-1
+07-02 16:39:39.093  3316  3316 E [OPLUS_AFS_CONFIG]: Failed to open AFS config file: /proc/oplus_afs_config/afs_config
+07-02 16:39:39.093  3316  3316 E AFS_CONFIG: Failed to get scene config
+07-02 16:39:39.093  3316  3316 E OplusAfsManager: afsConfigSceneConfigGet sceneType is null
+07-02 16:39:39.093  3316  3316 E IJankManager: latencySceneEnd unknown scene 42 mScene:-1
+07-02 16:39:39.126  2262  2669 E HandwritingModeController: Cannot get requestId: Handwriting was not initialized.
+07-02 16:39:39.146  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:39:39.175  2262  3107 E UAH-Framework: invalid window type -1
+07-02 16:39:39.241  1489  1571 E ChargerInfo: SingleHyperPath not found
+07-02 16:39:39.265  2262  2262 E OplusGestureAnimationManagerPolicy: mScreenHeight:2412 mScreenWidth:1080 mRotation:0
+07-02 16:39:39.276  1489  1571 E ChargerInfo: SingleHyperPath not found
+07-02 16:39:39.353  4742  4791 E ScreenCapture: Failed to generate screen capture. Error code: -22
+07-02 16:39:39.410  3316  3316 E [OPLUS_AFS_CONFIG]: Failed to open AFS config file: /proc/oplus_afs_config/afs_config
+07-02 16:39:39.410  3316  3316 E AFS_CONFIG: Failed to get scene config
+07-02 16:39:39.410  3316  3316 E OplusAfsManager: afsConfigSceneConfigGet sceneType is null
+07-02 16:39:39.706  3316  3316 E [OPLUS_AFS_CONFIG]: Failed to open AFS config file: /proc/oplus_afs_config/afs_config
+07-02 16:39:39.706  3316  3316 E AFS_CONFIG: Failed to get scene config
+07-02 16:39:39.706  3316  3316 E OplusAfsManager: afsConfigSceneConfigGet sceneType is null
+07-02 16:39:39.709  2262  2277 E OplusInputManagerService_jni: updateInvalidRegion start!!!
+07-02 16:39:39.709  2262  2277 E InputDispatcherExtImpl: rectF left: 0.000000, top: 2356.000000, right: 1080.000000, bottom: 2412.000000 offset_left: 0.000000, offset_top: 0.000000, offset_right: 0.000000, offset_bottom: 0.000000, isClosedRegion:0
+07-02 16:39:39.709  2262  2277 E OplusInputManagerService_jni: updateInvalidRegion start!!!
+07-02 16:39:39.710  2262  2277 E OplusInputManagerService_jni: updateInvalidRegion start!!!
+07-02 16:39:39.784  1489  1571 E ChargerInfo: SingleHyperPath not found
+07-02 16:39:39.786  6348  6348 E mcs.biz.message: Unknown bits set in runtime_flags: 0x40000000
+07-02 16:39:40.147  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:39:40.385  3316  3316 E IJankManager: slideSceneEnd unknown scene 1000 mScene:-1
+07-02 16:39:40.469  3316  3316 E [OPLUS_AFS_CONFIG]: Failed to open AFS config file: /proc/oplus_afs_config/afs_config
+07-02 16:39:40.469  3316  3316 E AFS_CONFIG: Failed to get scene config
+07-02 16:39:40.469  3316  3316 E OplusAfsManager: afsConfigSceneConfigGet sceneType is null
+07-02 16:39:40.469  3316  3316 E IJankManager: latencySceneEnd unknown scene 4 mScene:-1
+07-02 16:39:40.477  3316  3316 E LockScreenNotificationDispatcherImp: updateNotificationListOnKg size:0
+07-02 16:39:40.489  2262  2619 E JobScheduler.Background: Couldn't determine stopped state for unknown package: com.oplus.onet
+07-02 16:39:40.494  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:40.508  3316  3316 E [OPLUS_AFS_CONFIG]: Failed to open AFS config file: /proc/oplus_afs_config/afs_config
+07-02 16:39:40.508  3316  3316 E AFS_CONFIG: Failed to get scene config
+07-02 16:39:40.508  3316  3316 E OplusAfsManager: afsConfigSceneConfigGet sceneType is null
+07-02 16:39:40.508  3316  3316 E IJankManager: latencySceneEnd unknown scene 45 mScene:-1
+07-02 16:39:40.518  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:40.527  3316  3316 E LockScreenNotificationDispatcherImp: updateNotificationListOnKg size:0
+07-02 16:39:40.544  3316  3316 E LockScreenNotificationDispatcherImp: updateNotificationListOnKg size:0
+07-02 16:39:40.645  4671  4982 E msys    : E[N mns:TigonMNS]_OnResolverSuccess(359)=>Cache refresh succeeded with system DNS resolver. IP count: 2
+07-02 16:39:40.663  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:40.744  1554  2073 E AudioPolicyInterfaceImpl: checkSessionHasActiveClient mSessionLatestHandleList has no port for session = 51609
+07-02 16:39:40.752  1554  7661 E audio_pcm_dump: check_pcm_path : create path /data/persist_log fail 17
+07-02 16:39:40.753  1554  7661 E audio_pcm_dump: check_pcm_path failed.
+07-02 16:39:40.753  1554  7661 E audio_pcm_dump: check_pcm_path : create path /data/persist_log fail 17
+07-02 16:39:40.753  1554  7661 E audio_pcm_dump: check_pcm_path failed.
+07-02 16:39:40.761  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:40.836  4671  4671 E SlowAppComponent: 0ms: ClearNotificationReceiver instantiating…
+07-02 16:39:40.836  4671  4671 E SlowAppComponent: 260ms: ClearNotificationReceiver instantiating…
+07-02 16:39:40.836  4671  4671 E SlowAppComponent: Main thread was blocked for 269ms in the background starting with ClearNotificationReceiver
+07-02 16:39:40.853  4671  5053 E msys    : E[N mns:DGWClient]_OnResolverSuccess(359)=>Cache refresh succeeded with system DNS resolver. IP count: 2
+07-02 16:39:41.019  2262 21680 E OplusStorageUFSBandwidth: storage_io_metrics_path is /proc/oplus_storage/io_metrics/forever/
+07-02 16:39:41.019  1485  1501 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_read_size_mb fail
+07-02 16:39:41.020  1485  1501 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_write_size_mb fail
+07-02 16:39:41.021  2262 21680 E OplusStorageUFSBandwidth: Bandwidth - Read: 0.00 MB/s, Write: 0.00 MB/s
+07-02 16:39:41.021  2262 21680 E OplusStorageUFSBandwidth: Task time: 2ms
+07-02 16:39:41.022  2262 21680 E OplusStorageUFSBandwidth: Alarm set to trigger in 10 seconds
+07-02 16:39:41.148  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:39:41.426  1489  1571 E ChargerInfo: SingleHyperPath not found
+07-02 16:39:41.431  1489  1571 E ChargerInfo: SingleHyperPath not found
+07-02 16:39:41.446  1489  1571 E ChargerInfo: SingleHyperPath not found
+07-02 16:39:41.971  3316  3316 E IJankManager: slideSceneEnd unknown scene 1000 mScene:-1
+07-02 16:39:41.998  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.010  3316  3316 E [OPLUS_AFS_CONFIG]: Failed to open AFS config file: /proc/oplus_afs_config/afs_config
+07-02 16:39:42.010  3316  3316 E AFS_CONFIG: Failed to get scene config
+07-02 16:39:42.010  3316  3316 E OplusAfsManager: afsConfigSceneConfigGet sceneType is null
+07-02 16:39:42.012  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.018  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.021  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.028  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.037  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.045  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.053  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.063  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.070  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.079  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.087  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.095  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.106  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.112  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.122  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.133  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.138  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.146  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.149  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:39:42.154  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.162  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.171  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.179  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.187  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.196  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.204  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.212  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.221  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.229  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.237  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.246  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.254  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.263  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.271  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.279  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.287  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.296  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.304  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.316  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.324  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.328  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.337  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.345  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.354  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.364  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.372  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.380  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.388  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.397  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.405  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.413  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.422  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.430  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.440  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.446  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.455  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.463  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.472  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.480  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.488  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.497  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.505  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.513  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.522  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.530  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.538  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.546  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.555  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.563  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.571  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.580  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.589  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.597  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.605  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.613  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.622  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.630  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.638  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.647  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.655  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.663  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.671  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.680  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.688  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.697  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.705  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.713  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.722  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.730  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.738  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.747  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.755  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.763  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.771  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.780  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.788  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.797  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.805  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.813  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.821  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.835  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.840  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.856  2262  3360 E OplusInputManagerService_jni: updateInvalidRegion start!!!
+07-02 16:39:42.856  2262  3360 E InputDispatcherExtImpl: rectF left: 0.000000, top: 2356.000000, right: 1080.000000, bottom: 2412.000000 offset_left: 0.000000, offset_top: -88.000000, offset_right: 0.000000, offset_bottom: 0.000000, isClosedRegion:0
+07-02 16:39:42.857  2262  3360 E OplusInputManagerService_jni: updateInvalidRegion start!!!
+07-02 16:39:42.858  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.859  2262  3360 E OplusInputManagerService_jni: updateInvalidRegion start!!!
+07-02 16:39:42.870  3316  3316 E [OPLUS_AFS_CONFIG]: Failed to open AFS config file: /proc/oplus_afs_config/afs_config
+07-02 16:39:42.870  3316  3316 E AFS_CONFIG: Failed to get scene config
+07-02 16:39:42.870  3316  3316 E OplusAfsManager: afsConfigSceneConfigGet sceneType is null
+07-02 16:39:42.871  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.883  1468  1504 E mtkpower@impl: [setMode] unknown type
+07-02 16:39:42.892  2262  2262 E OplusGestureAnimationManagerPolicy: mScreenHeight:2412 mScreenWidth:1080 mRotation:0
+07-02 16:39:42.904  1468  1504 E mtkpower@impl: [setMode] unknown type
+07-02 16:39:42.908  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:42.965  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:43.022  2262 21680 E OplusStorageUFSBandwidth: storage_io_metrics_path is /proc/oplus_storage/io_metrics/forever/
+07-02 16:39:43.023  1485  1501 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_read_size_mb fail
+07-02 16:39:43.024  1485  1501 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_write_size_mb fail
+07-02 16:39:43.024  2262 21680 E OplusStorageUFSBandwidth: Bandwidth - Read: 0.00 MB/s, Write: 0.00 MB/s
+07-02 16:39:43.024  2262 21680 E OplusStorageUFSBandwidth: Task time: 2ms
+07-02 16:39:43.025  2262 21680 E OplusStorageUFSBandwidth: Alarm set to trigger in 10 seconds
+07-02 16:39:43.120  1485  1501 E PerformanceService: storage_feature: open /sys/devices/platform/soc/112b0000.ufshci//virtualtlcbuff fail
+07-02 16:39:43.149  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:39:43.811  2262  9177 E TaskPersister: File error accessing recents directory (directory doesn't exist?).
+07-02 16:39:44.150  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:39:44.365  3612  3612 E SatelliteController: registerForSatelliteModemStateChanged: mSatelliteSessionController is not initialized yet
+07-02 16:39:44.367  3612  3612 E SatelliteController: registerForSatelliteModemStateChanged: mSatelliteSessionController is not initialized yet
+07-02 16:39:44.374  5090 16531 E midasd  : getTotalFlipsFromSf mCurFrameCount: 11790022
+07-02 16:39:44.389  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:44.672  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:45.025  2262 21680 E OplusStorageUFSBandwidth: storage_io_metrics_path is /proc/oplus_storage/io_metrics/forever/
+07-02 16:39:45.026  1485  1501 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_read_size_mb fail
+07-02 16:39:45.026  1485  1501 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_write_size_mb fail
+07-02 16:39:45.026  2262 21680 E OplusStorageUFSBandwidth: Bandwidth - Read: 0.00 MB/s, Write: 0.00 MB/s
+07-02 16:39:45.026  2262 21680 E OplusStorageUFSBandwidth: Task time: 1ms
+07-02 16:39:45.034  2262 21680 E OplusStorageUFSBandwidth: Alarm set to trigger in 10 seconds
+07-02 16:39:45.151  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:39:46.152  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:39:47.029  2262 21680 E OplusStorageUFSBandwidth: storage_io_metrics_path is /proc/oplus_storage/io_metrics/forever/
+07-02 16:39:47.030  1485  1501 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_read_size_mb fail
+07-02 16:39:47.031  1485  1501 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_write_size_mb fail
+07-02 16:39:47.032  2262 21680 E OplusStorageUFSBandwidth: Bandwidth - Read: 0.00 MB/s, Write: 0.00 MB/s
+07-02 16:39:47.033  2262 21680 E OplusStorageUFSBandwidth: Task time: 4ms
+07-02 16:39:47.035  4671  6378 E FbnsAIDLClientManager: Max Try reached for binding to FbnsAIDLService, threadId 6116
+07-02 16:39:47.037  4671  6378 E FbnsAIDLClientManager: Fbns AIDL request got RemoteException
+07-02 16:39:47.037  4671  6378 E FbnsAIDLClientManager: android.os.RemoteException: AIDLService is not bound
+07-02 16:39:47.037  4671  6378 E FbnsAIDLClientManager: 	at X.8sQ.call(:383)
+07-02 16:39:47.037  4671  6378 E FbnsAIDLClientManager: 	at java.util.concurrent.FutureTask.run(FutureTask.java:328)
+07-02 16:39:47.037  4671  6378 E FbnsAIDLClientManager: 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1100)
+07-02 16:39:47.037  4671  6378 E FbnsAIDLClientManager: 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:624)
+07-02 16:39:47.037  4671  6378 E FbnsAIDLClientManager: 	at java.lang.Thread.run(Thread.java:1572)
+07-02 16:39:47.044  2262 21680 E OplusStorageUFSBandwidth: Alarm set to trigger in 10 seconds
+07-02 16:39:47.143  1489  1571 E ChargerInfo: SingleHyperPath not found
+07-02 16:39:47.149  1489  1571 E ChargerInfo: SingleHyperPath not found
+07-02 16:39:47.153  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:39:47.394  1405  1456 E TetherController: property_get sys.radio.data.modem_share_flag return 0, 1!
+07-02 16:39:48.121  1485  1501 E PerformanceService: storage_feature: open /sys/devices/platform/soc/112b0000.ufshci//virtualtlcbuff fail
+07-02 16:39:48.155  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:39:48.693  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:49.040  2262 21680 E OplusStorageUFSBandwidth: storage_io_metrics_path is /proc/oplus_storage/io_metrics/forever/
+07-02 16:39:49.041  1485  1501 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_read_size_mb fail
+07-02 16:39:49.041  1485  1501 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_write_size_mb fail
+07-02 16:39:49.043  2262 21680 E OplusStorageUFSBandwidth: Bandwidth - Read: 0.00 MB/s, Write: 0.00 MB/s
+07-02 16:39:49.043  2262 21680 E OplusStorageUFSBandwidth: Task time: 3ms
+07-02 16:39:49.047  2262 21680 E OplusStorageUFSBandwidth: Alarm set to trigger in 10 seconds
+07-02 16:39:49.156  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:39:50.158  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:39:51.046  2262 21680 E OplusStorageUFSBandwidth: storage_io_metrics_path is /proc/oplus_storage/io_metrics/forever/
+07-02 16:39:51.047  1485  1501 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_read_size_mb fail
+07-02 16:39:51.048  1485  1501 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_write_size_mb fail
+07-02 16:39:51.048  2262 21680 E OplusStorageUFSBandwidth: Bandwidth - Read: 0.00 MB/s, Write: 0.00 MB/s
+07-02 16:39:51.048  2262 21680 E OplusStorageUFSBandwidth: Task time: 2ms
+07-02 16:39:51.054  2262 21680 E OplusStorageUFSBandwidth: Alarm set to trigger in 10 seconds
+07-02 16:39:51.159  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:39:52.160  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:39:52.262  1489  1571 E ChargerInfo: SingleHyperPath not found
+07-02 16:39:52.265  1489  1571 E ChargerInfo: SingleHyperPath not found
+07-02 16:39:52.702  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:53.050  2262 21680 E OplusStorageUFSBandwidth: storage_io_metrics_path is /proc/oplus_storage/io_metrics/forever/
+07-02 16:39:53.051  1485  1501 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_read_size_mb fail
+07-02 16:39:53.052  1485  1501 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_write_size_mb fail
+07-02 16:39:53.053  2262 21680 E OplusStorageUFSBandwidth: Bandwidth - Read: 0.00 MB/s, Write: 0.00 MB/s
+07-02 16:39:53.053  2262 21680 E OplusStorageUFSBandwidth: Task time: 3ms
+07-02 16:39:53.059  2262 21680 E OplusStorageUFSBandwidth: Alarm set to trigger in 10 seconds
+07-02 16:39:53.122  1485  1501 E PerformanceService: storage_feature: open /sys/devices/platform/soc/112b0000.ufshci//virtualtlcbuff fail
+07-02 16:39:53.162  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:39:54.164  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:39:55.055  2262 21680 E OplusStorageUFSBandwidth: storage_io_metrics_path is /proc/oplus_storage/io_metrics/forever/
+07-02 16:39:55.056  1485  1501 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_read_size_mb fail
+07-02 16:39:55.057  1485  1501 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_write_size_mb fail
+07-02 16:39:55.057  2262 21680 E OplusStorageUFSBandwidth: Bandwidth - Read: 0.00 MB/s, Write: 0.00 MB/s
+07-02 16:39:55.057  2262 21680 E OplusStorageUFSBandwidth: Task time: 2ms
+07-02 16:39:55.063  2262 21680 E OplusStorageUFSBandwidth: Alarm set to trigger in 10 seconds
+07-02 16:39:55.166  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:39:56.167  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:39:56.700  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:39:57.060  2262 21680 E OplusStorageUFSBandwidth: storage_io_metrics_path is /proc/oplus_storage/io_metrics/forever/
+07-02 16:39:57.062  1485  1501 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_read_size_mb fail
+07-02 16:39:57.064  1485  1500 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_write_size_mb fail
+07-02 16:39:57.065  2262 21680 E OplusStorageUFSBandwidth: Bandwidth - Read: 0.00 MB/s, Write: 0.00 MB/s
+07-02 16:39:57.065  2262 21680 E OplusStorageUFSBandwidth: Task time: 5ms
+07-02 16:39:57.073  2262 21680 E OplusStorageUFSBandwidth: Alarm set to trigger in 10 seconds
+07-02 16:39:57.168  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:39:58.120  1485  1500 E PerformanceService: storage_feature: open /sys/devices/platform/soc/112b0000.ufshci//virtualtlcbuff fail
+07-02 16:39:58.145  1489  1571 E ChargerInfo: SingleHyperPath not found
+07-02 16:39:58.153  1489  1571 E ChargerInfo: SingleHyperPath not found
+07-02 16:39:58.170  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:39:58.403 17217 19161 E MIDASApplication: MIDASPullAtomManager: onPullAtom 150122
+07-02 16:39:58.790  1489  1571 E ChargerInfo: SingleHyperPath not found
+07-02 16:39:59.067  2262 21680 E OplusStorageUFSBandwidth: storage_io_metrics_path is /proc/oplus_storage/io_metrics/forever/
+07-02 16:39:59.070  1485  1500 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_read_size_mb fail
+07-02 16:39:59.071  1485  1501 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_write_size_mb fail
+07-02 16:39:59.073  2262 21680 E OplusStorageUFSBandwidth: Bandwidth - Read: 0.00 MB/s, Write: 0.00 MB/s
+07-02 16:39:59.073  2262 21680 E OplusStorageUFSBandwidth: Task time: 6ms
+07-02 16:39:59.075  2262 21680 E OplusStorageUFSBandwidth: Alarm set to trigger in 10 seconds
+07-02 16:39:59.171  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:39:59.237  1489  1571 E ChargerInfo: SingleHyperPath not found
+07-02 16:40:00.021  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:40:00.040  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:40:00.173  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:40:00.719  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:40:01.076  2262 21680 E OplusStorageUFSBandwidth: storage_io_metrics_path is /proc/oplus_storage/io_metrics/forever/
+07-02 16:40:01.077  1485  1501 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_read_size_mb fail
+07-02 16:40:01.080  1485  1500 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_write_size_mb fail
+07-02 16:40:01.081  2262 21680 E OplusStorageUFSBandwidth: Bandwidth - Read: 0.00 MB/s, Write: 0.00 MB/s
+07-02 16:40:01.081  2262 21680 E OplusStorageUFSBandwidth: Task time: 6ms
+07-02 16:40:01.082  2262 21680 E OplusStorageUFSBandwidth: Alarm set to trigger in 10 seconds
+07-02 16:40:01.086  5653  5713 E MSP-LOG-APP-MSP-LOG-APP-AdsCoreService: HLog未初始化-->currentLiveDuration: 16201
+07-02 16:40:01.174  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:40:02.176  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:40:03.083  2262 21680 E OplusStorageUFSBandwidth: storage_io_metrics_path is /proc/oplus_storage/io_metrics/forever/
+07-02 16:40:03.084  1485  1500 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_read_size_mb fail
+07-02 16:40:03.085  1485  1500 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_write_size_mb fail
+07-02 16:40:03.087  2262 21680 E OplusStorageUFSBandwidth: Bandwidth - Read: 0.00 MB/s, Write: 0.00 MB/s
+07-02 16:40:03.087  2262 21680 E OplusStorageUFSBandwidth: Task time: 4ms
+07-02 16:40:03.091  2262 21680 E OplusStorageUFSBandwidth: Alarm set to trigger in 10 seconds
+07-02 16:40:03.122  1485  1500 E PerformanceService: storage_feature: open /sys/devices/platform/soc/112b0000.ufshci//virtualtlcbuff fail
+07-02 16:40:03.177  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:40:03.268  1489  1571 E ChargerInfo: SingleHyperPath not found
+07-02 16:40:03.277  1489  1571 E ChargerInfo: SingleHyperPath not found
+07-02 16:40:04.179  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:40:04.296  1489  1571 E ChargerInfo: SingleHyperPath not found
+07-02 16:40:04.374  5090 16531 E midasd  : getTotalFlipsFromSf mCurFrameCount: 11791821
+07-02 16:40:04.721  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:40:05.089  2262 21680 E OplusStorageUFSBandwidth: storage_io_metrics_path is /proc/oplus_storage/io_metrics/forever/
+07-02 16:40:05.090  1485  1500 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_read_size_mb fail
+07-02 16:40:05.092  1485  1500 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_write_size_mb fail
+07-02 16:40:05.092  2262 21680 E OplusStorageUFSBandwidth: Bandwidth - Read: 0.00 MB/s, Write: 0.00 MB/s
+07-02 16:40:05.092  2262 21680 E OplusStorageUFSBandwidth: Task time: 3ms
+07-02 16:40:05.098  2262 21680 E OplusStorageUFSBandwidth: Alarm set to trigger in 10 seconds
+07-02 16:40:05.180  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:40:06.182  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:40:07.094  2262 21680 E OplusStorageUFSBandwidth: storage_io_metrics_path is /proc/oplus_storage/io_metrics/forever/
+07-02 16:40:07.098  1485  1500 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_read_size_mb fail
+07-02 16:40:07.099  1485  1500 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_write_size_mb fail
+07-02 16:40:07.100  2262 21680 E OplusStorageUFSBandwidth: Bandwidth - Read: 0.00 MB/s, Write: 0.00 MB/s
+07-02 16:40:07.100  2262 21680 E OplusStorageUFSBandwidth: Task time: 7ms
+07-02 16:40:07.101  2262 21680 E OplusStorageUFSBandwidth: Alarm set to trigger in 10 seconds
+07-02 16:40:07.187  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:40:07.978  1407  1428 E statsd  : Could not find a broadcast receiver for (1000 1035)
+07-02 16:40:08.122  1485  1500 E PerformanceService: storage_feature: open /sys/devices/platform/soc/112b0000.ufshci//virtualtlcbuff fail
+07-02 16:40:08.188  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:40:08.734  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:40:09.102  2262 21680 E OplusStorageUFSBandwidth: storage_io_metrics_path is /proc/oplus_storage/io_metrics/forever/
+07-02 16:40:09.103  1485  1500 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_read_size_mb fail
+07-02 16:40:09.105  1485  1501 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_write_size_mb fail
+07-02 16:40:09.106  2262 21680 E OplusStorageUFSBandwidth: Bandwidth - Read: 0.00 MB/s, Write: 0.00 MB/s
+07-02 16:40:09.106  2262 21680 E OplusStorageUFSBandwidth: Task time: 4ms
+07-02 16:40:09.110  2262 21680 E OplusStorageUFSBandwidth: Alarm set to trigger in 10 seconds
+07-02 16:40:09.160  1489  1571 E ChargerInfo: SingleHyperPath not found
+07-02 16:40:09.167  1489  1571 E ChargerInfo: SingleHyperPath not found
+07-02 16:40:09.189  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:40:10.190  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:40:10.495  2262  2619 E JobScheduler.Background: Couldn't determine stopped state for unknown package: com.oplus.onet
+07-02 16:40:10.515  4671  5053 E msys    : E[N mns:DGWClient]_LogError(328)=>Failed to resolve using system DNS resolver, getaddrinfo(): No address associated with hostname
+07-02 16:40:10.518  4671  5053 E msys    : E[N mns:DGWClient]_LogError(328)=>Failed to resolve using system DNS resolver, getaddrinfo(): No address associated with hostname
+07-02 16:40:10.775  1489  1571 E ChargerInfo: SingleHyperPath not found
+07-02 16:40:11.108  2262 21680 E OplusStorageUFSBandwidth: storage_io_metrics_path is /proc/oplus_storage/io_metrics/forever/
+07-02 16:40:11.108  1485  1500 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_read_size_mb fail
+07-02 16:40:11.109  1485  1500 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_write_size_mb fail
+07-02 16:40:11.110  2262 21680 E OplusStorageUFSBandwidth: Bandwidth - Read: 0.00 MB/s, Write: 0.00 MB/s
+07-02 16:40:11.110  2262 21680 E OplusStorageUFSBandwidth: Task time: 2ms
+07-02 16:40:11.116  2262 21680 E OplusStorageUFSBandwidth: Alarm set to trigger in 10 seconds
+07-02 16:40:11.192  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:40:11.839  5078  5153 E horae   : 0: back:38409,frame:37127,front:38423, 6, +(3771), 1 ,37400,42194,40777,41185,43000, target_temp:38423, algo:0
+07-02 16:40:11.955  1489  1571 E ChargerInfo: SingleHyperPath not found
+07-02 16:40:12.193  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:40:12.742  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:40:13.116  2262 21680 E OplusStorageUFSBandwidth: storage_io_metrics_path is /proc/oplus_storage/io_metrics/forever/
+07-02 16:40:13.117  1485  1500 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_read_size_mb fail
+07-02 16:40:13.118  1485  1500 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_write_size_mb fail
+07-02 16:40:13.119  2262 21680 E OplusStorageUFSBandwidth: Bandwidth - Read: 0.00 MB/s, Write: 0.00 MB/s
+07-02 16:40:13.119  2262 21680 E OplusStorageUFSBandwidth: Task time: 3ms
+07-02 16:40:13.121  1485  1500 E PerformanceService: storage_feature: open /sys/devices/platform/soc/112b0000.ufshci//virtualtlcbuff fail
+07-02 16:40:13.128  2262 21680 E OplusStorageUFSBandwidth: Alarm set to trigger in 10 seconds
+07-02 16:40:13.194  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:40:14.201  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:40:14.284  1489  1571 E ChargerInfo: SingleHyperPath not found
+07-02 16:40:14.294  1489  1571 E ChargerInfo: SingleHyperPath not found
+07-02 16:40:14.303  7769  7769 E VendorNfcService: changeNfcStateByWirelessCharge: feature WIRELESS_CHARGING = true; mIsWirelessCharging: false; mIsReverseChargingSwitchOpen: false; nfcWorkMode: 0; isOverSeaRegion = true
+07-02 16:40:14.310  5090 16531 E midasd  : getTotalFlipsFromSf mCurFrameCount: 11792715
+07-02 16:40:14.313 16904 15718 E Battery : BatteryCardUtil: widgetCodes is empty !
+07-02 16:40:14.317 16904 17504 E Battery : ChargeProtectionUtils: First Alarm is Thu Jul 02 17:00:00 GMT+05:30 2026, nowRtc  = Thu Jul 02 16:40:14 GMT+05:30 2026, too close , ignore it.
+07-02 16:40:14.317 16904 17504 E Battery : ChargeProtectionUtils: mCanlendarTmp.isEmpty()!
+07-02 16:40:14.339  1405  1456 E TetherController: property_get sys.radio.data.modem_share_flag return 0, 1!
+07-02 16:40:14.417  2262  2440 E BatteryStatsImplExtImpl: get RefreshCounts failed
+07-02 16:40:15.122  2262 21680 E OplusStorageUFSBandwidth: storage_io_metrics_path is /proc/oplus_storage/io_metrics/forever/
+07-02 16:40:15.124  1485  1500 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_read_size_mb fail
+07-02 16:40:15.126  1485  1501 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_write_size_mb fail
+07-02 16:40:15.127  2262 21680 E OplusStorageUFSBandwidth: Bandwidth - Read: 0.00 MB/s, Write: 0.00 MB/s
+07-02 16:40:15.127  2262 21680 E OplusStorageUFSBandwidth: Task time: 5ms
+07-02 16:40:15.138  2262 21680 E OplusStorageUFSBandwidth: Alarm set to trigger in 10 seconds
+07-02 16:40:15.203  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:40:16.204  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:40:16.743  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:40:17.129  2262 21680 E OplusStorageUFSBandwidth: storage_io_metrics_path is /proc/oplus_storage/io_metrics/forever/
+07-02 16:40:17.130  1485  1501 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_read_size_mb fail
+07-02 16:40:17.132  1485  1501 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_write_size_mb fail
+07-02 16:40:17.132  2262 21680 E OplusStorageUFSBandwidth: Bandwidth - Read: 0.00 MB/s, Write: 0.00 MB/s
+07-02 16:40:17.133  2262 21680 E OplusStorageUFSBandwidth: Task time: 4ms
+07-02 16:40:17.137  2262 21680 E OplusStorageUFSBandwidth: Alarm set to trigger in 10 seconds
+07-02 16:40:17.205  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:40:18.121  1485  1501 E PerformanceService: storage_feature: open /sys/devices/platform/soc/112b0000.ufshci//virtualtlcbuff fail
+07-02 16:40:18.207  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:40:19.135  2262 21680 E OplusStorageUFSBandwidth: storage_io_metrics_path is /proc/oplus_storage/io_metrics/forever/
+07-02 16:40:19.135  1485  1501 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_read_size_mb fail
+07-02 16:40:19.136  1485  1501 E PerformanceService: storage_feature: open /proc/oplus_storage/io_metrics/forever//ufs_total_write_size_mb fail
+07-02 16:40:19.138  2262 21680 E OplusStorageUFSBandwidth: Bandwidth - Read: 0.00 MB/s, Write: 0.00 MB/s
+07-02 16:40:19.138  2262 21680 E OplusStorageUFSBandwidth: Task time: 4ms
+07-02 16:40:19.140  2262 21680 E OplusStorageUFSBandwidth: Alarm set to trigger in 10 seconds
+07-02 16:40:19.208  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:40:19.246  1489  1571 E ChargerInfo: SingleHyperPath not found
+07-02 16:40:19.252  2934  3581 E msys    : E[N WA]_WAJMNSStreamImplOnMNSFailure(287)=>[LogLevel:I] WAJMNSStream/impl/callback/onMNSFailure/p=0xb400007775aa6b80 (error=MNSTCPSocketReceive(): Received EOF)
+07-02 16:40:19.252  2934  3581 E msys    : E[N WA]_WAJMNSStreamImplCreateConnectionReport(194)=>[LogLevel:I] WAJMNSStream/impl/report port=5222, connectedIPVersion=6, resolvedIPAddressCount=2, dnsResolutionStartTimeMS=635312490, dnsResolutionEndTimeMS=635312490, dnsCacheHit=Yes, connectStartTimeMS=635312490, connectEndTimeMS=635312513, proxyConnectStartTimeMS=0, proxyConnectEndTimeMS=0
+07-02 16:40:19.253  2934  3581 E msys    : E[N WA]_WAJMNSStreamImplUpdateStreamState(230)=>[LogLevel:I] WAJMNSStream/impl/state-changed/p=0xb400007775aa6b80 (connected=>disconnected)
+07-02 16:40:19.262  2934  3537 E msys    : E[N WA]WAJMNSStreamImplDisconnectSync(514)=>[LogLevel:W] WAJMNSStream/impl/disconnect/p=0xb400007775aa6b80 (bytesSent=4607)(bytesRecv=10334)
+07-02 16:40:19.536  5653  5653 E MSP-LOG-APP-MSP-LOG-APP-AdsKitApplication: HLog未初始化-->onTrimMemory
+07-02 16:40:19.538  5653  5653 E MSP-LOG-APP-MSP-LOG-APP-MspBaseApplication: HLog未初始化-->trimMemory dispatch module = adsKit
+07-02 16:40:20.165  1489  1571 E ChargerInfo: SingleHyperPath not found
+07-02 16:40:20.175  1489  1571 E ChargerInfo: SingleHyperPath not found
+07-02 16:40:20.209  1489  1585 E bms_heating: BmsHeatingCheckThread status: 0
+07-02 16:40:20.748  3316  3316 E OplusNotificationPullDownAnimationExImpl: updateShelfPosition, error! ambientState=com.android.systemui.statusbar.notification.stack.AmbientState@a6642b1, shelfViewState=com.android.systemui.statusbar.NotificationShelf$ShelfState@bc28396, lastViewState=null, stackLayout=com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout{1edeb17 V.E...... ......ID 0,0-1080,2289 #7f0a08ee app:id/notification_stack_scroller alpha=1.0 viewInfo = }, shelfEx=com.oplus.systemui.notification.row.OplusShelfExImpl@ab84b04
+07-02 16:40:20.829  2262  3934 E Athena  : AbnormalMemoryAction: init action fail: abnormal_memory_periodic_clear_config_1 not configured.

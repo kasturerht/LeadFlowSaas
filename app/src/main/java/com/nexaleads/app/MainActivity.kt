@@ -30,7 +30,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.nexaleads.app.ui.theme.LeadFlowCRMTheme
+import com.nexaleads.app.ui.theme.LeadFlowSaaSTheme
 import com.nexaleads.app.ui.viewmodel.AuthState
 import com.nexaleads.app.ui.viewmodel.AuthViewModel
 import com.nexaleads.app.ui.viewmodel.CallingViewModel
@@ -45,7 +45,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
         setContent {
-            LeadFlowCRMTheme {
+            LeadFlowSaaSTheme {
                 val navController = rememberNavController()
                 val authViewModel: AuthViewModel = hiltViewModel()
                 val authState by authViewModel.authState.collectAsState()

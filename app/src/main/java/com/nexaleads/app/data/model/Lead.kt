@@ -1,5 +1,7 @@
 package com.nexaleads.app.data.model
 
+import com.nexaleads.app.Constants
+
 data class Lead(
     val id: String = "",
     val name: String = "",
@@ -16,15 +18,20 @@ data class Lead(
     val city: String = "",
     val pincode: String = "",
     val paymentMethod: String = "",
-    val orderAmount: String = ""
+    val orderAmount: String = "",
+    val subStatus: String? = null,
+    val followUpTimeSlot: String? = null,
+    val paymentStatus: String? = null,
+    val isSuspiciousShortCall: Boolean = false
 )
 
 fun Lead.getPrimaryCategory(): String {
     if (this.archived) return "ARCHIVED"
-    if (this.status == "Order Placed") return "CONVERTED"
-    if (this.status == "Not Interested" || this.status == "Invalid") return "REJECTED"
-    if (this.status == "Follow-up") return "FOLLOWUP"
-    if (this.status == "Call Not Answered") return "ATTEMPTED"
-    if (this.status == "Product Inquiry Only") return "INQUIRY"
+    val normStatus = Constants.normalizeStatus(this.status)
+    if (normStatus == Constants.STATUS_ORDER_PLACED) return "CONVERTED"
+    if (normStatus == Constants.STATUS_NOT_INTERESTED || normStatus == Constants.STATUS_INVALID) return "REJECTED"
+    if (normStatus == Constants.STATUS_FOLLOW_UP) return "FOLLOWUP"
+    if (normStatus == Constants.STATUS_CALL_NOT_ANSWERED) return "ATTEMPTED"
+    if (normStatus == Constants.STATUS_INQUIRY) return "INQUIRY"
     return "PENDING"
 }

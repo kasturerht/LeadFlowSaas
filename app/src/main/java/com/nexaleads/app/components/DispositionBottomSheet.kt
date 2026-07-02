@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.nexaleads.app.Constants
 import com.nexaleads.app.data.model.Lead
+import com.nexaleads.app.data.model.getPrimaryCategory
 import com.nexaleads.app.getCallDurationFromSystemLog
 import com.nexaleads.app.ui.theme.*
 import com.nexaleads.app.ui.viewmodel.CallingViewModel
@@ -50,6 +51,8 @@ fun DispositionBottomSheet(
     val haptic = LocalHapticFeedback.current
     val coroutineScope = rememberCoroutineScope()
     val mainScope = rememberCoroutineScope()
+    val productsList by viewModel.products.collectAsState()
+    val pricesMap = remember(productsList) { productsList.associate { it.name to it.price } }
 
     var selectedProduct by remember { mutableStateOf(lead.product) }
     var showProductPopup by remember { mutableStateOf(false) }
@@ -60,6 +63,14 @@ fun DispositionBottomSheet(
     var isSaving by remember { mutableStateOf(false) }
     var attemptedSaveWithoutNotes by remember { mutableStateOf(false) }
 
+    // Part 3: Behavioral & UX tracking state
+    var selectedSubStatus by remember { mutableStateOf(lead.subStatus ?: "") }
+    var selectedTimeSlot by remember { mutableStateOf(lead.followUpTimeSlot ?: "") }
+    var selectedPaymentStatus by remember { mutableStateOf(lead.paymentStatus ?: "") }
+    var showShortCallWarningDialog by remember { mutableStateOf(false) }
+    var hasConfirmedShortCall by remember { mutableStateOf(false) }
+    var calculatedDuration by remember { mutableStateOf(0) }
+
     // Order Dispatch Fields
     var shippingAddress by remember { mutableStateOf(lead.address) }
     var shippingCity by remember { mutableStateOf(lead.city) }
@@ -67,14 +78,158 @@ fun DispositionBottomSheet(
     var paymentMethod by remember { mutableStateOf(lead.paymentMethod) }
     var orderAmount by remember { mutableStateOf(lead.orderAmount) }
 
+    // WhatsApp Automation State
+    var autoLaunchWhatsApp by remember { mutableStateOf(true) }
+    var includeAddress by remember { mutableStateOf(true) }
+    var includePaymentLink by remember { mutableStateOf(false) }
+    var includeDispatchNote by remember { mutableStateOf(true) }
+    var includeSupportPhone by remember { mutableStateOf(true) }
+    var selectedLanguage by remember { mutableStateOf("English") }
+
+    val calculatedTotal = remember(selectedProduct, pricesMap) { calculateTotalAmount(selectedProduct, pricesMap) }
+
+    LaunchedEffect(calculatedTotal) {
+        if (calculatedTotal > 0) {
+            orderAmount = calculatedTotal.toInt().toString()
+        }
+    }
+
+    LaunchedEffect(paymentMethod, selectedPaymentStatus) {
+        if (selectedPaymentStatus == "⏳ UPI Link Sent" || selectedPaymentStatus.contains("Link", ignoreCase = true)) {
+            includePaymentLink = true
+        } else if (paymentMethod.equals("COD", ignoreCase = true) || selectedPaymentStatus == "✅ Payment Verified") {
+            includePaymentLink = false
+        }
+    }
+
     val customTagsPrefKey = "custom_tags_fmcg"
     val sharedPrefs = context.getSharedPreferences("LeadFlowPrefs", Context.MODE_PRIVATE)
     var userCustomTags by remember { mutableStateOf(sharedPrefs.getStringSet(customTagsPrefKey, setOf())?.toList() ?: emptyList()) }
     var showCustomTagDialog by remember { mutableStateOf(false) }
     var newCustomTagText by remember { mutableStateOf("") }
 
+    val executeSave: (Int) -> Unit = { durationSeconds ->
+        isSaving = true
+        val currentLead = lead
+        val previousStatus = currentLead.status
+        val previousNotes = currentLead.notes
+        
+        val finalNotes = if (remarkNotes.trim().isNotEmpty()) {
+            if (previousNotes.isEmpty()) {
+                remarkNotes.trim()
+            } else {
+                "$previousNotes\n\n📞 ${remarkNotes.trim()}"
+            }
+        } else {
+            previousNotes
+        }
+
+        val previousFollowUpDate = currentLead.followUpDate
+        val leadIdToRevert = currentLead.id
+        val isHighIntent = selectedStatus == Constants.STATUS_ORDER_PLACED || selectedStatus == "Order Placed" || selectedStatus == Constants.STATUS_INQUIRY || selectedStatus == "Product Inquiry Only"
+        // Data Sanitization based on final status
+        val isProductRelevant = selectedStatus in listOf(Constants.STATUS_INQUIRY, "Product Inquiry Only", "Product Inquiry", Constants.STATUS_ORDER_PLACED, "Order Placed", Constants.STATUS_FOLLOW_UP, "Follow-up")
+        val isFollowUpRelevant = selectedStatus in listOf(Constants.STATUS_FOLLOW_UP, "Follow-up")
+        val isOrderRelevant = selectedStatus in listOf(Constants.STATUS_ORDER_PLACED, "Order Placed")
+        val isSubStatusRelevant = selectedStatus in listOf(Constants.STATUS_CALL_NOT_ANSWERED, "No Answer", "Busy")
+
+        val finalSubStatus = if (isSubStatusRelevant) selectedSubStatus else ""
+        val finalProduct = if (isProductRelevant) selectedProduct else ""
+        val finalFollowUpDate = if (isFollowUpRelevant && followUpDate.isNotEmpty()) followUpDate else null
+        val finalTimeSlot = if (isFollowUpRelevant) selectedTimeSlot else ""
+        val finalShippingAddress = if (isOrderRelevant) shippingAddress else ""
+        val finalShippingCity = if (isOrderRelevant) shippingCity else ""
+        val finalShippingPincode = if (isOrderRelevant) shippingPincode else ""
+        val finalPaymentMethod = if (isOrderRelevant) paymentMethod else ""
+        val finalPaymentStatus = if (isOrderRelevant) selectedPaymentStatus else ""
+        val finalOrderAmount = if (isOrderRelevant) orderAmount else ""
+        
+        viewModel.saveDisposition(
+            lead = currentLead,
+            status = selectedStatus,
+            notes = finalNotes,
+            newInteractionNote = remarkNotes.trim(),
+            followUpDate = finalFollowUpDate,
+            product = finalProduct,
+            address = finalShippingAddress,
+            city = finalShippingCity,
+            pincode = finalShippingPincode,
+            paymentMethod = finalPaymentMethod,
+            orderAmount = finalOrderAmount,
+            callDurationSeconds = durationSeconds,
+            subStatus = finalSubStatus,
+            followUpTimeSlot = finalTimeSlot,
+            paymentStatus = finalPaymentStatus,
+            isSuspiciousShortCall = (durationSeconds < 5 && isHighIntent),
+            onSuccess = { interactionId ->
+                coroutineScope.launch { sheetState.hide() }.invokeOnCompletion {
+                    if ((selectedStatus == "Order Placed" || selectedStatus == Constants.STATUS_ORDER_PLACED) && autoLaunchWhatsApp) {
+                        com.nexaleads.app.utils.WhatsAppSender.sendOrderConfirmation(
+                            context = context,
+                            phone = currentLead.phone,
+                            customerName = currentLead.name,
+                            products = selectedProduct,
+                            address = listOf(shippingAddress, shippingCity, shippingPincode).filter { it.isNotBlank() }.joinToString(", "),
+                            paymentMode = if (paymentMethod.equals("Prepaid", ignoreCase = true)) "$paymentMethod - $selectedPaymentStatus" else paymentMethod,
+                            includeAddress = includeAddress,
+                            includePaymentLink = includePaymentLink,
+                            includeDispatchNote = includeDispatchNote,
+                            includeSupportPhone = includeSupportPhone,
+                            language = selectedLanguage
+                        )
+                    }
+                    onSaveSuccess(selectedStatus)
+                    isSaving = false
+                    
+                    mainScope.launch {
+                        val result = snackbarHostState.showSnackbar(message = "Lead saved.", actionLabel = "UNDO", duration = SnackbarDuration.Short)
+                        if (result == SnackbarResult.ActionPerformed) {
+                            viewModel.undoDisposition(leadIdToRevert, previousStatus, previousNotes, previousFollowUpDate, interactionId)
+                            Toast.makeText(context, "Undo successful. Lead reverted.", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+            },
+            onError = { error ->
+                isSaving = false
+                Toast.makeText(context, "Failed: $error", Toast.LENGTH_SHORT).show()
+            }
+        )
+    }
+
+    if (showShortCallWarningDialog) {
+        AlertDialog(
+            onDismissRequest = { showShortCallWarningDialog = false },
+            title = { Text("⚠️ Short Call Detected", color = StatusDanger, fontWeight = FontWeight.Bold) },
+            text = { Text("The recorded call duration is under 5 seconds (${calculatedDuration}s). Are you sure a real order/inquiry occurred? This disposition will be flagged for Admin review.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showShortCallWarningDialog = false
+                        hasConfirmedShortCall = true
+                        executeSave(calculatedDuration)
+                    }
+                ) {
+                    Text("Yes, Confirm", color = StatusDanger, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showShortCallWarningDialog = false }) {
+                    Text("Cancel", color = TextSecondary)
+                }
+            },
+            containerColor = SurfaceLight
+        )
+    }
+
     if (showDatePicker) {
-        val datePickerState = rememberDatePickerState()
+        val datePickerState = rememberDatePickerState(
+            selectableDates = object : SelectableDates {
+                override fun isSelectableDate(utcTimeMillis: Long): Boolean {
+                    return utcTimeMillis >= System.currentTimeMillis() - 86400000L
+                }
+            }
+        )
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
@@ -141,31 +296,37 @@ fun DispositionBottomSheet(
                                 rowItems.forEach { option ->
                                     val isSelected = selectedStatus == option
                                     val iconData = statusIcons[option]
-                                    val labelText = indianStatusLabels[option]?.substringAfter(" ") ?: option
+                                    val labelText = indianStatusLabels[option] ?: option
                                     
                                     Box(
                                         modifier = Modifier
                                             .weight(1f)
-                                            .clip(RoundedCornerShape(12.dp))
+                                            .clip(RoundedCornerShape(16.dp))
                                             .background(if (isSelected) (iconData?.tint ?: ModernViolet).copy(alpha = 0.08f) else SurfaceLight)
-                                            .border(1.dp, if (isSelected) (iconData?.tint ?: ModernViolet) else BorderSubtle, RoundedCornerShape(12.dp))
+                                            .border(1.dp, if (isSelected) (iconData?.tint ?: ModernViolet) else BorderSubtle, RoundedCornerShape(16.dp))
                                             .clickable { 
                                                 haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
-                                                selectedStatus = option
+                                                val newStatus = if (selectedStatus == option) "" else option
+                                                selectedStatus = newStatus
+                                                if (newStatus == Constants.STATUS_INQUIRY || newStatus == "Product Inquiry Only" || newStatus == "Product Inquiry" || newStatus == Constants.STATUS_ORDER_PLACED || newStatus == "Order Placed" || newStatus == Constants.STATUS_FOLLOW_UP || newStatus == "Follow-up") {
+                                                    if (selectedProduct.isEmpty()) {
+                                                        showProductPopup = true
+                                                    }
+                                                }
                                             }
-                                            .padding(horizontal = 6.dp, vertical = 8.dp),
+                                            .padding(horizontal = 12.dp, vertical = 14.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                             if (iconData != null) {
                                                 Icon(
                                                     imageVector = iconData.icon,
                                                     contentDescription = null,
                                                     tint = if (isSelected) iconData.tint else TextSecondary,
-                                                    modifier = Modifier.size(20.dp)
+                                                    modifier = Modifier.size(24.dp)
                                                 )
                                             }
-                                            Text(labelText, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (isSelected) TextPrimary else TextSecondary, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                            Text(labelText, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = if (isSelected) TextPrimary else TextSecondary, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                         }
                                     }
                                 }
@@ -176,33 +337,76 @@ fun DispositionBottomSheet(
                 }
             }
 
+            // SECTION: SUB-STATUS (Conditional for Call Not Answered)
+            if (selectedStatus == Constants.STATUS_CALL_NOT_ANSWERED || selectedStatus == "No Answer" || selectedStatus == "Busy") {
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("CALL OUTCOME REASON", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFFF43F5E), letterSpacing = 1.2.sp)
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            listOf("🔔 Ringing", "🔴 Busy", "📵 Switched Off").forEach { sub ->
+                                val isSelected = selectedSubStatus == sub
+                                Box(
+                                    modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(if (isSelected) Color(0xFFF43F5E) else SurfaceLight).border(1.dp, if (isSelected) Color(0xFFF43F5E) else BorderSubtle, RoundedCornerShape(12.dp)).clickable { selectedSubStatus = if (selectedSubStatus == sub) "" else sub }.padding(horizontal = 8.dp, vertical = 12.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(sub, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (isSelected) CleanWhite else TextPrimary, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             // SECTION: PRODUCT INTERESTED IN (Conditional)
-            if (selectedStatus == "Order Placed" || selectedStatus == "Product Inquiry Only" || selectedStatus == "Follow-up") {
+            if (selectedStatus == "Order Placed" || selectedStatus == Constants.STATUS_ORDER_PLACED || selectedStatus == "Product Inquiry Only" || selectedStatus == Constants.STATUS_INQUIRY || selectedStatus == "Follow-up" || selectedStatus == Constants.STATUS_FOLLOW_UP) {
                 item {
                     SmartTriggerChip(
                         label = "Add Product",
                         selectedOption = selectedProduct,
-                        iconData = productIcons[selectedProduct],
+                        iconData = getIconForSelection(selectedProduct, productIcons),
+                        emojiData = getEmojiForSelection(selectedProduct, productsList.associate { it.name to it.emojiIcon }),
                         onClick = { showProductPopup = true },
-                        modifier = Modifier.fillMaxWidth(0.5f)
+                        modifier = Modifier.fillMaxWidth(0.5f),
+                        onClear = { selectedProduct = "" }
                     )
+                    if (calculatedTotal > 0) {
+                        Text(
+                            text = "Total Order Value: ₹${calculatedTotal.toInt()}",
+                            color = ModernViolet,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(start = 4.dp, top = 8.dp)
+                        )
+                    }
                 }
             }
 
-            // SECTION: DATE
-            if (selectedStatus == "Follow-up") {
+            // SECTION: DATE & TIME SLOT
+            if (selectedStatus == "Follow-up" || selectedStatus == Constants.STATUS_FOLLOW_UP) {
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Text("FOLLOW-UP DATE", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextSecondary, letterSpacing = 1.2.sp)
                         Box(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(SurfaceLight).border(1.dp, BorderSubtle, RoundedCornerShape(10.dp)).clickable { showDatePicker = true }.padding(14.dp)) {
                             Text(if (followUpDate.isEmpty()) "Select Date" else followUpDate, color = if (followUpDate.isEmpty()) TextSecondary else TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
                         }
+                        Text("PREFERRED TIME SLOT", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextSecondary, letterSpacing = 1.2.sp)
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            listOf("🌅 Morning", "☀️ Afternoon", "🌙 Evening").forEach { slot ->
+                                val isSelected = selectedTimeSlot == slot
+                                Box(
+                                    modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(if (isSelected) StatusWarning else SurfaceLight).border(1.dp, if (isSelected) StatusWarning else BorderSubtle, RoundedCornerShape(12.dp)).clickable { selectedTimeSlot = if (selectedTimeSlot == slot) "" else slot }.padding(horizontal = 8.dp, vertical = 12.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(slot, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (isSelected) CleanWhite else TextPrimary, textAlign = TextAlign.Center, maxLines = 1)
+                                }
+                            }
+                        }
                     }
                 }
             }
 
             // SECTION: ORDER DETAILS
-            if (selectedStatus == "Order Placed") {
+            if (selectedStatus == "Order Placed" || selectedStatus == Constants.STATUS_ORDER_PLACED) {
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Text("DISPATCH DETAILS (REQUIRED)", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = ModernViolet, letterSpacing = 1.2.sp)
@@ -231,10 +435,43 @@ fun DispositionBottomSheet(
                             listOf("COD", "Prepaid").forEach { pm ->
                                 val isSelected = paymentMethod == pm
                                 Box(
-                                    modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(if (isSelected) ModernViolet else SurfaceLight).border(1.dp, if (isSelected) ModernViolet else BorderSubtle, RoundedCornerShape(8.dp)).clickable { paymentMethod = pm }.padding(horizontal = 14.dp, vertical = 10.dp)
+                                    modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(if (isSelected) ModernViolet else SurfaceLight).border(1.dp, if (isSelected) ModernViolet else BorderSubtle, RoundedCornerShape(8.dp)).clickable { paymentMethod = if (paymentMethod == pm) "" else pm }.padding(horizontal = 14.dp, vertical = 10.dp)
                                 ) { Text(pm, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (isSelected) CleanWhite else TextSecondary) }
                             }
                         }
+                        if (paymentMethod.equals("Prepaid", ignoreCase = true)) {
+                            Text("PREPAID PAYMENT VERIFICATION", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = StatusSuccess, letterSpacing = 1.2.sp)
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                listOf("⏳ UPI Link Sent", "✅ Payment Verified").forEach { pStatus ->
+                                    val isSelected = selectedPaymentStatus == pStatus
+                                    Box(
+                                        modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(if (isSelected) StatusSuccess else SurfaceLight).border(1.dp, if (isSelected) StatusSuccess else BorderSubtle, RoundedCornerShape(12.dp)).clickable { selectedPaymentStatus = if (selectedPaymentStatus == pStatus) "" else pStatus }.padding(horizontal = 8.dp, vertical = 12.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(pStatus, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (isSelected) CleanWhite else TextPrimary, textAlign = TextAlign.Center, maxLines = 1)
+                                    }
+                                }
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        SmartWhatsAppOrderCard(
+                            customerName = lead.name,
+                            products = selectedProduct,
+                            address = listOf(shippingAddress, shippingCity, shippingPincode).filter { it.isNotBlank() }.joinToString(", "),
+                            paymentMode = if (paymentMethod.equals("Prepaid", ignoreCase = true)) "$paymentMethod - $selectedPaymentStatus" else paymentMethod,
+                            autoLaunch = autoLaunchWhatsApp,
+                            onAutoLaunchChange = { autoLaunchWhatsApp = it },
+                            includeAddress = includeAddress,
+                            onIncludeAddressChange = { includeAddress = it },
+                            includePaymentLink = includePaymentLink,
+                            onIncludePaymentLinkChange = { includePaymentLink = it },
+                            includeDispatchNote = includeDispatchNote,
+                            onIncludeDispatchNoteChange = { includeDispatchNote = it },
+                            includeSupportPhone = includeSupportPhone,
+                            onIncludeSupportPhoneChange = { includeSupportPhone = it },
+                            selectedLanguage = selectedLanguage,
+                            onLanguageChange = { selectedLanguage = it }
+                        )
                     }
                 }
             }
@@ -318,7 +555,7 @@ fun DispositionBottomSheet(
                         val currentLead = lead
 
                         if (selectedStatus.isEmpty()) {
-                            Toast.makeText(context, "कृपया योग्य Status निवडा (Select Status)", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Please select a Status Disposition", Toast.LENGTH_SHORT).show()
                             return@Button
                         }
 
@@ -342,12 +579,10 @@ fun DispositionBottomSheet(
 
                         if (remarkNotes.trim().isEmpty() && !attemptedSaveWithoutNotes) {
                             attemptedSaveWithoutNotes = true
-                            Toast.makeText(context, "Notes भरा किंवा Skip करण्यासाठी पुन्हा Save दाबा", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Please enter notes or click Save again to skip", Toast.LENGTH_SHORT).show()
                             return@Button
                         }
 
-                        isSaving = true
-                        
                         val now = System.currentTimeMillis()
                         val durationSeconds = if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALL_LOG) == PackageManager.PERMISSION_GRANTED) {
                             val sysDuration = getCallDurationFromSystemLog(context, currentLead.phone)
@@ -355,55 +590,15 @@ fun DispositionBottomSheet(
                         } else {
                             if (callStartTimestamp != null && callStartTimestamp > 0L) ((now - callStartTimestamp) / 1000).coerceIn(1, 3600).toInt() else 30
                         }
+                        calculatedDuration = durationSeconds
 
-                        val previousStatus = currentLead.status
-                        val previousNotes = currentLead.notes
-                        
-                        val finalNotes = if (remarkNotes.trim().isNotEmpty()) {
-                            if (previousNotes.isEmpty()) {
-                                remarkNotes.trim()
-                            } else {
-                                "$previousNotes\n\n📞 ${remarkNotes.trim()}"
-                            }
-                        } else {
-                            previousNotes
+                        val isHighIntent = selectedStatus == Constants.STATUS_ORDER_PLACED || selectedStatus == "Order Placed" || selectedStatus == Constants.STATUS_INQUIRY || selectedStatus == "Product Inquiry Only"
+                        if (durationSeconds < 5 && isHighIntent && !hasConfirmedShortCall) {
+                            showShortCallWarningDialog = true
+                            return@Button
                         }
-
-                        val previousFollowUpDate = currentLead.followUpDate
-                        val leadIdToRevert = currentLead.id
                         
-                        viewModel.saveDisposition(
-                            lead = currentLead,
-                            status = selectedStatus,
-                            notes = finalNotes,
-                            newInteractionNote = remarkNotes.trim(),
-                            followUpDate = if (selectedStatus == "Follow-up" && followUpDate.isNotEmpty()) followUpDate else null,
-                            product = selectedProduct,
-                            address = shippingAddress,
-                            city = shippingCity,
-                            pincode = shippingPincode,
-                            paymentMethod = paymentMethod,
-                            orderAmount = orderAmount,
-                            callDurationSeconds = durationSeconds,
-                            onSuccess = { interactionId ->
-                                coroutineScope.launch { sheetState.hide() }.invokeOnCompletion {
-                                    onSaveSuccess(selectedStatus)
-                                    isSaving = false
-                                    
-                                    mainScope.launch {
-                                        val result = snackbarHostState.showSnackbar(message = "Lead saved.", actionLabel = "UNDO", duration = SnackbarDuration.Short)
-                                        if (result == SnackbarResult.ActionPerformed) {
-                                            viewModel.undoDisposition(leadIdToRevert, previousStatus, previousNotes, previousFollowUpDate, interactionId)
-                                            Toast.makeText(context, "Undo successful. Lead reverted.", Toast.LENGTH_SHORT).show()
-                                        }
-                                    }
-                                }
-                            },
-                            onError = { error ->
-                                isSaving = false
-                                Toast.makeText(context, "Failed: $error", Toast.LENGTH_SHORT).show()
-                            }
-                        )
+                        executeSave(durationSeconds)
                     }
                 ) {
                     if (isSaving) {
@@ -415,26 +610,50 @@ fun DispositionBottomSheet(
                 
                 Spacer(modifier = Modifier.height(8.dp))
                 
-                TextButton(
-                    onClick = {
-                        if (isSaving) return@TextButton
-                        isSaving = true
-                        viewModel.archiveLead(
-                            leadId = lead.id,
-                            onSuccess = {
-                                isSaving = false
-                                Toast.makeText(context, "Lead Deleted", Toast.LENGTH_SHORT).show()
-                                onSaveSuccess("Deleted")
-                            },
-                            onError = { err ->
-                                isSaving = false
-                                Toast.makeText(context, err, Toast.LENGTH_SHORT).show()
-                            }
+                val isConverted = lead.status.equals("Order Placed", ignoreCase = true) || 
+                                  lead.status.equals("Converted", ignoreCase = true) || 
+                                  lead.getPrimaryCategory() == "CONVERTED"
+                
+                if (isConverted) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color(0xFFF1F5F9))
+                            .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(8.dp))
+                            .padding(12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "🔒 Converted orders cannot be deleted by telecallers. Contact Web Admin for order cancellation.",
+                            color = Color(0xFF64748B),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            textAlign = TextAlign.Center
                         )
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Delete Lead", color = Color.Red, fontWeight = FontWeight.Bold)
+                    }
+                } else {
+                    TextButton(
+                        onClick = {
+                            if (isSaving) return@TextButton
+                            isSaving = true
+                            viewModel.archiveLead(
+                                leadId = lead.id,
+                                onSuccess = {
+                                    isSaving = false
+                                    Toast.makeText(context, "Lead Deleted", Toast.LENGTH_SHORT).show()
+                                    onSaveSuccess("Deleted")
+                                },
+                                onError = { err ->
+                                    isSaving = false
+                                    Toast.makeText(context, err, Toast.LENGTH_SHORT).show()
+                                }
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Delete Lead", color = Color.Red, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         }
@@ -482,11 +701,16 @@ fun DispositionBottomSheet(
     }
     
     if (showProductPopup) {
+        val productNames = productsList.map { it.name }.ifEmpty { Constants.PRODUCTS }
         SmartGridPopup(
             title = "Select Product",
-            options = Constants.PRODUCTS,
+            options = productNames,
             icons = productIcons,
-            onSelect = { selectedProduct = it; showProductPopup = false },
+            emojis = productsList.associate { it.name to it.emojiIcon },
+            prices = pricesMap,
+            selectedOption = selectedProduct,
+            isMultiSelect = true,
+            onSelect = { selectedProduct = it },
             onDismiss = { showProductPopup = false }
         )
     }

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexaleads.app.data.model.Interaction
 import com.nexaleads.app.data.model.Lead
+import com.nexaleads.app.data.models.Product
 import com.nexaleads.app.data.repository.LeadRepository
 import com.nexaleads.app.utils.PhoneUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -22,6 +23,25 @@ import android.content.Context
 import android.content.SharedPreferences
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
+
+data class LeadFormDraft(
+    val selectedNumber: String = "",
+    val manualMode: Boolean = false,
+    val clientName: String = "",
+    val source: String = "",
+    val selectedProduct: String = "",
+    val selectedStatus: String = "",
+    val selectedSubStatus: String = "",
+    val selectedTimeSlot: String = "",
+    val selectedPaymentStatus: String = "",
+    val remarkNotes: String = "",
+    val followUpDate: String = "",
+    val shippingAddress: String = "",
+    val shippingCity: String = "",
+    val shippingPincode: String = "",
+    val paymentMethod: String = "",
+    val orderAmount: String = ""
+)
 
 @HiltViewModel
 class CallingViewModel @Inject constructor(
@@ -42,6 +62,9 @@ class CallingViewModel @Inject constructor(
         _pendingMediaLead.value = lead
     }
 
+    private val _products = MutableStateFlow<List<Product>>(emptyList())
+    val products: StateFlow<List<Product>> = _products
+
     private val prefs: SharedPreferences = context.getSharedPreferences("leadflow_prefs", Context.MODE_PRIVATE)
 
     private val _pendingCallLeadId = MutableStateFlow<String?>(prefs.getString("pending_call_lead_id", null))
@@ -59,6 +82,13 @@ class CallingViewModel @Inject constructor(
             val twoHoursInMillis = 2 * 60 * 60 * 1000L
             if (System.currentTimeMillis() - currentTimestamp > twoHoursInMillis) {
                 clearPendingCall()
+            }
+        }
+        
+        viewModelScope.launch {
+            repository.seedProductsIfEmpty()
+            repository.getProducts().collect { fetchedProducts ->
+                _products.value = fetchedProducts
             }
         }
     }
@@ -80,6 +110,64 @@ class CallingViewModel @Inject constructor(
             .apply()
         _pendingCallLeadId.value = null
         _pendingCallTimestamp.value = null
+    }
+
+    private fun loadDraftFromPrefs(): LeadFormDraft {
+        return LeadFormDraft(
+            selectedNumber = prefs.getString("draft_number", "") ?: "",
+            manualMode = prefs.getBoolean("draft_manual", false),
+            clientName = prefs.getString("draft_name", "") ?: "",
+            source = prefs.getString("draft_source", "") ?: "",
+            selectedProduct = prefs.getString("draft_product", "") ?: "",
+            selectedStatus = prefs.getString("draft_status", "") ?: "",
+            selectedSubStatus = prefs.getString("draft_sub_status", "") ?: "",
+            selectedTimeSlot = prefs.getString("draft_time_slot", "") ?: "",
+            selectedPaymentStatus = prefs.getString("draft_payment_status", "") ?: "",
+            remarkNotes = prefs.getString("draft_remark", "") ?: "",
+            followUpDate = prefs.getString("draft_followup", "") ?: "",
+            shippingAddress = prefs.getString("draft_address", "") ?: "",
+            shippingCity = prefs.getString("draft_city", "") ?: "",
+            shippingPincode = prefs.getString("draft_pincode", "") ?: "",
+            paymentMethod = prefs.getString("draft_payment_method", "") ?: "",
+            orderAmount = prefs.getString("draft_order_amount", "") ?: ""
+        )
+    }
+
+    private val _leadDraft = MutableStateFlow(loadDraftFromPrefs())
+    val leadDraft: StateFlow<LeadFormDraft> = _leadDraft
+
+    fun saveDraft(draft: LeadFormDraft) {
+        prefs.edit().apply {
+            putString("draft_number", draft.selectedNumber)
+            putBoolean("draft_manual", draft.manualMode)
+            putString("draft_name", draft.clientName)
+            putString("draft_source", draft.source)
+            putString("draft_product", draft.selectedProduct)
+            putString("draft_status", draft.selectedStatus)
+            putString("draft_sub_status", draft.selectedSubStatus)
+            putString("draft_time_slot", draft.selectedTimeSlot)
+            putString("draft_payment_status", draft.selectedPaymentStatus)
+            putString("draft_remark", draft.remarkNotes)
+            putString("draft_followup", draft.followUpDate)
+            putString("draft_address", draft.shippingAddress)
+            putString("draft_city", draft.shippingCity)
+            putString("draft_pincode", draft.shippingPincode)
+            putString("draft_payment_method", draft.paymentMethod)
+            putString("draft_order_amount", draft.orderAmount)
+        }.apply()
+        _leadDraft.value = draft
+    }
+
+    fun clearDraft() {
+        saveDraft(LeadFormDraft())
+    }
+
+    private val _saveToContactsPreference = MutableStateFlow(prefs.getBoolean("pref_save_contacts", true))
+    val saveToContactsPreference: StateFlow<Boolean> = _saveToContactsPreference
+
+    fun setSaveToContactsPreference(save: Boolean) {
+        prefs.edit().putBoolean("pref_save_contacts", save).apply()
+        _saveToContactsPreference.value = save
     }
 
     fun initialize(userId: String, name: String) {
@@ -108,6 +196,10 @@ class CallingViewModel @Inject constructor(
         paymentMethod: String,
         orderAmount: String,
         callDurationSeconds: Int,
+        subStatus: String? = null,
+        followUpTimeSlot: String? = null,
+        paymentStatus: String? = null,
+        isSuspiciousShortCall: Boolean = false,
         onSuccess: (String) -> Unit,
         onError: (String) -> Unit
     ) {
@@ -128,7 +220,11 @@ class CallingViewModel @Inject constructor(
                     "city" to city,
                     "pincode" to pincode,
                     "paymentMethod" to paymentMethod,
-                    "orderAmount" to orderAmount
+                    "orderAmount" to orderAmount,
+                    "subStatus" to subStatus,
+                    "followUpTimeSlot" to followUpTimeSlot,
+                    "paymentStatus" to paymentStatus,
+                    "isSuspiciousShortCall" to isSuspiciousShortCall
                 )
 
                 repository.updateLead(lead.id, updateMap)
@@ -145,7 +241,17 @@ class CallingViewModel @Inject constructor(
                     timestamp = isoTimestamp,
                     duration = callDurationSeconds,
                     followUpDate = followUpDate,
-                    isVisitLog = false
+                    isVisitLog = false,
+                    subStatus = subStatus,
+                    followUpTimeSlot = followUpTimeSlot,
+                    paymentStatus = paymentStatus,
+                    isSuspiciousShortCall = isSuspiciousShortCall,
+                    product = product,
+                    address = address,
+                    city = city,
+                    pincode = pincode,
+                    paymentMethod = paymentMethod,
+                    orderAmount = orderAmount
                 )
                 repository.addInteraction(interaction)
                 onSuccess(logId)
@@ -182,14 +288,17 @@ class CallingViewModel @Inject constructor(
         phone: String,
         source: String,
         status: String,
+        subStatus: String = "",
         notes: String,
         followUpDate: String?,
+        followUpTimeSlot: String = "",
         product: String,
         address: String,
         city: String,
         pincode: String,
         paymentMethod: String,
         orderAmount: String,
+        paymentStatus: String = "",
         onSuccess: (String) -> Unit,
         onError: (String) -> Unit
     ) {
@@ -210,9 +319,11 @@ class CallingViewModel @Inject constructor(
                     phone = phone,
                     source = source,
                     status = status,
+                    subStatus = subStatus,
                     notes = finalNotes,
                     label = "Manual Inbound",
                     followUpDate = followUpDate,
+                    followUpTimeSlot = followUpTimeSlot,
                     archived = false,
                     assignedTo = _currentUserId.value ?: "",
                     product = product,
@@ -220,7 +331,8 @@ class CallingViewModel @Inject constructor(
                     city = city,
                     pincode = pincode,
                     paymentMethod = paymentMethod,
-                    orderAmount = orderAmount
+                    orderAmount = orderAmount,
+                    paymentStatus = paymentStatus
                 )
 
                 val logId = "i-" + UUID.randomUUID().toString().take(6)
@@ -231,18 +343,20 @@ class CallingViewModel @Inject constructor(
                     callerName = callerName,
                     statusBefore = "New",
                     statusAfter = status,
+                    subStatus = subStatus,
                     notes = notes.trim(),
                     timestamp = isoTimestamp,
                     duration = 0, // Manual entry
                     followUpDate = followUpDate,
+                    followUpTimeSlot = followUpTimeSlot,
                     isVisitLog = false
                 )
 
-                val success = repository.createManualLeadBatch(lead, interaction)
-                if (success) {
+                val errorMsg = repository.createManualLeadBatch(lead, interaction)
+                if (errorMsg == null) {
                     onSuccess(newLeadId)
                 } else {
-                    onError("Failed to save to database")
+                    onError("DB Error: $errorMsg")
                 }
             } catch (e: Exception) {
                 onError(e.message ?: "Unknown error")
