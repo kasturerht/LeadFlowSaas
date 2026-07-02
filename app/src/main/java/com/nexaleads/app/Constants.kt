@@ -2,14 +2,19 @@ package com.nexaleads.app
 
 object Constants {
     val PROCESSED_STATUSES = listOf(
-        "Follow-up", 
-        "Visit Scheduled",
-        "Visited",
-        "Converted", 
-        "No Answer",  
-        "Busy", 
-        "Warm Lead",
-        "Not Interested", 
+        "Call Not Answered",
+        "Product Inquiry Only",
+        "Follow-up",
+        "Order Placed",
+        "Not Interested",
         "Invalid"
+    )
+
+    val PRODUCTS = listOf(
+        "Spirulina",
+        "Sea Buckthorn",
+        "Spirulina Face Pack",
+        "Spirulina Cookies",
+        "Multiple / Combos"
     )
 }

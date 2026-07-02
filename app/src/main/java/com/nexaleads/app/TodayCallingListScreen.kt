@@ -425,14 +425,6 @@ fun TodayCallingListScreen(
                                         val rawName = getDisplayLeadName(item)
                                         val displayName = rawName.split(" ").joinToString(" ") { it.replaceFirstChar { char -> if (char.isLowerCase()) char.titlecase(Locale.ROOT) else char.toString() } }
                                         Text(displayName, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = TextPrimary, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-                                        if (item.visited) {
-                                            androidx.compose.material3.Icon(
-                                                imageVector = Icons.Default.CheckCircle,
-                                                contentDescription = "Visited",
-                                                modifier = Modifier.size(16.dp),
-                                                tint = StatusSuccess
-                                            )
-                                        }
                                     }
                                     val statusColor = statusColors[item.status] ?: ModernViolet
                                     Row(
@@ -448,6 +440,9 @@ fun TodayCallingListScreen(
                                 
                                 // Dynamic Meta Row
                                 val metaParts = mutableListOf<String>()
+                                if (item.product.isNotEmpty()) metaParts.add("📦 ${item.product}")
+                                if (item.orderAmount.isNotEmpty()) metaParts.add("₹${item.orderAmount}")
+                                if (item.city.isNotEmpty()) metaParts.add("📍 ${item.city}")
                                 if (item.source.isNotEmpty()) metaParts.add(item.source.uppercase(Locale.ROOT))
                                 val labelText = if (item.label.isEmpty()) "General" else item.label
                                 metaParts.add(labelText.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString() })

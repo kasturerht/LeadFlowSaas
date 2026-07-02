@@ -35,8 +35,13 @@ class LeadRepository @Inject constructor(
                             label = doc.getString("label") ?: "",
                             followUpDate = doc.getString("followUpDate"),
                             archived = doc.getBoolean("archived") ?: false,
-                            visited = doc.getBoolean("visited") ?: false,
-                            assignedTo = doc.getString("assignedTo") ?: ""
+                            assignedTo = doc.getString("assignedTo") ?: "",
+                            product = doc.getString("product") ?: "",
+                            address = doc.getString("address") ?: "",
+                            city = doc.getString("city") ?: "",
+                            pincode = doc.getString("pincode") ?: "",
+                            paymentMethod = doc.getString("paymentMethod") ?: "",
+                            orderAmount = doc.getString("orderAmount") ?: ""
                         )
                     }
                     trySend(leads)
@@ -136,15 +141,13 @@ class LeadRepository @Inject constructor(
             val latestInteraction = remainingInteractions.lastOrNull()
             val finalStatus = latestInteraction?.statusAfter ?: "Pending"
             val finalFollowUpDate = latestInteraction?.followUpDate
-            val hasEverVisited = remainingInteractions.any { it.statusAfter == "Visited" || it.isVisitLog }
 
             val batch = db.batch()
             val leadRef = db.collection("leads").document(leadId)
             batch.update(leadRef, mapOf(
                 "status" to finalStatus,
                 "notes" to rebuiltNotes,
-                "followUpDate" to finalFollowUpDate,
-                "visited" to hasEverVisited
+                "followUpDate" to finalFollowUpDate
             ))
             
             val interactionRef = db.collection("interactions").document(interactionIdToDelete)
@@ -194,8 +197,13 @@ class LeadRepository @Inject constructor(
                     label = doc.getString("label") ?: "",
                     followUpDate = doc.getString("followUpDate"),
                     archived = doc.getBoolean("archived") ?: false,
-                    visited = doc.getBoolean("visited") ?: false,
-                    assignedTo = doc.getString("assignedTo") ?: ""
+                    assignedTo = doc.getString("assignedTo") ?: "",
+                    product = doc.getString("product") ?: "",
+                    address = doc.getString("address") ?: "",
+                    city = doc.getString("city") ?: "",
+                    pincode = doc.getString("pincode") ?: "",
+                    paymentMethod = doc.getString("paymentMethod") ?: "",
+                    orderAmount = doc.getString("orderAmount") ?: ""
                 )
             } else null
         } catch (e: Exception) {
@@ -219,8 +227,13 @@ class LeadRepository @Inject constructor(
                 "label" to lead.label,
                 "followUpDate" to lead.followUpDate,
                 "archived" to lead.archived,
-                "visited" to lead.visited,
-                "assignedTo" to lead.assignedTo
+                "assignedTo" to lead.assignedTo,
+                "product" to lead.product,
+                "address" to lead.address,
+                "city" to lead.city,
+                "pincode" to lead.pincode,
+                "paymentMethod" to lead.paymentMethod,
+                "orderAmount" to lead.orderAmount
             ))
 
             val interactionRef = db.collection("interactions").document(interaction.id)

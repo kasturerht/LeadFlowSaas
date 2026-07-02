@@ -4,32 +4,25 @@ import android.content.Intent
 import android.net.Uri
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.History
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
-import com.nexaleads.app.data.model.getPrimaryCategory
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
@@ -38,11 +31,10 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.nexaleads.app.components.CreateLeadBottomSheet
 import com.nexaleads.app.components.DispositionBottomSheet
 import com.nexaleads.app.data.model.Lead
+import com.nexaleads.app.data.model.getPrimaryCategory
 import com.nexaleads.app.ui.theme.*
 import com.nexaleads.app.ui.viewmodel.CallingViewModel
-import java.text.SimpleDateFormat
 import java.util.*
-import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -101,77 +93,69 @@ fun DashboardScreen(
 
     // Metrics
     val activeLeads = leads.filter { !it.archived }
-    
     val pendingCount = activeLeads.count { it.getPrimaryCategory() == "PENDING" }
     val followupCount = activeLeads.count { it.getPrimaryCategory() == "FOLLOWUP" }
-    val visitScheduledCount = activeLeads.count { it.getPrimaryCategory() == "VISIT_SCHEDULED" }
-    val visitedCount = activeLeads.count { it.getPrimaryCategory() == "VISITED" }
+    val inquiryCount = activeLeads.count { it.getPrimaryCategory() == "INQUIRY" }
     val attemptedCount = activeLeads.count { it.getPrimaryCategory() == "ATTEMPTED" }
     val convertedCount = activeLeads.count { it.getPrimaryCategory() == "CONVERTED" }
     val rejectedCount = activeLeads.count { it.getPrimaryCategory() == "REJECTED" }
 
-    // Next Best Action Logic
-    val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
-    val todayStr = sdf.format(Date())
-    
     val currentHour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
     val greeting = when {
         currentHour < 12 -> "Good Morning,"
-        currentHour < 17 -> "Prime Time,"
+        currentHour < 17 -> "Good Afternoon,"
         else -> "Good Evening,"
-    }
-
-    val nextBestLead = remember(activeLeads) {
-        val followUpDue = activeLeads.firstOrNull { it.getPrimaryCategory() == "FOLLOWUP" && (it.followUpDate ?: "") <= todayStr }
-        if (followUpDue != null) return@remember Pair(followUpDue, "Follow-up due today")
-        
-        val visitDue = activeLeads.firstOrNull { it.getPrimaryCategory() == "VISIT_SCHEDULED" && (it.followUpDate ?: "") <= todayStr }
-        if (visitDue != null) return@remember Pair(visitDue, "Visit scheduled today")
-
-        val pending = activeLeads.firstOrNull { it.getPrimaryCategory() == "PENDING" }
-        if (pending != null) return@remember Pair(pending, "Hot pending lead waiting")
-
-        null
     }
 
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-        topBar = {
-            TopAppBar(
-                title = { 
-                    Column {
+        containerColor = BackgroundLight,
+        bottomBar = {
+            // TRUE SILICON VALLEY FLAT CTA
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                            colors = listOf(Color.Transparent, BackgroundLight, BackgroundLight)
+                        )
+                    ) // Seamless fade out at the bottom
+                    .navigationBarsPadding()
+                    .padding(horizontal = 24.dp, vertical = 16.dp)
+            ) {
+                Button(
+                    onClick = { 
+                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                        showCreateLeadSheet = true 
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp), // Premium standard height
+                    shape = RoundedCornerShape(16.dp), // Modern curve, not generic pill
+                    colors = ButtonDefaults.buttonColors(containerColor = ModernViolet),
+                    elevation = null, // ZERO SHADOW. Flat is premium.
+                    contentPadding = PaddingValues(0.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Add,
+                            contentDescription = "Add Lead",
+                            tint = CleanWhite,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "$greeting $callerName!", 
-                            fontWeight = FontWeight.Black, 
-                            fontSize = 24.sp,
-                            color = TextPrimary,
+                            text = "Add New Lead",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = CleanWhite,
                             letterSpacing = 0.5.sp
                         )
                     }
-                },
-                actions = {
-                    TextButton(onClick = onLogout) {
-                        Text("Logout", color = StatusDanger, fontWeight = FontWeight.Bold)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = BackgroundLight)
-            )
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { showCreateLeadSheet = true },
-                containerColor = ModernViolet,
-                contentColor = CleanWhite,
-                shape = CircleShape,
-                elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 8.dp, pressedElevation = 12.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 20.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text("+", fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                    Text("Add Lead", fontWeight = FontWeight.ExtraBold, fontSize = 15.sp, letterSpacing = 0.5.sp)
                 }
             }
         }
@@ -180,208 +164,253 @@ fun DashboardScreen(
             modifier = Modifier
                 .padding(padding)
                 .fillMaxSize()
-                .background(BackgroundLight)
                 .verticalScroll(rememberScrollState())
-                .padding(bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding())
+                .padding(bottom = 40.dp) // Extra breathing room for the fade out
         ) {
             
-            // TOP ZONE: Information & Context
-            Column(
+            // HEADER
+            Row(
                 modifier = Modifier
-                    .padding(horizontal = 24.dp, vertical = 10.dp),
-                verticalArrangement = Arrangement.spacedBy(24.dp)
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 24.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
             ) {
-                Text(
-                    text = "EXPLORE LISTS",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Black,
-                    color = TextSecondary,
-                    letterSpacing = 1.5.sp
-                )
-
-                // 2x2 Glassmorphism Grid -> Expanded to 7 categories
-                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                Column {
+                    Text(
+                        text = greeting.uppercase(),
+                        fontSize = 12.sp,
+                        color = TextSecondary,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 1.5.sp
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = callerName,
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.Black,
+                        color = TextPrimary,
+                        letterSpacing = (-0.5).sp
+                    )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Surface(
+                        shape = CircleShape,
+                        color = StatusSuccess.copy(alpha = 0.1f),
+                        border = androidx.compose.foundation.BorderStroke(0.5.dp, StatusSuccess.copy(alpha = 0.2f))
                     ) {
-                        GridCard(modifier = Modifier.weight(1f), title = "Pending", count = pendingCount, color = StatusWarning, onClick = { onSelectCategory("PENDING") })
-                        GridCard(modifier = Modifier.weight(1f), title = "Follow-ups", count = followupCount, color = ModernViolet, onClick = { onSelectCategory("FOLLOWUP") })
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text("🏆", fontSize = 14.sp)
+                            Text(
+                                text = "$convertedCount Orders Closed",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = StatusSuccess
+                            )
+                        }
                     }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        GridCard(modifier = Modifier.weight(1f), title = "Visit Sch.", count = visitScheduledCount, color = StatusSuccess, onClick = { onSelectCategory("VISIT_SCHEDULED") })
-                        GridCard(modifier = Modifier.weight(1f), title = "Visited", count = visitedCount, color = StatusSuccess, onClick = { onSelectCategory("VISITED") })
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        GridCard(modifier = Modifier.weight(1f), title = "Attempted", count = attemptedCount, color = StatusBusy, onClick = { onSelectCategory("ATTEMPTED") })
-                        GridCard(modifier = Modifier.weight(1f), title = "Converted", count = convertedCount, color = StatusSuccess, onClick = { onSelectCategory("CONVERTED") })
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        GridCard(modifier = Modifier.fillMaxWidth(), title = "Rejected", count = rejectedCount, color = StatusDanger, onClick = { onSelectCategory("REJECTED") })
-                    }
+                }
+                
+                Surface(
+                    shape = CircleShape,
+                    color = StatusDanger.copy(alpha = 0.08f),
+                    onClick = onLogout,
+                    border = androidx.compose.foundation.BorderStroke(0.5.dp, StatusDanger.copy(alpha = 0.15f))
+                ) {
+                    Text(
+                        "Logout", 
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp), 
+                        color = StatusDanger, 
+                        fontWeight = FontWeight.Bold, 
+                        fontSize = 12.sp
+                    )
                 }
             }
             
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // BOTTOM ZONE: Cockpit Action Zone
+            // TOP ZONE: Focus Metrics
             Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 16.dp),
+                    .padding(horizontal = 24.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Text(
-                    text = "NEXT BEST ACTION",
+                    text = "FOCUS METRICS",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Black,
                     color = TextSecondary,
                     letterSpacing = 1.5.sp
                 )
 
-                if (nextBestLead != null) {
-                    val (lead, reason) = nextBestLead
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .shadow(24.dp, RoundedCornerShape(24.dp), spotColor = ModernViolet.copy(alpha = 0.08f), ambientColor = ModernViolet.copy(alpha = 0.02f)),
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    PriorityWidget(
+                        modifier = Modifier.weight(1f), 
+                        title = "Pending", 
+                        count = pendingCount, 
+                        color = ModernViolet, 
+                        onClick = { onSelectCategory("PENDING") }
+                    )
+                    PriorityWidget(
+                        modifier = Modifier.weight(1f), 
+                        title = "Follow-ups", 
+                        count = followupCount, 
+                        color = StatusWarning, 
+                        onClick = { onSelectCategory("FOLLOWUP") }
+                    )
+                }
+            }
+            
+            // SECONDARY ZONE: Pipeline Grid
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(
+                    text = "PIPELINE OVERVIEW",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Black,
+                    color = TextSecondary,
+                    letterSpacing = 1.5.sp
+                )
+                
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        PipelineChip(modifier = Modifier.weight(1f), title = "Orders", count = convertedCount, color = StatusSuccess, onClick = { onSelectCategory("CONVERTED") })
+                        PipelineChip(modifier = Modifier.weight(1f), title = "Inquiries", count = inquiryCount, color = StatusBusy, onClick = { onSelectCategory("INQUIRY") })
+                    }
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        PipelineChip(modifier = Modifier.weight(1f), title = "No Answer", count = attemptedCount, color = TextSecondary, onClick = { onSelectCategory("ATTEMPTED") })
+                        PipelineChip(modifier = Modifier.weight(1f), title = "Rejected", count = rejectedCount, color = StatusDanger, onClick = { onSelectCategory("REJECTED") })
+                    }
+                }
+            }
+
+            // SEAMLESS FLAT HISTORY ROW (Apple iOS Style, no bulky box)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 8.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable { 
+                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                        onHistoryClick() 
+                    }
+                    .padding(vertical = 12.dp, horizontal = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically, 
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.History,
+                        contentDescription = "History",
+                        tint = TextSecondary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Text(
+                        "View Recent History", 
+                        fontSize = 15.sp, 
+                        fontWeight = FontWeight.Bold, 
+                        color = TextPrimary
+                    )
+                }
+                Icon(
+                    imageVector = Icons.Rounded.ChevronRight,
+                    contentDescription = "Go",
+                    tint = TextSecondary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            // ACTIVE CALL BANNER
+            if (pendingCallLead != null) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = "ACTIVE CALL",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Black,
+                        color = StatusSuccess,
+                        letterSpacing = 1.5.sp
+                    )
+
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(24.dp),
-                        colors = CardDefaults.cardColors(containerColor = SurfaceLight),
-                        border = androidx.compose.foundation.BorderStroke(0.5.dp, BorderSubtle)
+                        color = Color.White,
+                        shadowElevation = 0.dp, // Flat design
+                        border = androidx.compose.foundation.BorderStroke(1.dp, StatusSuccess.copy(alpha = 0.3f)),
+                        onClick = { showDispositionSheet = true }
                     ) {
                         Column(
-                            modifier = Modifier.padding(24.dp),
-                            verticalArrangement = Arrangement.spacedBy(20.dp)
+                            modifier = Modifier.padding(20.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(ModernViolet.copy(alpha = 0.1f))
-                                        .padding(horizontal = 10.dp, vertical = 4.dp)
-                                ) {
-                                    Text("🎯 $reason", color = ModernViolet, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Column {
+                                    Text(
+                                        pendingCallLead!!.name.ifEmpty { "Unknown Name" }, 
+                                        fontSize = 20.sp, 
+                                        fontWeight = FontWeight.Black, 
+                                        color = TextPrimary
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        pendingCallLead!!.phone, 
+                                        fontSize = 14.sp, 
+                                        color = TextSecondary, 
+                                        fontWeight = FontWeight.Medium
+                                    )
                                 }
+                                
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(28.dp), 
+                                    color = StatusSuccess, 
+                                    strokeWidth = 3.dp
+                                )
                             }
                             
-                            Column {
-                                Text(lead.name.ifEmpty { "Unknown Name" }, fontSize = 28.sp, fontWeight = FontWeight.Black, color = TextPrimary)
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(lead.label.ifEmpty { "General Inquiry" } + " • " + lead.source, fontSize = 13.sp, color = TextSecondary, fontWeight = FontWeight.Medium)
-                            }
-                            
-                            if (pendingCallLead?.id == lead.id) {
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clip(RoundedCornerShape(16.dp))
-                                        .background(AccentSurface)
-                                        .border(1.dp, ModernViolet.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
-                                        .padding(16.dp),
-                                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                                ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        CircularProgressIndicator(modifier = Modifier.size(16.dp), color = ModernViolet, strokeWidth = 2.dp)
-                                        Text("Waiting for Status", color = ModernViolet, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                    }
-                                    
-                                    Button(
-                                        onClick = { showDispositionSheet = true },
-                                        modifier = Modifier.fillMaxWidth().height(50.dp).background(Brush.horizontalGradient(listOf(ModernViolet, ModernVioletDark)), RoundedCornerShape(12.dp)),
-                                        colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
-                                        shape = RoundedCornerShape(12.dp),
-                                        contentPadding = PaddingValues(0.dp)
-                                    ) {
-                                        Text("Update Status 📝", color = CleanWhite, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                                    }
-                                    
-                                    TextButton(
-                                        onClick = { 
-                                            viewModel.clearPendingCall()
-                                        },
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        Text("Didn't Call / Cancel ✖", color = TextSecondary, fontSize = 13.sp, fontWeight = FontWeight.Medium)
-                                    }
-                                }
-                            } else {
-                                SlideToAction(
-                                    text = "Slide to Dial",
-                                    onComplete = {
-                                        viewModel.setPendingCall(lead.id)
-                                        try {
-                                            val dialNum = lead.phone.replace(Regex("[^0-9+]"), "")
-                                            val intent = Intent(Intent.ACTION_DIAL).apply { data = Uri.parse("tel:$dialNum") }
-                                            context.startActivity(intent)
-                                        } catch (e: Exception) {
-                                            // No dialer app found
-                                        }
-                                    }
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(StatusSuccess.copy(alpha = 0.1f))
+                                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    "Tap to Update Disposition", 
+                                    color = StatusSuccess, 
+                                    fontWeight = FontWeight.Bold, 
+                                    fontSize = 14.sp
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Icon(
+                                    imageVector = Icons.Rounded.ChevronRight, 
+                                    contentDescription = null, 
+                                    tint = StatusSuccess, 
+                                    modifier = Modifier.size(18.dp)
                                 )
                             }
                         }
-                    }
-                } else {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(24.dp),
-                        colors = CardDefaults.cardColors(containerColor = SurfaceLight),
-                        border = androidx.compose.foundation.BorderStroke(0.5.dp, BorderSubtle)
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(32.dp).fillMaxWidth(),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Text("🎉", fontSize = 48.sp)
-                            Text("Inbox Zero!", fontSize = 20.sp, fontWeight = FontWeight.Black, color = TextPrimary)
-                            Text("You've crushed all your priority calls. Take a break!", fontSize = 13.sp, color = TextSecondary, textAlign = TextAlign.Center)
-                        }
-                    }
-                }
-
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(72.dp)
-                            .shadow(16.dp, RoundedCornerShape(20.dp), spotColor = Color.Black.copy(alpha = 0.04f), ambientColor = Color.Black.copy(alpha = 0.01f))
-                            .clip(RoundedCornerShape(20.dp))
-                            .clickable { 
-                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
-                                onHistoryClick() 
-                            },
-                        shape = RoundedCornerShape(20.dp),
-                        colors = CardDefaults.cardColors(containerColor = SurfaceLight),
-                        border = androidx.compose.foundation.BorderStroke(0.5.dp, BorderSubtle)
-                    ) {
-                    Row(
-                        modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                            Box(modifier = Modifier.size(40.dp).background(AccentSurface, CircleShape), contentAlignment = Alignment.Center) {
-                                Text("⏱️", fontSize = 18.sp)
-                            }
-                            Column {
-                                Text("Recent History", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = TextPrimary)
-                                Text("Review or undo recent calls", fontSize = 12.sp, color = TextSecondary, fontWeight = FontWeight.Medium)
-                            }
-                        }
-                        Text("➔", fontSize = 18.sp, color = TextSecondary, fontWeight = FontWeight.Black)
                     }
                 }
             }
@@ -453,7 +482,7 @@ fun DashboardScreen(
             callStartTimestamp = callStartTimestamp,
             onDismiss = {
                 showDispositionSheet = false
-                viewModel.clearPendingCall() // Clear it so it doesn't pop up infinitely on every resume!
+                viewModel.clearPendingCall()
             },
             onSaveSuccess = { newStatus ->
                 val savedLead = pendingCallLead!!
@@ -490,110 +519,62 @@ fun DashboardScreen(
 }
 
 @Composable
-fun GridCard(modifier: Modifier = Modifier, title: String, count: Int, color: Color, onClick: () -> Unit) {
-    val haptic = LocalHapticFeedback.current
-    Card(
-        modifier = modifier
-            .height(96.dp)
-            .shadow(16.dp, RoundedCornerShape(20.dp), spotColor = color.copy(alpha = 0.08f), ambientColor = color.copy(alpha = 0.02f))
-            .clip(RoundedCornerShape(20.dp))
-            .clickable { 
-                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
-                onClick() 
-            },
-        colors = CardDefaults.cardColors(containerColor = SurfaceLight),
-        border = androidx.compose.foundation.BorderStroke(0.5.dp, BorderSubtle)
+fun PriorityWidget(modifier: Modifier = Modifier, title: String, count: Int, color: Color, onClick: () -> Unit) {
+    Surface(
+        modifier = modifier.height(140.dp),
+        shape = RoundedCornerShape(24.dp),
+        color = Color.White,
+        shadowElevation = 0.dp, // FLAT DESIGN IS PREMIUM
+        border = androidx.compose.foundation.BorderStroke(1.dp, BorderSubtle),
+        onClick = onClick
     ) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(16.dp),
-            verticalArrangement = Arrangement.SpaceBetween
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(title, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TextSecondary)
-                Box(
-                    modifier = Modifier
-                        .size(24.dp)
-                        .background(color.copy(alpha = 0.15f), CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Box(modifier = Modifier.size(8.dp).background(color, CircleShape))
-                }
-            }
-            Text(count.toString(), fontSize = 32.sp, fontWeight = FontWeight.Black, color = TextPrimary)
+            Text(
+                text = count.toString(),
+                fontSize = 54.sp,
+                fontWeight = FontWeight.Black,
+                color = color,
+                letterSpacing = (-1.5).sp
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = title,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                color = TextSecondary
+            )
         }
     }
 }
 
 @Composable
-fun SlideToAction(text: String, onComplete: () -> Unit, modifier: Modifier = Modifier) {
-    var offsetX by remember { mutableFloatStateOf(0f) }
-    val haptic = LocalHapticFeedback.current
-    val density = LocalDensity.current
-    var maxWidth by remember { mutableIntStateOf(0) }
-    val thumbSize = 64.dp
-    val thumbSizePx = with(density) { thumbSize.toPx() }
-    
-    val animatedOffsetX by animateFloatAsState(
-        targetValue = offsetX,
-        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
-        label = "snapBack"
-    )
-
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(64.dp)
-            .shadow(elevation = 12.dp, shape = CircleShape, spotColor = Color.Black.copy(alpha = 0.04f), ambientColor = Color.Black.copy(alpha = 0.01f))
-            .clip(CircleShape)
-            .background(SurfaceLight)
-            .border(0.5.dp, BorderSubtle, CircleShape)
-            .onSizeChanged { maxWidth = it.width },
-        contentAlignment = Alignment.CenterStart
+fun PipelineChip(modifier: Modifier = Modifier, title: String, count: Int, color: Color, onClick: () -> Unit) {
+    Surface(
+        modifier = modifier.height(56.dp),
+        shape = RoundedCornerShape(16.dp),
+        color = Color.White,
+        shadowElevation = 0.dp, // FLAT DESIGN IS PREMIUM
+        border = androidx.compose.foundation.BorderStroke(1.dp, BorderSubtle),
+        onClick = onClick
     ) {
-        val alpha = 1f - (animatedOffsetX / maxWidth.coerceAtLeast(1).toFloat())
-        Text(
-            text = text,
-            modifier = Modifier.fillMaxWidth().alpha(alpha.coerceIn(0f, 1f)).padding(start = 24.dp),
-            textAlign = TextAlign.Center,
-            color = TextPrimary.copy(alpha = 0.6f),
-            fontWeight = FontWeight.Black,
-            fontSize = 15.sp,
-            letterSpacing = 1.sp
-        )
-        
-        Box(
-            modifier = Modifier
-                .offset { IntOffset(animatedOffsetX.roundToInt(), 0) }
-                .size(64.dp)
-                .padding(6.dp)
-                .clip(CircleShape)
-                .background(Brush.horizontalGradient(listOf(ModernViolet, ModernVioletDark)))
-                .shadow(elevation = 8.dp, shape = CircleShape, spotColor = ModernViolet.copy(alpha = 0.25f))
-                .pointerInput(Unit) {
-                    detectHorizontalDragGestures(
-                        onDragEnd = {
-                            val maxDrag = maxWidth - thumbSizePx
-                            if (offsetX > maxDrag * 0.75f) {
-                                offsetX = maxDrag
-                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                                onComplete()
-                            } else {
-                                offsetX = 0f
-                            }
-                        }
-                    ) { change, dragAmount ->
-                        change.consume()
-                        val maxDrag = maxWidth - thumbSizePx
-                        offsetX = (offsetX + dragAmount).coerceIn(0f, maxDrag)
-                    }
-                },
-            contentAlignment = Alignment.Center
+        Row(
+            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("📞", fontSize = 20.sp)
+            Text(title, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = TextSecondary)
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .background(color.copy(alpha = 0.12f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(count.toString(), fontSize = 13.sp, fontWeight = FontWeight.Black, color = color)
+            }
         }
     }
 }

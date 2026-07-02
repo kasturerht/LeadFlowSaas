@@ -1,22 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { db } from '../firebase';
-import { collection, query, onSnapshot, orderBy, doc, updateDoc, getDocs } from 'firebase/firestore';
+import { collection, query, onSnapshot, orderBy } from 'firebase/firestore';
 
 export default function Dashboard() {
   const [leads, setLeads] = useState([]);
-  const [telecallers, setTelecallers] = useState([]);
   
   useEffect(() => {
-    // Fetch users (telecallers) for assignment dropdown
-    const fetchTelecallers = async () => {
-      const q = query(collection(db, 'users'));
-      const snapshot = await getDocs(q);
-      const t = [];
-      snapshot.forEach(doc => t.push({ id: doc.id, ...doc.data() }));
-      setTelecallers(t);
-    };
-    fetchTelecallers();
-
     // Listen to the leads collection
     const qLeads = query(collection(db, 'leads'), orderBy('lastUpdated', 'desc'));
     const unsubscribe = onSnapshot(qLeads, (snapshot) => {
@@ -32,26 +21,18 @@ export default function Dashboard() {
     return () => unsubscribe();
   }, []);
 
-  const handleAssignLead = async (leadId, telecallerId) => {
-    if(!telecallerId) return;
-    const selectedTelecaller = telecallers.find(t => t.id === telecallerId);
-    
-    try {
-      const leadRef = doc(db, 'leads', leadId);
-      await updateDoc(leadRef, {
-        assignedTo: telecallerId,
-        assignedToName: selectedTelecaller?.name || selectedTelecaller?.email || 'Unknown'
-      });
-    } catch (err) {
-      console.error("Error assigning lead", err);
-    }
-  };
-
   const getStatusBadge = (status) => {
-    if(status === 'INTERESTED') return <span className="badge badge-success">{status}</span>;
-    if(status === 'FOLLOW_UP') return <span className="badge badge-warning">{status}</span>;
+    if(status === 'Order Placed') return <span className="badge badge-success">{status}</span>;
+    if(status === 'Follow-up' || status === 'Visit Scheduled') return <span className="badge badge-warning">{status}</span>;
+    if(status === 'Rejected' || status === 'Not Interested' || status === 'Invalid') return <span className="badge" style={{ background: 'rgba(239, 68, 68, 0.2)', color: '#fca5a5' }}>{status}</span>;
     return <span className="badge" style={{ background: 'rgba(255,255,255,0.1)' }}>{status || 'NEW'}</span>;
   };
+
+  const totalOrders = leads.filter(l => l.status === 'Order Placed');
+  const totalRevenue = totalOrders.reduce((sum, lead) => {
+    const amount = parseFloat(lead.orderAmount) || 0;
+    return sum + amount;
+  }, 0);
 
   return (
     <>
@@ -64,26 +45,26 @@ export default function Dashboard() {
           <span className="stat-value">{leads.length}</span>
         </div>
         <div className="stat-card glass-panel" style={{ borderTopColor: 'var(--secondary)' }}>
-          <span className="stat-title">Interested Leads</span>
-          <span className="stat-value">{leads.filter(l => l.status === 'INTERESTED').length}</span>
+          <span className="stat-title">Orders Placed</span>
+          <span className="stat-value">{totalOrders.length}</span>
         </div>
-        <div className="stat-card glass-panel" style={{ borderTopColor: '#f59e0b' }}>
-          <span className="stat-title">Follow Ups</span>
-          <span className="stat-value">{leads.filter(l => l.status === 'FOLLOW_UP').length}</span>
+        <div className="stat-card glass-panel" style={{ borderTopColor: '#10b981' }}>
+          <span className="stat-title">Total Revenue</span>
+          <span className="stat-value">₹{totalRevenue.toLocaleString()}</span>
         </div>
       </div>
 
       <div className="glass-panel" style={{ padding: '24px' }}>
-        <h3 style={{ marginBottom: '20px', fontSize: '18px' }}>Recent Leads & Assignment</h3>
+        <h3 style={{ marginBottom: '20px', fontSize: '18px' }}>Recent Leads & Dispatches</h3>
         <div className="table-container">
           <table>
             <thead>
               <tr>
                 <th>Name</th>
                 <th>Phone Number</th>
+                <th>Product</th>
                 <th>Status</th>
-                <th>Assignee</th>
-                <th>Action</th>
+                <th>Dispatch Info</th>
               </tr>
             </thead>
             <tbody>
@@ -98,20 +79,17 @@ export default function Dashboard() {
                   <tr key={lead.id}>
                     <td style={{ fontWeight: 500 }}>{lead.name}</td>
                     <td>{lead.phoneNumber || lead.phone}</td>
+                    <td>{lead.product || '-'}</td>
                     <td>{getStatusBadge(lead.status)}</td>
-                    <td style={{ color: 'var(--text-muted)' }}>{lead.assignedToName || 'Unassigned'}</td>
                     <td>
-                      <select 
-                        className="input-field" 
-                        style={{ padding: '6px 10px', fontSize: '13px', width: 'auto' }}
-                        value={lead.assignedTo || ''}
-                        onChange={(e) => handleAssignLead(lead.id, e.target.value)}
-                      >
-                        <option value="">Assign to...</option>
-                        {telecallers.map(t => (
-                          <option key={t.id} value={t.id}>{t.name || t.email}</option>
-                        ))}
-                      </select>
+                      {lead.status === 'Order Placed' ? (
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                          <div><strong>Amt:</strong> ₹{lead.orderAmount || 0} ({lead.paymentMethod || 'Unknown'})</div>
+                          <div><strong>City:</strong> {lead.city || '-'}</div>
+                        </div>
+                      ) : (
+                        <span style={{ color: 'var(--text-muted)' }}>-</span>
+                      )}
                     </td>
                   </tr>
                 ))

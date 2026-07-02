@@ -10,17 +10,21 @@ data class Lead(
     val label: String = "",
     val followUpDate: String? = null,
     val archived: Boolean = false,
-    val visited: Boolean = false,
-    val assignedTo: String = ""
+    val assignedTo: String = "",
+    val product: String = "",
+    val address: String = "",
+    val city: String = "",
+    val pincode: String = "",
+    val paymentMethod: String = "",
+    val orderAmount: String = ""
 )
 
 fun Lead.getPrimaryCategory(): String {
     if (this.archived) return "ARCHIVED"
-    if (this.status == "Converted") return "CONVERTED"
+    if (this.status == "Order Placed") return "CONVERTED"
     if (this.status == "Not Interested" || this.status == "Invalid") return "REJECTED"
-    if (this.status == "Visited" || this.visited) return "VISITED"
-    if (this.status == "Visit Scheduled") return "VISIT_SCHEDULED"
     if (this.status == "Follow-up") return "FOLLOWUP"
-    if (this.status == "No Answer" || this.status == "Busy" || this.status == "Warm Lead") return "ATTEMPTED"
+    if (this.status == "Call Not Answered") return "ATTEMPTED"
+    if (this.status == "Product Inquiry Only") return "INQUIRY"
     return "PENDING"
 }

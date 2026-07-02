@@ -5,6 +5,7 @@ import android.content.Context
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -13,6 +14,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ContactPhone
+import androidx.compose.material.icons.outlined.ContactPhone
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -59,11 +63,21 @@ fun CreateLeadBottomSheet(
     // Form State
     var clientName by remember { mutableStateOf("") }
     var source by remember { mutableStateOf("") }
+    var showSourcePopup by remember { mutableStateOf(false) }
+    var selectedProduct by remember { mutableStateOf("") }
+    var showProductPopup by remember { mutableStateOf(false) }
     var selectedStatus by remember { mutableStateOf("") }
     var remarkNotes by remember { mutableStateOf("") }
     var followUpDate by remember { mutableStateOf("") }
     var showDatePicker by remember { mutableStateOf(false) }
-    var isVisitToggleOn by remember { mutableStateOf(false) }
+    
+    // Order Dispatch Fields
+    var shippingAddress by remember { mutableStateOf("") }
+    var shippingCity by remember { mutableStateOf("") }
+    var shippingPincode by remember { mutableStateOf("") }
+    var paymentMethod by remember { mutableStateOf("") }
+    var orderAmount by remember { mutableStateOf("") }
+
     var isSaveToContactsToggleOn by remember { mutableStateOf(true) }
     var isSaving by remember { mutableStateOf(false) }
     var isCheckingDuplicate by remember { mutableStateOf(false) }
@@ -73,7 +87,7 @@ fun CreateLeadBottomSheet(
     var pendingNameForContact by remember { mutableStateOf("") }
     var pendingSubmitFn by remember { mutableStateOf<(() -> Unit)?>(null) }
 
-    val sources = listOf("Facebook Ad", "Direct Inbound", "Walk-in", "WhatsApp", "Reference", "Other")
+    val sources = listOf("Facebook Ad", "Instagram Ad", "Direct Inbound", "WhatsApp", "Reference", "Other")
 
     val writeContactsLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -221,8 +235,12 @@ fun CreateLeadBottomSheet(
         } else {
             // STEP 2: Create & Dispose Form
             LazyColumn(
-                modifier = Modifier.fillMaxWidth().navigationBarsPadding().imePadding(),
-                verticalArrangement = Arrangement.spacedBy(20.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .imePadding()
+                    .animateContentSize(),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
                 contentPadding = PaddingValues(24.dp)
             ) {
                 item {
@@ -258,71 +276,97 @@ fun CreateLeadBottomSheet(
                             unfocusedBorderColor = BorderSubtle,
                             focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary
                         ),
-                        singleLine = true
+                        singleLine = true,
+                        trailingIcon = {
+                            IconButton(onClick = { isSaveToContactsToggleOn = !isSaveToContactsToggleOn }) {
+                                Icon(
+                                    imageVector = if (isSaveToContactsToggleOn) Icons.Default.ContactPhone else Icons.Outlined.ContactPhone,
+                                    contentDescription = "Save to Phonebook",
+                                    tint = if (isSaveToContactsToggleOn) ModernViolet else BorderSubtle
+                                )
+                            }
+                        }
                     )
-                }
-
-                item {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("LEAD SOURCE", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextSecondary, letterSpacing = 1.2.sp)
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            sources.forEach { src ->
-                                val isSelected = source == src
-                                Box(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(if (isSelected) ModernViolet else SurfaceLight)
-                                        .border(1.dp, if (isSelected) ModernViolet else BorderSubtle, RoundedCornerShape(8.dp))
-                                        .clickable { source = src }
-                                        .padding(horizontal = 14.dp, vertical = 10.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(src, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (isSelected) CleanWhite else TextSecondary)
-                                }
-                            }
-                        }
+                    if (isSaveToContactsToggleOn) {
+                        Text("✓ Contact will be saved automatically", color = ModernViolet, fontSize = 10.sp, modifier = Modifier.padding(start = 12.dp, top = 4.dp))
                     }
                 }
 
                 item {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    // Side-by-side Trigger Chips for Source and Product
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        SmartTriggerChip(
+                            label = "Add Source",
+                            selectedOption = source,
+                            iconData = sourceIcons[source],
+                            onClick = { showSourcePopup = true },
+                            modifier = Modifier.weight(1f)
+                        )
+                        
+                        SmartTriggerChip(
+                            label = "Add Product",
+                            selectedOption = selectedProduct,
+                            iconData = productIcons[selectedProduct],
+                            onClick = { showProductPopup = true },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Text("STATUS DISPOSITION", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextSecondary, letterSpacing = 1.2.sp)
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Constants.PROCESSED_STATUSES.forEach { option ->
-                                val isSelected = selectedStatus == option
-                                val statusColor = statusColors[option] ?: ModernViolet
-                                Box(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(if (isSelected) statusColor else SurfaceLight)
-                                        .border(1.dp, if (isSelected) statusColor else BorderSubtle, RoundedCornerShape(8.dp))
-                                        .clickable { 
-                                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
-                                            selectedStatus = option
-                                            if (option == "Visited") isVisitToggleOn = true
+                        val chunkedStatuses = Constants.PROCESSED_STATUSES.chunked(2)
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            chunkedStatuses.forEach { rowItems ->
+                                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                                    rowItems.forEach { option ->
+                                        val isSelected = selectedStatus == option
+                                        val iconData = statusIcons[option]
+                                        val labelText = indianStatusLabels[option]?.substringAfter(" ") ?: option
+                                        
+                                        Box(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .clip(RoundedCornerShape(12.dp))
+                                                .background(if (isSelected) (iconData?.tint ?: ModernViolet).copy(alpha = 0.08f) else SurfaceLight)
+                                                .border(1.dp, if (isSelected) (iconData?.tint ?: ModernViolet) else BorderSubtle, RoundedCornerShape(12.dp))
+                                                .clickable { 
+                                                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                                    selectedStatus = option
+                                                }
+                                                .padding(horizontal = 6.dp, vertical = 8.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                if (iconData != null) {
+                                                    Icon(
+                                                        imageVector = iconData.icon,
+                                                        contentDescription = null,
+                                                        tint = if (isSelected) iconData.tint else TextSecondary,
+                                                        modifier = Modifier.size(20.dp)
+                                                    )
+                                                }
+                                                Text(labelText, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (isSelected) TextPrimary else TextSecondary, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                            }
                                         }
-                                        .padding(horizontal = 14.dp, vertical = 10.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(indianStatusLabels[option]?.substringAfter(" ") ?: option, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (isSelected) CleanWhite else TextSecondary)
+                                    }
+                                    repeat(2 - rowItems.size) { Spacer(modifier = Modifier.weight(1f)) }
                                 }
                             }
                         }
                     }
                 }
 
-                if (selectedStatus == "Follow-up" || selectedStatus == "Visit Scheduled" || selectedStatus == "Visited") {
+                // Product dropdown replaced by animated side-by-side chip above
+
+                if (selectedStatus == "Follow-up") {
                     item {
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text(if (selectedStatus == "Follow-up") "CALLBACK DATE" else "NEXT DATE", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextSecondary, letterSpacing = 1.2.sp)
+                            Text("FOLLOW-UP DATE", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextSecondary, letterSpacing = 1.2.sp)
                             Box(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(SurfaceLight).border(1.dp, BorderSubtle, RoundedCornerShape(10.dp)).clickable { showDatePicker = true }.padding(14.dp)) {
                                 Text(if (followUpDate.isEmpty()) "Select Date" else followUpDate, color = if (followUpDate.isEmpty()) TextSecondary else TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
                             }
@@ -330,68 +374,56 @@ fun CreateLeadBottomSheet(
                     }
                 }
 
-                item {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("CONVERSATION NOTES", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextSecondary, letterSpacing = 1.2.sp)
-                        OutlinedTextField(
-                            value = remarkNotes, onValueChange = { remarkNotes = it },
-                            placeholder = { Text("Enter detailed notes here...", fontSize = 13.sp, color = TextSecondary) },
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedContainerColor = AccentSurface, unfocusedContainerColor = AccentSurface,
-                                focusedBorderColor = Color.Transparent, unfocusedBorderColor = Color.Transparent,
-                                focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary
-                            ),
-                            shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().height(110.dp)
-                        )
-                    }
-                }
-                
-                item {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(SurfaceLight)
-                            .border(1.dp, BorderSubtle, RoundedCornerShape(10.dp))
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
-                            Text("Save Client to Phonebook", fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 14.sp)
-                            Text("Auto-saves the name & number so you know when they call back.", color = TextSecondary, fontSize = 11.sp, lineHeight = 14.sp)
+                if (selectedStatus == "Order Placed") {
+                    item {
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Text("DISPATCH DETAILS (REQUIRED)", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = ModernViolet, letterSpacing = 1.2.sp)
+                            
+                            OutlinedTextField(
+                                value = shippingAddress, onValueChange = { shippingAddress = it },
+                                label = { Text("Full Shipping Address") }, modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                OutlinedTextField(
+                                    value = shippingCity, onValueChange = { shippingCity = it },
+                                    label = { Text("City") }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp)
+                                )
+                                OutlinedTextField(
+                                    value = shippingPincode, onValueChange = { shippingPincode = it },
+                                    label = { Text("Pincode") }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp)
+                                )
+                            }
+                            OutlinedTextField(
+                                value = orderAmount, onValueChange = { orderAmount = it },
+                                label = { Text("Order Amount (₹)") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)
+                            )
+                            Text("PAYMENT METHOD", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextSecondary, letterSpacing = 1.2.sp)
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                listOf("COD", "Prepaid").forEach { pm ->
+                                    val isSelected = paymentMethod == pm
+                                    Box(
+                                        modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(if (isSelected) ModernViolet else SurfaceLight).border(1.dp, if (isSelected) ModernViolet else BorderSubtle, RoundedCornerShape(8.dp)).clickable { paymentMethod = pm }.padding(horizontal = 14.dp, vertical = 10.dp)
+                                    ) { Text(pm, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (isSelected) CleanWhite else TextSecondary) }
+                                }
+                            }
                         }
-                        Switch(
-                            checked = isSaveToContactsToggleOn,
-                            onCheckedChange = { isSaveToContactsToggleOn = it },
-                            colors = SwitchDefaults.colors(checkedThumbColor = CleanWhite, checkedTrackColor = ModernViolet)
-                        )
-                    }
-                }
-                
-                item {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(SurfaceLight)
-                            .border(1.dp, BorderSubtle, RoundedCornerShape(10.dp))
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
-                            Text("Client visited office today?", fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 14.sp)
-                            Text("Turn this on if they came but rejected/converted instantly.", color = TextSecondary, fontSize = 11.sp, lineHeight = 14.sp)
-                        }
-                        Switch(
-                            checked = isVisitToggleOn,
-                            onCheckedChange = { isVisitToggleOn = it },
-                            colors = SwitchDefaults.colors(checkedThumbColor = CleanWhite, checkedTrackColor = ModernViolet)
-                        )
                     }
                 }
 
+                item {
+                    OutlinedTextField(
+                        value = remarkNotes, onValueChange = { remarkNotes = it },
+                        label = { Text("Conversation Notes (Optional)") },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = ModernViolet, unfocusedBorderColor = BorderSubtle,
+                            focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary
+                        ),
+                        shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth(),
+                        minLines = 1, maxLines = 4
+                    )
+                }
+                
                 item {
                     Button(
                         modifier = Modifier.fillMaxWidth().height(54.dp), 
@@ -419,12 +451,23 @@ fun CreateLeadBottomSheet(
                                 return@Button
                             }
                             if (selectedStatus.isEmpty()) {
-                                Toast.makeText(context, "Please select Status Disposition", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "Please select Status", Toast.LENGTH_SHORT).show()
                                 return@Button
                             }
-                            if ((selectedStatus == "Follow-up" || selectedStatus == "Visit Scheduled" || selectedStatus == "Visited") && followUpDate.isEmpty()) {
+                            if ((selectedStatus == "Order Placed" || selectedStatus == "Product Inquiry Only") && selectedProduct.isEmpty()) {
+                                Toast.makeText(context, "Please select a Product", Toast.LENGTH_SHORT).show()
+                                return@Button
+                            }
+                            if (selectedStatus == "Follow-up" && followUpDate.isEmpty()) {
                                 Toast.makeText(context, "Please select a date", Toast.LENGTH_SHORT).show()
                                 return@Button
+                            }
+                            
+                            if (selectedStatus == "Order Placed") {
+                                if (shippingAddress.isEmpty() || shippingCity.isEmpty() || shippingPincode.isEmpty() || paymentMethod.isEmpty() || orderAmount.isEmpty()) {
+                                    Toast.makeText(context, "Please fill all dispatch details", Toast.LENGTH_SHORT).show()
+                                    return@Button
+                                }
                             }
 
                             val submitFn = {
@@ -435,11 +478,16 @@ fun CreateLeadBottomSheet(
                                     source = source,
                                     status = selectedStatus,
                                     notes = remarkNotes,
-                                    followUpDate = if ((selectedStatus == "Follow-up" || selectedStatus == "Visit Scheduled" || selectedStatus == "Visited") && followUpDate.isNotEmpty()) followUpDate else null,
-                                    isVisitLog = isVisitToggleOn,
+                                    followUpDate = if (selectedStatus == "Follow-up" && followUpDate.isNotEmpty()) followUpDate else null,
+                                    product = selectedProduct,
+                                    address = shippingAddress,
+                                    city = shippingCity,
+                                    pincode = shippingPincode,
+                                    paymentMethod = paymentMethod,
+                                    orderAmount = orderAmount,
                                     onSuccess = {
                                         isSaving = false
-                                        Toast.makeText(context, "Lead saved and logged!", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(context, "Lead saved successfully!", Toast.LENGTH_SHORT).show()
                                         onDismiss()
                                     },
                                     onError = { err ->
@@ -500,5 +548,25 @@ fun CreateLeadBottomSheet(
                 }
             }
         }
+    }
+
+    if (showSourcePopup) {
+        SmartGridPopup(
+            title = "Select Lead Source",
+            options = sources,
+            icons = sourceIcons,
+            onSelect = { source = it; showSourcePopup = false },
+            onDismiss = { showSourcePopup = false }
+        )
+    }
+
+    if (showProductPopup) {
+        SmartGridPopup(
+            title = "Select Product",
+            options = Constants.PRODUCTS,
+            icons = productIcons,
+            onSelect = { selectedProduct = it; showProductPopup = false },
+            onDismiss = { showProductPopup = false }
+        )
     }
 }

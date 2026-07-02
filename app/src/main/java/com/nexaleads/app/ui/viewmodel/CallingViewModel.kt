@@ -101,7 +101,12 @@ class CallingViewModel @Inject constructor(
         notes: String,
         newInteractionNote: String,
         followUpDate: String?,
-        isVisitLog: Boolean,
+        product: String,
+        address: String,
+        city: String,
+        pincode: String,
+        paymentMethod: String,
+        orderAmount: String,
         callDurationSeconds: Int,
         onSuccess: (String) -> Unit,
         onError: (String) -> Unit
@@ -117,12 +122,14 @@ class CallingViewModel @Inject constructor(
                     "status" to status,
                     "notes" to notes,
                     "updatedAt" to isoTimestamp,
-                    "followUpDate" to followUpDate
+                    "followUpDate" to followUpDate,
+                    "product" to product,
+                    "address" to address,
+                    "city" to city,
+                    "pincode" to pincode,
+                    "paymentMethod" to paymentMethod,
+                    "orderAmount" to orderAmount
                 )
-
-                if (isVisitLog || lead.visited) {
-                    updateMap["visited"] = true
-                }
 
                 repository.updateLead(lead.id, updateMap)
 
@@ -138,7 +145,7 @@ class CallingViewModel @Inject constructor(
                     timestamp = isoTimestamp,
                     duration = callDurationSeconds,
                     followUpDate = followUpDate,
-                    isVisitLog = isVisitLog
+                    isVisitLog = false
                 )
                 repository.addInteraction(interaction)
                 onSuccess(logId)
@@ -177,7 +184,12 @@ class CallingViewModel @Inject constructor(
         status: String,
         notes: String,
         followUpDate: String?,
-        isVisitLog: Boolean,
+        product: String,
+        address: String,
+        city: String,
+        pincode: String,
+        paymentMethod: String,
+        orderAmount: String,
         onSuccess: (String) -> Unit,
         onError: (String) -> Unit
     ) {
@@ -202,8 +214,13 @@ class CallingViewModel @Inject constructor(
                     label = "Manual Inbound",
                     followUpDate = followUpDate,
                     archived = false,
-                    visited = isVisitLog,
-                    assignedTo = _currentUserId.value ?: ""
+                    assignedTo = _currentUserId.value ?: "",
+                    product = product,
+                    address = address,
+                    city = city,
+                    pincode = pincode,
+                    paymentMethod = paymentMethod,
+                    orderAmount = orderAmount
                 )
 
                 val logId = "i-" + UUID.randomUUID().toString().take(6)
@@ -218,7 +235,7 @@ class CallingViewModel @Inject constructor(
                     timestamp = isoTimestamp,
                     duration = 0, // Manual entry
                     followUpDate = followUpDate,
-                    isVisitLog = isVisitLog
+                    isVisitLog = false
                 )
 
                 val success = repository.createManualLeadBatch(lead, interaction)

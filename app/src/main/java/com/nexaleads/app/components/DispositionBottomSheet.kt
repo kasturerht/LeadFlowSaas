@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.widget.Toast
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -19,6 +20,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -28,6 +31,9 @@ import com.nexaleads.app.getCallDurationFromSystemLog
 import com.nexaleads.app.ui.theme.*
 import com.nexaleads.app.ui.viewmodel.CallingViewModel
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -45,15 +51,23 @@ fun DispositionBottomSheet(
     val coroutineScope = rememberCoroutineScope()
     val mainScope = rememberCoroutineScope()
 
+    var selectedProduct by remember { mutableStateOf(lead.product) }
+    var showProductPopup by remember { mutableStateOf(false) }
     var selectedStatus by remember { mutableStateOf("") }
     var remarkNotes by remember { mutableStateOf("") }
     var followUpDate by remember { mutableStateOf("") }
     var showDatePicker by remember { mutableStateOf(false) }
     var isSaving by remember { mutableStateOf(false) }
-    var isVisitToggleOn by remember { mutableStateOf(false) }
     var attemptedSaveWithoutNotes by remember { mutableStateOf(false) }
 
-    val customTagsPrefKey = "custom_tags"
+    // Order Dispatch Fields
+    var shippingAddress by remember { mutableStateOf(lead.address) }
+    var shippingCity by remember { mutableStateOf(lead.city) }
+    var shippingPincode by remember { mutableStateOf(lead.pincode) }
+    var paymentMethod by remember { mutableStateOf(lead.paymentMethod) }
+    var orderAmount by remember { mutableStateOf(lead.orderAmount) }
+
+    val customTagsPrefKey = "custom_tags_fmcg"
     val sharedPrefs = context.getSharedPreferences("LeadFlowPrefs", Context.MODE_PRIVATE)
     var userCustomTags by remember { mutableStateOf(sharedPrefs.getStringSet(customTagsPrefKey, setOf())?.toList() ?: emptyList()) }
     var showCustomTagDialog by remember { mutableStateOf(false) }
@@ -66,8 +80,8 @@ fun DispositionBottomSheet(
             confirmButton = {
                 TextButton(onClick = {
                     datePickerState.selectedDateMillis?.let { millis ->
-                        val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
-                        followUpDate = sdf.format(java.util.Date(millis))
+                        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                        followUpDate = sdf.format(Date(millis))
                     }
                     showDatePicker = false
                 }) {
@@ -105,7 +119,8 @@ fun DispositionBottomSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .navigationBarsPadding()
-                .imePadding(),
+                .imePadding()
+                .animateContentSize(),
             verticalArrangement = Arrangement.spacedBy(24.dp),
             contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 24.dp)
         ) {
@@ -119,42 +134,66 @@ fun DispositionBottomSheet(
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("STATUS DISPOSITION", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextSecondary, letterSpacing = 1.2.sp)
-                    val options = Constants.PROCESSED_STATUSES
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        options.forEach { option ->
-                            val isSelected = selectedStatus == option
-                            val statusColor = statusColors[option] ?: ModernViolet
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(if (isSelected) statusColor else SurfaceLight)
-                                    .border(1.dp, if (isSelected) statusColor else BorderSubtle, RoundedCornerShape(8.dp))
-                                    .clickable { 
-                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
-                                        selectedStatus = option
-                                        if (option == "Visited") {
-                                            isVisitToggleOn = true
+                    val chunkedStatuses = Constants.PROCESSED_STATUSES.chunked(2)
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        chunkedStatuses.forEach { rowItems ->
+                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                                rowItems.forEach { option ->
+                                    val isSelected = selectedStatus == option
+                                    val iconData = statusIcons[option]
+                                    val labelText = indianStatusLabels[option]?.substringAfter(" ") ?: option
+                                    
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(if (isSelected) (iconData?.tint ?: ModernViolet).copy(alpha = 0.08f) else SurfaceLight)
+                                            .border(1.dp, if (isSelected) (iconData?.tint ?: ModernViolet) else BorderSubtle, RoundedCornerShape(12.dp))
+                                            .clickable { 
+                                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                                selectedStatus = option
+                                            }
+                                            .padding(horizontal = 6.dp, vertical = 8.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                            if (iconData != null) {
+                                                Icon(
+                                                    imageVector = iconData.icon,
+                                                    contentDescription = null,
+                                                    tint = if (isSelected) iconData.tint else TextSecondary,
+                                                    modifier = Modifier.size(20.dp)
+                                                )
+                                            }
+                                            Text(labelText, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (isSelected) TextPrimary else TextSecondary, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
                                         }
                                     }
-                                    .padding(horizontal = 14.dp, vertical = 10.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(indianStatusLabels[option]?.substringAfter(" ") ?: option, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (isSelected) CleanWhite else TextSecondary)
+                                }
+                                repeat(2 - rowItems.size) { Spacer(modifier = Modifier.weight(1f)) }
                             }
                         }
                     }
                 }
             }
 
+            // SECTION: PRODUCT INTERESTED IN (Conditional)
+            if (selectedStatus == "Order Placed" || selectedStatus == "Product Inquiry Only" || selectedStatus == "Follow-up") {
+                item {
+                    SmartTriggerChip(
+                        label = "Add Product",
+                        selectedOption = selectedProduct,
+                        iconData = productIcons[selectedProduct],
+                        onClick = { showProductPopup = true },
+                        modifier = Modifier.fillMaxWidth(0.5f)
+                    )
+                }
+            }
+
             // SECTION: DATE
-            if (selectedStatus == "Follow-up" || selectedStatus == "Visit Scheduled" || selectedStatus == "Visited") {
+            if (selectedStatus == "Follow-up") {
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text(if (selectedStatus == "Follow-up") "CALLBACK DATE" else "NEXT DATE", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextSecondary, letterSpacing = 1.2.sp)
+                        Text("FOLLOW-UP DATE", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextSecondary, letterSpacing = 1.2.sp)
                         Box(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(SurfaceLight).border(1.dp, BorderSubtle, RoundedCornerShape(10.dp)).clickable { showDatePicker = true }.padding(14.dp)) {
                             Text(if (followUpDate.isEmpty()) "Select Date" else followUpDate, color = if (followUpDate.isEmpty()) TextSecondary else TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
                         }
@@ -162,56 +201,66 @@ fun DispositionBottomSheet(
                 }
             }
 
-            // SECTION: CONVERSATION NOTES
-            item {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("CONVERSATION NOTES", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextSecondary, letterSpacing = 1.2.sp)
-                    OutlinedTextField(
-                        value = remarkNotes, onValueChange = { remarkNotes = it },
-                        placeholder = { Text("Enter detailed notes here...", fontSize = 13.sp, color = TextSecondary) },
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = AccentSurface, unfocusedContainerColor = AccentSurface,
-                            focusedBorderColor = Color.Transparent, unfocusedBorderColor = Color.Transparent,
-                            focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary
-                        ),
-                        shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().height(110.dp)
-                    )
+            // SECTION: ORDER DETAILS
+            if (selectedStatus == "Order Placed") {
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text("DISPATCH DETAILS (REQUIRED)", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = ModernViolet, letterSpacing = 1.2.sp)
+                        
+                        OutlinedTextField(
+                            value = shippingAddress, onValueChange = { shippingAddress = it },
+                            label = { Text("Full Shipping Address") }, modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            OutlinedTextField(
+                                value = shippingCity, onValueChange = { shippingCity = it },
+                                label = { Text("City") }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp)
+                            )
+                            OutlinedTextField(
+                                value = shippingPincode, onValueChange = { shippingPincode = it },
+                                label = { Text("Pincode") }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp)
+                            )
+                        }
+                        OutlinedTextField(
+                            value = orderAmount, onValueChange = { orderAmount = it },
+                            label = { Text("Order Amount (₹)") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)
+                        )
+                        Text("PAYMENT METHOD", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextSecondary, letterSpacing = 1.2.sp)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            listOf("COD", "Prepaid").forEach { pm ->
+                                val isSelected = paymentMethod == pm
+                                Box(
+                                    modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(if (isSelected) ModernViolet else SurfaceLight).border(1.dp, if (isSelected) ModernViolet else BorderSubtle, RoundedCornerShape(8.dp)).clickable { paymentMethod = pm }.padding(horizontal = 14.dp, vertical = 10.dp)
+                                ) { Text(pm, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (isSelected) CleanWhite else TextSecondary) }
+                            }
+                        }
+                    }
                 }
             }
 
-            // SECTION: INSTANT VISIT TOGGLE
+            // SECTION: CONVERSATION NOTES
             item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(SurfaceLight)
-                        .border(1.dp, BorderSubtle, RoundedCornerShape(10.dp))
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
-                        Text("Client visited office today?", fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 14.sp)
-                        Text("Turn this on if they came but rejected/converted instantly.", color = TextSecondary, fontSize = 11.sp, lineHeight = 14.sp)
-                    }
-                    Switch(
-                        checked = isVisitToggleOn,
-                        onCheckedChange = { isVisitToggleOn = it },
-                        colors = SwitchDefaults.colors(checkedThumbColor = CleanWhite, checkedTrackColor = ModernViolet)
-                    )
-                }
+                OutlinedTextField(
+                    value = remarkNotes, onValueChange = { remarkNotes = it },
+                    label = { Text("Conversation Notes (Optional)") },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = ModernViolet, unfocusedBorderColor = BorderSubtle,
+                        focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary
+                    ),
+                    shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth(),
+                    minLines = 1, maxLines = 4
+                )
             }
 
             // SECTION: AI PREDICTIVE CHIPS
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("✨ AI PREDICTIVE CHIPS", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = ModernViolet, letterSpacing = 1.2.sp)
+                    Text("✨ QUICK RESPONSE TAGS", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = ModernViolet, letterSpacing = 1.2.sp)
                     val quickTags = listOf(
-                        "🎯 USA / Canada", "🎯 UK / Europe", "🎯 Australia / NZ",
-                        "🎓 12th / UG Completed", "📊 Low Percentage", "📝 IELTS / PTE Pending",
-                        "💰 Needs Education Loan", "💸 Looking for Scholarship",
-                        "👨‍👩‍👦 Parent Answered", "📱 WhatsApp Details Sent"
+                        "🎯 Interested", "💰 Price Too High", "📦 Order Confirmed", 
+                        "⏳ Will order next month", "❌ Not interested", "👨‍⚕️ Asking for doctor advice",
+                        "📱 Sent details on WhatsApp", "📞 Did not pick up", "🗓️ Call later"
                     )
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -273,10 +322,22 @@ fun DispositionBottomSheet(
                             return@Button
                         }
 
-                        if ((selectedStatus == "Follow-up" || selectedStatus == "Visit Scheduled" || selectedStatus == "Visited") && followUpDate.trim().isEmpty()) {
-                            Toast.makeText(context, "Please select a date for Follow-up or Visit", Toast.LENGTH_SHORT).show()
+                        if ((selectedStatus == "Order Placed" || selectedStatus == "Product Inquiry Only") && selectedProduct.isEmpty()) {
+                            Toast.makeText(context, "Please select a Product", Toast.LENGTH_SHORT).show()
+                            return@Button
+                        }
+
+                        if (selectedStatus == "Follow-up" && followUpDate.trim().isEmpty()) {
+                            Toast.makeText(context, "Please select a date for Follow-up", Toast.LENGTH_SHORT).show()
                             attemptedSaveWithoutNotes = true
                             return@Button
+                        }
+                        
+                        if (selectedStatus == "Order Placed") {
+                            if (shippingAddress.isEmpty() || shippingCity.isEmpty() || shippingPincode.isEmpty() || paymentMethod.isEmpty() || orderAmount.isEmpty()) {
+                                Toast.makeText(context, "Please fill all dispatch details", Toast.LENGTH_SHORT).show()
+                                return@Button
+                            }
                         }
 
                         if (remarkNotes.trim().isEmpty() && !attemptedSaveWithoutNotes) {
@@ -316,9 +377,14 @@ fun DispositionBottomSheet(
                             status = selectedStatus,
                             notes = finalNotes,
                             newInteractionNote = remarkNotes.trim(),
-                            followUpDate = if ((selectedStatus == "Follow-up" || selectedStatus == "Visit Scheduled" || selectedStatus == "Visited") && followUpDate.isNotEmpty()) followUpDate else null,
+                            followUpDate = if (selectedStatus == "Follow-up" && followUpDate.isNotEmpty()) followUpDate else null,
+                            product = selectedProduct,
+                            address = shippingAddress,
+                            city = shippingCity,
+                            pincode = shippingPincode,
+                            paymentMethod = paymentMethod,
+                            orderAmount = orderAmount,
                             callDurationSeconds = durationSeconds,
-                            isVisitLog = isVisitToggleOn,
                             onSuccess = { interactionId ->
                                 coroutineScope.launch { sheetState.hide() }.invokeOnCompletion {
                                     onSaveSuccess(selectedStatus)
@@ -412,6 +478,16 @@ fun DispositionBottomSheet(
                     Text("Cancel", color = TextSecondary, fontWeight = FontWeight.Medium)
                 }
             }
+        )
+    }
+    
+    if (showProductPopup) {
+        SmartGridPopup(
+            title = "Select Product",
+            options = Constants.PRODUCTS,
+            icons = productIcons,
+            onSelect = { selectedProduct = it; showProductPopup = false },
+            onDismiss = { showProductPopup = false }
         )
     }
 }
