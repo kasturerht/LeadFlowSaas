@@ -84,7 +84,7 @@ _4th Lane, Rajarampuri, Kolhapur, Maharashtra (416008)_
 🕒 *Office Hours:* 
 Monday – Saturday: 10:30 AM to 6:30 PM
 
-📞 *Contact:* +91 98500 69600
+📞 *Contact:* +91 98347 83503
 📧 *Email:* finesseoverseaseducation@gmail.com
 🌐 *Website:* www.finesseoverseas.com
 
@@ -149,7 +149,7 @@ Best Regards,
 
         } catch (e: Exception) {
             e.printStackTrace()
-            Toast.makeText(context, "Failed to launch WhatsApp.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "WhatsApp is not installed or failed to launch.", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -162,8 +162,11 @@ Best Regards,
         includePaymentLink: Boolean,
         includeDispatchNote: Boolean,
         includeSupportPhone: Boolean,
+        originalTotal: String = "",
+        discountAmount: String = "",
         customPaymentLink: String = "upi://pay?pa=merchant@icici&pn=Order%20Payment",
-        language: String = "English"
+        language: String = "English",
+        supportNumber: String = "+91 98347 83503"
     ): String {
         val cleanName = customerName.trim()
         val isGenericName = cleanName.isBlank() || 
@@ -206,7 +209,24 @@ Best Regards,
 
                 sb.append("━━━━━━━━━━━━━━━━━━\n")
                 sb.append("🛒 *ऑर्डर तपशील (ORDER SUMMARY)*\n\n")
-                sb.append(formattedProducts).append("\n")
+                sb.append(formattedProducts).append("\n\n")
+                
+                val origVal = originalTotal.toIntOrNull() ?: 0
+                val discVal = discountAmount.toIntOrNull() ?: 0
+                val finalVal = origVal - discVal
+                
+                if (discVal > 0 && finalVal > 0) {
+                    val percentOff = (discVal * 100) / origVal
+                    sb.append("❌ मूळ किंमत: ~₹$origVal~\n")
+                    sb.append("✅ *आजची खास किंमत: ₹$finalVal*\n")
+                    sb.append("━━━━━━━━━━━━━━━━━━\n")
+                    sb.append("🎉 *अभिनंदन! तुमचे ₹$discVal ($percentOff% OFF) वाचले* 🎉\n")
+                } else if (origVal > 0 && discVal == 0) {
+                    sb.append("💰 *एकूण रक्कम:* ₹$origVal\n")
+                } else if (origVal > 0 && discVal < 0) {
+                    sb.append("💰 *एकूण रक्कम:* ₹$finalVal\n")
+                }
+                
                 sb.append("━━━━━━━━━━━━━━━━━━\n\n")
 
                 if (showPaymentLink) {
@@ -239,7 +259,7 @@ Best Regards,
                 }
 
                 if (includeSupportPhone) {
-                    sb.append("📞 *ग्राहक सेवा (Helpline):* +91 98500 69600\n\n")
+                    sb.append("📞 *हेल्पलाईन (Support):* ").append(supportNumber).append("\n\n")
                 }
 
                 sb.append("आमच्यावर विश्वास ठेवल्याबद्दल धन्यवाद! 🙏")
@@ -262,7 +282,24 @@ Best Regards,
 
                 sb.append("━━━━━━━━━━━━━━━━━━\n")
                 sb.append("🛒 *ऑर्डर विवरण (ORDER SUMMARY)*\n\n")
-                sb.append(formattedProducts).append("\n")
+                sb.append(formattedProducts).append("\n\n")
+                
+                val origVal = originalTotal.toIntOrNull() ?: 0
+                val discVal = discountAmount.toIntOrNull() ?: 0
+                val finalVal = origVal - discVal
+                
+                if (discVal > 0 && finalVal > 0) {
+                    val percentOff = (discVal * 100) / origVal
+                    sb.append("❌ मूल कीमत: ~₹$origVal~\n")
+                    sb.append("✅ *आज की विशेष कीमत: ₹$finalVal*\n")
+                    sb.append("━━━━━━━━━━━━━━━━━━\n")
+                    sb.append("🎉 *बधाई हो! आपने ₹$discVal ($percentOff% OFF) बचाए* 🎉\n")
+                } else if (origVal > 0 && discVal == 0) {
+                    sb.append("💰 *कुल राशि:* ₹$origVal\n")
+                } else if (origVal > 0 && discVal < 0) {
+                    sb.append("💰 *कुल राशि:* ₹$finalVal\n")
+                }
+                
                 sb.append("━━━━━━━━━━━━━━━━━━\n\n")
 
                 if (showPaymentLink) {
@@ -295,7 +332,7 @@ Best Regards,
                 }
 
                 if (includeSupportPhone) {
-                    sb.append("📞 *हेल्पलाइन (Support):* +91 98500 69600\n\n")
+                    sb.append("📞 *हेल्पलाइन (Support):* ").append(supportNumber).append("\n\n")
                 }
 
                 sb.append("हमसे जुड़ने के लिए धन्यवाद! 🙏")
@@ -319,7 +356,24 @@ Best Regards,
 
                 sb.append("━━━━━━━━━━━━━━━━━━\n")
                 sb.append("🛒 *ORDER SUMMARY*\n\n")
-                sb.append(formattedProducts).append("\n")
+                sb.append(formattedProducts).append("\n\n")
+                
+                val origVal = originalTotal.toIntOrNull() ?: 0
+                val discVal = discountAmount.toIntOrNull() ?: 0
+                val finalVal = origVal - discVal
+                
+                if (discVal > 0 && finalVal > 0) {
+                    val percentOff = (discVal * 100) / origVal
+                    sb.append("❌ Original Price: ~₹$origVal~\n")
+                    sb.append("✅ *Our Price: ₹$finalVal*\n")
+                    sb.append("━━━━━━━━━━━━━━━━━━\n")
+                    sb.append("🎉 *AWESOME! YOU SAVED ₹$discVal ($percentOff% OFF)* 🎉\n")
+                } else if (origVal > 0 && discVal == 0) {
+                    sb.append("💰 *Total Value:* ₹$origVal\n")
+                } else if (origVal > 0 && discVal < 0) {
+                    sb.append("💰 *Total Value:* ₹$finalVal\n")
+                }
+                
                 sb.append("━━━━━━━━━━━━━━━━━━\n\n")
 
                 if (showPaymentLink) {
@@ -352,7 +406,7 @@ Best Regards,
                 }
 
                 if (includeSupportPhone) {
-                    sb.append("📞 *Support Helpline:* +91 98500 69600\n\n")
+                    sb.append("📞 *Support Helpline:* ").append(supportNumber).append("\n\n")
                 }
 
                 sb.append("Thank you for choosing us! 🙏")
@@ -373,8 +427,11 @@ Best Regards,
         includePaymentLink: Boolean,
         includeDispatchNote: Boolean,
         includeSupportPhone: Boolean,
+        originalTotal: String = "",
+        discountAmount: String = "",
         customPaymentLink: String = "upi://pay?pa=merchant@icici&pn=Order%20Payment",
-        language: String = "English"
+        language: String = "English",
+        supportNumber: String = "+91 98347 83503"
     ) {
         val cleanDigits = phone.filter { it.isDigit() }
         if (cleanDigits.length < 10) {
@@ -384,7 +441,8 @@ Best Regards,
         val waPhone = "91" + cleanDigits.takeLast(10)
         val messageText = generateOrderMessage(
             customerName, products, address, paymentMode,
-            includeAddress, includePaymentLink, includeDispatchNote, includeSupportPhone, customPaymentLink, language
+            includeAddress, includePaymentLink, includeDispatchNote, includeSupportPhone,
+            originalTotal, discountAmount, customPaymentLink, language, supportNumber
         )
         
         val waPackage = getWhatsAppPackage(context)
@@ -400,7 +458,156 @@ Best Regards,
             context.startActivity(intent)
         } catch (e: Exception) {
             e.printStackTrace()
-            Toast.makeText(context, "Failed to launch WhatsApp.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "WhatsApp is not installed or failed to launch.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun generateDispositionMessage(
+        status: String,
+        customerName: String,
+        productName: String = "",
+        language: String = "English"
+    ): String {
+        val cleanName = customerName.trim()
+        val isGenericName = cleanName.isBlank() || 
+                            cleanName.equals("Customer", ignoreCase = true) || 
+                            cleanName.equals("Client", ignoreCase = true) || 
+                            cleanName.equals("Lead", ignoreCase = true)
+        
+        val lang = language.trim().lowercase()
+        val sb = StringBuilder()
+
+        when (status) {
+            "No answer", "Busy", "Not reachable" -> {
+                when {
+                    lang == "marathi" || lang == "मराठी" -> {
+                        if (isGenericName) sb.append("नमस्कार! 👋\n\n") else sb.append("नमस्कार *").append(cleanName).append("* जी! 👋\n\n")
+                        sb.append("आम्ही तुम्हाला Finesse Overseas कडून संपर्क करण्याचा प्रयत्न केला, परंतु होऊ शकला नाही.\n\n")
+                        sb.append("कृपया तुम्हाला सोयीस्कर अशी वेळ सांगा, म्हणजे आम्ही तुम्हाला पुन्हा कॉल करू शकू. 🙏")
+                    }
+                    lang == "hindi" || lang == "हिंदी" -> {
+                        if (isGenericName) sb.append("नमस्ते! 👋\n\n") else sb.append("नमस्ते *").append(cleanName).append("* जी! 👋\n\n")
+                        sb.append("हमने आपको Finesse Overseas से संपर्क करने का प्रयास किया, लेकिन बात नहीं हो पाई।\n\n")
+                        sb.append("कृपया अपना सुविधाजनक समय बताएं, ताकि हम आपको फिर से कॉल कर सकें। 🙏")
+                    }
+                    else -> {
+                        if (isGenericName) sb.append("Hi there! 👋\n\n") else sb.append("Hi *").append(cleanName).append("*! 👋\n\n")
+                        sb.append("We tried calling you from Finesse Overseas but couldn't reach you.\n\n")
+                        sb.append("Please let us know a good time to connect so we can call you back. 🙏")
+                    }
+                }
+            }
+            "Product Enquiry", "Demo Scheduled" -> {
+                when {
+                    lang == "marathi" || lang == "मराठी" -> {
+                        if (isGenericName) sb.append("नमस्कार! 👋\n\n") else sb.append("नमस्कार *").append(cleanName).append("* जी! 👋\n\n")
+                        sb.append("तुमच्या चौकशीबद्दल मनःपूर्वक धन्यवाद! ✨\n\n")
+                        if (productName.isNotBlank()) sb.append("तुम्ही *").append(productName).append("* बद्दल माहिती विचारली होती.\n")
+                        sb.append("अधिक माहितीसाठी तुम्ही कधीही संपर्क करू शकता. लवकरच आमचा प्रतिनिधी तुम्हाला सविस्तर माहिती देईल. 🙏")
+                    }
+                    lang == "hindi" || lang == "हिंदी" -> {
+                        if (isGenericName) sb.append("नमस्ते! 👋\n\n") else sb.append("नमस्ते *").append(cleanName).append("* जी! 👋\n\n")
+                        sb.append("आपकी पूछताछ के लिए धन्यवाद! ✨\n\n")
+                        if (productName.isNotBlank()) sb.append("आपने *").append(productName).append("* के बारे में जानकारी माँगी थी।\n")
+                        sb.append("अधिक जानकारी के लिए आप कभी भी संपर्क कर सकते हैं। जल्द ही हमारा प्रतिनिधि आपको विस्तृत जानकारी देगा। 🙏")
+                    }
+                    else -> {
+                        if (isGenericName) sb.append("Hi there! 👋\n\n") else sb.append("Hi *").append(cleanName).append("*! 👋\n\n")
+                        sb.append("Thank you for your inquiry! ✨\n\n")
+                        if (productName.isNotBlank()) sb.append("Regarding your interest in *").append(productName).append("*.\n")
+                        sb.append("Feel free to reach out for more details. Our representative will share complete information with you shortly. 🙏")
+                    }
+                }
+            }
+            "Follow-up", "Call Back" -> {
+                when {
+                    lang == "marathi" || lang == "मराठी" -> {
+                        if (isGenericName) sb.append("नमस्कार! 👋\n\n") else sb.append("नमस्कार *").append(cleanName).append("* जी! 👋\n\n")
+                        sb.append("आपल्या मागील चर्चेनुसार, मी फक्त फॉलोअप घेत आहे.\n\n")
+                        sb.append("काही शंका असल्यास किंवा पुढील प्रक्रियेसाठी कृपया संपर्क करा. 🙏")
+                    }
+                    lang == "hindi" || lang == "हिंदी" -> {
+                        if (isGenericName) sb.append("नमस्ते! 👋\n\n") else sb.append("नमस्ते *").append(cleanName).append("* जी! 👋\n\n")
+                        sb.append("हमारी पिछली चर्चा के अनुसार, मैं बस फॉलो-अप ले रहा हूँ।\n\n")
+                        sb.append("यदि आपका कोई सवाल है या आप आगे बढ़ना चाहते हैं, तो कृपया संपर्क करें। 🙏")
+                    }
+                    else -> {
+                        if (isGenericName) sb.append("Hi there! 👋\n\n") else sb.append("Hi *").append(cleanName).append("*! 👋\n\n")
+                        sb.append("As per our last discussion, I am just following up.\n\n")
+                        sb.append("Let us know if you have any questions or if you're ready to proceed. 🙏")
+                    }
+                }
+            }
+            "Not Interested", "Wrong Number" -> {
+                when {
+                    lang == "marathi" || lang == "मराठी" -> {
+                        if (isGenericName) sb.append("नमस्कार! 👋\n\n") else sb.append("नमस्कार *").append(cleanName).append("* जी! 👋\n\n")
+                        sb.append("वेळ दिल्याबद्दल धन्यवाद!\n\n")
+                        sb.append("भविष्यात कधीही काही मदत लागल्यास आम्हाला नक्की संपर्क करा. तुमचा दिवस शुभ जावो! 🙏")
+                    }
+                    lang == "hindi" || lang == "हिंदी" -> {
+                        if (isGenericName) sb.append("नमस्ते! 👋\n\n") else sb.append("नमस्ते *").append(cleanName).append("* जी! 👋\n\n")
+                        sb.append("अपना समय देने के लिए धन्यवाद!\n\n")
+                        sb.append("भविष्य में कभी भी हमारी सेवाओं की आवश्यकता हो, तो बेझिझक संपर्क करें। आपका दिन शुभ हो! 🙏")
+                    }
+                    else -> {
+                        if (isGenericName) sb.append("Hi there! 👋\n\n") else sb.append("Hi *").append(cleanName).append("*! 👋\n\n")
+                        sb.append("Thank you for your time!\n\n")
+                        sb.append("Feel free to reach out to us anytime in the future if your requirements change. Have a great day! 🙏")
+                    }
+                }
+            }
+            else -> {
+                when {
+                    lang == "marathi" || lang == "मराठी" -> {
+                        if (isGenericName) sb.append("नमस्कार! 👋\n\n") else sb.append("नमस्कार *").append(cleanName).append("* जी! 👋\n\n")
+                        sb.append("आमच्याशी संपर्क साधल्याबद्दल धन्यवाद! काही शंका असल्यास कृपया रिप्लाय करा. 🙏")
+                    }
+                    lang == "hindi" || lang == "हिंदी" -> {
+                        if (isGenericName) sb.append("नमस्ते! 👋\n\n") else sb.append("नमस्ते *").append(cleanName).append("* जी! 👋\n\n")
+                        sb.append("हमसे जुड़ने के लिए धन्यवाद! किसी भी जानकारी के लिए कृपया रिप्लाई करें। 🙏")
+                    }
+                    else -> {
+                        if (isGenericName) sb.append("Hi there! 👋\n\n") else sb.append("Hi *").append(cleanName).append("*! 👋\n\n")
+                        sb.append("Thank you for connecting with us! Please reply if you need any assistance. 🙏")
+                    }
+                }
+            }
+        }
+        return sb.toString().trim()
+    }
+
+    fun sendDispositionWhatsApp(
+        context: Context,
+        phone: String,
+        status: String,
+        customerName: String,
+        productName: String = "",
+        language: String = "English"
+    ) {
+        val cleanDigits = phone.filter { it.isDigit() }
+        if (cleanDigits.length < 10) {
+            Toast.makeText(context, "Invalid phone number.", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val waPhone = "91" + cleanDigits.takeLast(10)
+        
+        val messageText = generateDispositionMessage(status, customerName, productName, language)
+        val waPackage = getWhatsAppPackage(context)
+        
+        try {
+            val encodedMsg = URLEncoder.encode(messageText, "UTF-8")
+            val uri = Uri.parse("https://api.whatsapp.com/send?phone=$waPhone&text=$encodedMsg")
+            val intent = Intent(Intent.ACTION_VIEW, uri).apply {
+                if (waPackage != null) {
+                    setPackage(waPackage)
+                }
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Toast.makeText(context, "WhatsApp is not installed or failed to launch.", Toast.LENGTH_SHORT).show()
         }
     }
 }

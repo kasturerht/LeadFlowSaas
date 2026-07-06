@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContactPhone
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.outlined.ContactPhone
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -24,7 +25,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -56,6 +59,7 @@ fun CreateLeadBottomSheet(
 ) {
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
+    val focusManager = LocalFocusManager.current
     val coroutineScope = rememberCoroutineScope()
 
     val draft by viewModel.leadDraft.collectAsState()
@@ -69,9 +73,7 @@ fun CreateLeadBottomSheet(
     // Form State
     var clientName by remember { mutableStateOf(draft.clientName) }
     var source by remember { mutableStateOf(draft.source) }
-    var showSourcePopup by remember { mutableStateOf(false) }
     var selectedProduct by remember { mutableStateOf(draft.selectedProduct) }
-    var showProductPopup by remember { mutableStateOf(false) }
     var selectedStatus by remember { mutableStateOf(draft.selectedStatus) }
     var selectedSubStatus by remember { mutableStateOf(draft.selectedSubStatus) }
     var selectedTimeSlot by remember { mutableStateOf(draft.selectedTimeSlot) }
@@ -79,6 +81,7 @@ fun CreateLeadBottomSheet(
     var remarkNotes by remember { mutableStateOf(draft.remarkNotes) }
     var followUpDate by remember { mutableStateOf(draft.followUpDate) }
     var showDatePicker by remember { mutableStateOf(false) }
+    var showProductPopup by remember { mutableStateOf(false) }
     
     // Order Dispatch Fields
     var shippingAddress by remember { mutableStateOf(draft.shippingAddress) }
@@ -86,6 +89,9 @@ fun CreateLeadBottomSheet(
     var shippingPincode by remember { mutableStateOf(draft.shippingPincode) }
     var paymentMethod by remember { mutableStateOf(draft.paymentMethod) }
     var orderAmount by remember { mutableStateOf(draft.orderAmount) }
+    var shippingState by remember { mutableStateOf("") }
+    var originalTotalValue by remember { mutableStateOf("") }
+    var discountAmount by remember { mutableStateOf("") }
 
     val calculatedTotal = remember(selectedProduct, pricesMap) { calculateTotalAmount(selectedProduct, pricesMap) }
 
@@ -101,6 +107,7 @@ fun CreateLeadBottomSheet(
         remarkNotes, followUpDate, shippingAddress, shippingCity, shippingPincode,
         paymentMethod, orderAmount
     ) {
+        kotlinx.coroutines.delay(500) // Debounce for 500ms to prevent SharedPreferences thrashing on fast typing
         viewModel.saveDraft(
             LeadFormDraft(
                 selectedNumber = selectedNumber,
@@ -131,6 +138,15 @@ fun CreateLeadBottomSheet(
     }
     
     var isSaving by remember { mutableStateOf(false) }
+
+    val luxuryTextFieldColors = OutlinedTextFieldDefaults.colors(
+        focusedBorderColor = ModernViolet,
+        unfocusedBorderColor = Color.Transparent,
+        focusedContainerColor = AccentSurface,
+        unfocusedContainerColor = AccentSurface,
+        focusedTextColor = TextPrimary, 
+        unfocusedTextColor = TextPrimary
+    )
     var isCheckingDuplicate by remember { mutableStateOf(false) }
 
     // WhatsApp Automation State
@@ -149,12 +165,42 @@ fun CreateLeadBottomSheet(
         }
     }
 
+    // Auto-Reset Logic for hidden fields
+    LaunchedEffect(selectedStatus) {
+        val isProductRelevant = selectedStatus in listOf(Constants.STATUS_INQUIRY, "Product Inquiry Only", "Product Inquiry", Constants.STATUS_ORDER_PLACED, "Order Placed", Constants.STATUS_FOLLOW_UP, "Follow-up")
+        val isFollowUpRelevant = selectedStatus in listOf(Constants.STATUS_FOLLOW_UP, "Follow-up")
+        val isOrderRelevant = selectedStatus in listOf(Constants.STATUS_ORDER_PLACED, "Order Placed")
+        val isSubStatusRelevant = selectedStatus in listOf(Constants.STATUS_CALL_NOT_ANSWERED, "No Answer", "Busy")
+
+        if (!isProductRelevant) {
+            selectedProduct = ""
+        }
+        if (!isFollowUpRelevant) {
+            followUpDate = ""
+            selectedTimeSlot = ""
+        }
+        if (!isOrderRelevant) {
+            shippingAddress = ""
+            shippingCity = ""
+            shippingState = ""
+            shippingPincode = ""
+            paymentMethod = ""
+            orderAmount = ""
+            originalTotalValue = ""
+            discountAmount = ""
+            selectedPaymentStatus = ""
+        }
+        if (!isSubStatusRelevant) {
+            selectedSubStatus = ""
+        }
+    }
+
     // Logic to save the lead and contact
     var pendingPhoneForContact by remember { mutableStateOf("") }
     var pendingNameForContact by remember { mutableStateOf("") }
     var pendingSubmitFn by remember { mutableStateOf<(() -> Unit)?>(null) }
 
-    val sources = listOf("Facebook Ad", "Instagram Ad", "Direct Inbound", "WhatsApp", "Reference", "Other")
+    val sources = listOf("Facebook Ad", "Instagram Ad", "WhatsApp", "Direct Inbound", "Reference", "Other")
 
     val writeContactsLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -355,14 +401,14 @@ fun CreateLeadBottomSheet(
                         onValueChange = { selectedNumber = it },
                         label = { Text("Phone Number", color = TextSecondary) },
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = ModernViolet,
-                            unfocusedBorderColor = BorderSubtle,
-                            focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary
-                        ),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = luxuryTextFieldColors,
                         singleLine = true,
-                        readOnly = !manualMode
+                        readOnly = !manualMode,
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                            keyboardType = androidx.compose.ui.text.input.KeyboardType.Phone,
+                            imeAction = androidx.compose.ui.text.input.ImeAction.Next
+                        )
                     )
                 }
 
@@ -372,13 +418,13 @@ fun CreateLeadBottomSheet(
                         onValueChange = { clientName = it },
                         label = { Text("Client Name (Required)", color = TextSecondary) },
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = ModernViolet,
-                            unfocusedBorderColor = BorderSubtle,
-                            focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary
-                        ),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = luxuryTextFieldColors,
                         singleLine = true,
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                            capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Words,
+                            imeAction = androidx.compose.ui.text.input.ImeAction.Next
+                        ),
                         trailingIcon = {
                             IconButton(onClick = { isSaveToContactsToggleOn = !isSaveToContactsToggleOn }) {
                                 Icon(
@@ -395,48 +441,54 @@ fun CreateLeadBottomSheet(
                 }
 
                 item {
-                    // Side-by-side Trigger Chips for Source and Product
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        SmartTriggerChip(
-                            label = "Add Source",
-                            selectedOption = source,
-                            iconData = sourceIcons[source],
-                            onClick = { showSourcePopup = true },
-                            modifier = Modifier.weight(1f),
-                            onClear = { source = "" }
-                        )
-                        
-                        SmartTriggerChip(
-                            label = "Add Product",
-                            selectedOption = selectedProduct,
-                            iconData = getIconForSelection(selectedProduct, productIcons),
-                            emojiData = getEmojiForSelection(selectedProduct, productsList.associate { it.name to it.emojiIcon }),
-                            onClick = { showProductPopup = true },
-                            modifier = Modifier.weight(1f),
-                            onClear = { selectedProduct = "" }
-                        )
-                    }
-                    if (calculatedTotal > 0) {
-                        Text(
-                            text = "Total Order Value: ₹${calculatedTotal.toInt()}",
-                            color = ModernViolet,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(start = 4.dp, top = 8.dp)
-                        )
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("LEAD SOURCE", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextSecondary, letterSpacing = 1.2.sp)
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp)
+                        ) {
+                            sources.forEach { src ->
+                                val isSelected = source == src
+                                val iconData = sourceIcons[src]
+                                val tint = iconData?.tint ?: ModernViolet
+                                
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(100.dp))
+                                        .background(if (isSelected) tint.copy(alpha = 0.12f) else AccentSurface)
+                                        .border(1.dp, if (isSelected) tint else Color.Transparent, RoundedCornerShape(100.dp))
+                                        .clickable { 
+                                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                            source = if (isSelected) "" else src 
+                                        }
+                                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                                        if (iconData != null) {
+                                            Icon(iconData.icon, contentDescription = null, tint = tint, modifier = Modifier.size(14.dp))
+                                        }
+                                        Text(text = src, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (isSelected) tint else TextPrimary)
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
+
+                // Products section moved below
 
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Text("STATUS DISPOSITION", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextSecondary, letterSpacing = 1.2.sp)
-                        val chunkedStatuses = Constants.PROCESSED_STATUSES.chunked(2)
-                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            chunkedStatuses.forEach { rowItems ->
-                                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                        
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Constants.PROCESSED_STATUSES.chunked(2).forEach { rowItems ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
                                     rowItems.forEach { option ->
                                         val isSelected = selectedStatus == option
                                         val iconData = statusIcons[option]
@@ -445,36 +497,49 @@ fun CreateLeadBottomSheet(
                                         Box(
                                             modifier = Modifier
                                                 .weight(1f)
-                                                .clip(RoundedCornerShape(16.dp))
-                                                .background(if (isSelected) (iconData?.tint ?: ModernViolet).copy(alpha = 0.08f) else SurfaceLight)
-                                                .border(1.dp, if (isSelected) (iconData?.tint ?: ModernViolet) else BorderSubtle, RoundedCornerShape(16.dp))
+                                                .clip(RoundedCornerShape(100.dp))
+                                                .background(if (isSelected) (iconData?.tint ?: ModernViolet).copy(alpha = 0.12f) else AccentSurface)
+                                                .border(1.dp, if (isSelected) (iconData?.tint ?: ModernViolet) else Color.Transparent, RoundedCornerShape(100.dp))
                                                 .clickable { 
+                                                    focusManager.clearFocus()
                                                     haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
-                                                    val newStatus = if (selectedStatus == option) "" else option
-                                                    selectedStatus = newStatus
-                                                    if (newStatus == Constants.STATUS_INQUIRY || newStatus == "Product Inquiry Only" || newStatus == "Product Inquiry" || newStatus == Constants.STATUS_ORDER_PLACED || newStatus == "Order Placed" || newStatus == Constants.STATUS_FOLLOW_UP || newStatus == "Follow-up") {
-                                                        if (selectedProduct.isEmpty()) {
+                                                    if (selectedStatus == option) {
+                                                        selectedStatus = ""
+                                                    } else {
+                                                        selectedStatus = option
+                                                        val productRequiredStatuses = listOf(Constants.STATUS_INQUIRY, "Product Inquiry Only", "Product Inquiry", Constants.STATUS_ORDER_PLACED, "Order Placed", Constants.STATUS_FOLLOW_UP, "Follow-up")
+                                                        if (option in productRequiredStatuses && selectedProduct.isEmpty()) {
                                                             showProductPopup = true
                                                         }
                                                     }
                                                 }
-                                                .padding(horizontal = 12.dp, vertical = 14.dp),
+                                                .padding(horizontal = 12.dp, vertical = 10.dp),
                                             contentAlignment = Alignment.Center
                                         ) {
-                                            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
                                                 if (iconData != null) {
                                                     Icon(
                                                         imageVector = iconData.icon,
                                                         contentDescription = null,
                                                         tint = if (isSelected) iconData.tint else TextSecondary,
-                                                        modifier = Modifier.size(24.dp)
+                                                        modifier = Modifier.size(16.dp)
                                                     )
                                                 }
-                                                Text(labelText, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = if (isSelected) TextPrimary else TextSecondary, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                                Text(
+                                                    text = labelText, 
+                                                    fontSize = 12.sp, 
+                                                    fontWeight = FontWeight.Bold, 
+                                                    color = if (isSelected) TextPrimary else TextSecondary,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis
+                                                )
                                             }
                                         }
                                     }
-                                    repeat(2 - rowItems.size) { Spacer(modifier = Modifier.weight(1f)) }
+                                    // Failsafe for odd-numbered grids
+                                    if (rowItems.size == 1) {
+                                        Spacer(modifier = Modifier.weight(1f))
+                                    }
                                 }
                             }
                         }
@@ -490,7 +555,7 @@ fun CreateLeadBottomSheet(
                                 listOf("🔔 Ringing", "🔴 Busy", "📵 Switched Off").forEach { sub ->
                                     val isSelected = selectedSubStatus == sub
                                     Box(
-                                        modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(if (isSelected) Color(0xFFF43F5E) else SurfaceLight).border(1.dp, if (isSelected) Color(0xFFF43F5E) else BorderSubtle, RoundedCornerShape(12.dp)).clickable { selectedSubStatus = if (selectedSubStatus == sub) "" else sub }.padding(horizontal = 8.dp, vertical = 12.dp),
+                                        modifier = Modifier.weight(1f).clip(RoundedCornerShape(100.dp)).background(if (isSelected) Color(0xFFF43F5E) else AccentSurface).border(1.dp, if (isSelected) Color(0xFFF43F5E) else Color.Transparent, RoundedCornerShape(100.dp)).clickable { selectedSubStatus = if (selectedSubStatus == sub) "" else sub }.padding(horizontal = 8.dp, vertical = 12.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Text(sub, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (isSelected) CleanWhite else TextPrimary, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -501,7 +566,75 @@ fun CreateLeadBottomSheet(
                     }
                 }
 
-                // Product dropdown replaced by animated side-by-side chip above
+                // SECTION: PRODUCTS / SERVICES (Moved below Status and Sub-Status for logical flow)
+                val isProductRelevant = selectedStatus in listOf(Constants.STATUS_INQUIRY, "Product Inquiry Only", "Product Inquiry", Constants.STATUS_ORDER_PLACED, "Order Placed", Constants.STATUS_FOLLOW_UP, "Follow-up")
+                if (isProductRelevant) {
+                    item {
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Text("PRODUCTS / SERVICES", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextSecondary, letterSpacing = 1.2.sp)
+                            
+                            if (selectedProduct.isNotEmpty()) {
+                                val selectedItems = selectedProduct.split(", ").filter { it.isNotEmpty() }
+                                FlowRow(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    selectedItems.forEach { item ->
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(12.dp))
+                                                .background(ModernViolet.copy(alpha = 0.1f))
+                                                .border(1.dp, ModernViolet.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+                                                .padding(horizontal = 12.dp, vertical = 8.dp)
+                                        ) {
+                                            Text(item, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = ModernViolet)
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                if (calculatedTotal > 0) {
+                                    Text(
+                                        text = "Total Order Value: ₹${calculatedTotal.toInt()}",
+                                        color = ModernViolet,
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Black,
+                                        modifier = Modifier.padding(start = 4.dp)
+                                    )
+                                }
+                                
+                                Spacer(modifier = Modifier.weight(1f))
+
+                                Row(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .clickable { showProductPopup = true }
+                                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = if (selectedProduct.isEmpty()) Icons.Default.Add else Icons.Default.Edit,
+                                        contentDescription = "Edit Products",
+                                        tint = ModernViolet,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = if (selectedProduct.isEmpty()) "Add Products" else "Edit Products",
+                                        color = ModernViolet,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
 
                 if (selectedStatus == "Follow-up") {
                     item {
@@ -515,7 +648,7 @@ fun CreateLeadBottomSheet(
                                 listOf("🌅 Morning", "☀️ Afternoon", "🌙 Evening").forEach { slot ->
                                     val isSelected = selectedTimeSlot == slot
                                     Box(
-                                        modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(if (isSelected) StatusWarning else SurfaceLight).border(1.dp, if (isSelected) StatusWarning else BorderSubtle, RoundedCornerShape(12.dp)).clickable { selectedTimeSlot = if (selectedTimeSlot == slot) "" else slot }.padding(horizontal = 8.dp, vertical = 12.dp),
+                                        modifier = Modifier.weight(1f).clip(RoundedCornerShape(100.dp)).background(if (isSelected) StatusWarning else AccentSurface).border(1.dp, if (isSelected) StatusWarning else Color.Transparent, RoundedCornerShape(100.dp)).clickable { selectedTimeSlot = if (selectedTimeSlot == slot) "" else slot }.padding(horizontal = 8.dp, vertical = 12.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Text(slot, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (isSelected) CleanWhite else TextPrimary, textAlign = TextAlign.Center, maxLines = 1)
@@ -534,28 +667,28 @@ fun CreateLeadBottomSheet(
                             OutlinedTextField(
                                 value = shippingAddress, onValueChange = { shippingAddress = it },
                                 label = { Text("Full Shipping Address") }, modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp)
+                                shape = RoundedCornerShape(16.dp), colors = luxuryTextFieldColors
                             )
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                 OutlinedTextField(
                                     value = shippingCity, onValueChange = { shippingCity = it },
-                                    label = { Text("City") }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp)
+                                    label = { Text("City") }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(16.dp), colors = luxuryTextFieldColors
                                 )
                                 OutlinedTextField(
                                     value = shippingPincode, onValueChange = { shippingPincode = it },
-                                    label = { Text("Pincode") }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp)
+                                    label = { Text("Pincode") }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(16.dp), colors = luxuryTextFieldColors
                                 )
                             }
                             OutlinedTextField(
                                 value = orderAmount, onValueChange = { orderAmount = it },
-                                label = { Text("Order Amount (₹)") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)
+                                label = { Text("Order Amount (₹)") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = luxuryTextFieldColors
                             )
                             Text("PAYMENT METHOD", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextSecondary, letterSpacing = 1.2.sp)
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 listOf("COD", "Prepaid").forEach { pm ->
                                     val isSelected = paymentMethod == pm
                                     Box(
-                                        modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(if (isSelected) ModernViolet else SurfaceLight).border(1.dp, if (isSelected) ModernViolet else BorderSubtle, RoundedCornerShape(8.dp)).clickable { paymentMethod = if (paymentMethod == pm) "" else pm }.padding(horizontal = 14.dp, vertical = 10.dp)
+                                        modifier = Modifier.clip(RoundedCornerShape(100.dp)).background(if (isSelected) ModernViolet else AccentSurface).border(1.dp, if (isSelected) ModernViolet else Color.Transparent, RoundedCornerShape(100.dp)).clickable { paymentMethod = if (paymentMethod == pm) "" else pm }.padding(horizontal = 16.dp, vertical = 10.dp)
                                     ) { Text(pm, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (isSelected) CleanWhite else TextSecondary) }
                                 }
                             }
@@ -565,7 +698,7 @@ fun CreateLeadBottomSheet(
                                     listOf("⏳ UPI Link Sent", "✅ Payment Verified").forEach { pStatus ->
                                         val isSelected = selectedPaymentStatus == pStatus
                                         Box(
-                                            modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(if (isSelected) StatusSuccess else SurfaceLight).border(1.dp, if (isSelected) StatusSuccess else BorderSubtle, RoundedCornerShape(12.dp)).clickable { selectedPaymentStatus = if (selectedPaymentStatus == pStatus) "" else pStatus }.padding(horizontal = 8.dp, vertical = 12.dp),
+                                            modifier = Modifier.weight(1f).clip(RoundedCornerShape(100.dp)).background(if (isSelected) StatusSuccess else AccentSurface).border(1.dp, if (isSelected) StatusSuccess else Color.Transparent, RoundedCornerShape(100.dp)).clickable { selectedPaymentStatus = if (selectedPaymentStatus == pStatus) "" else pStatus }.padding(horizontal = 8.dp, vertical = 12.dp),
                                             contentAlignment = Alignment.Center
                                         ) {
                                             Text(pStatus, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (isSelected) CleanWhite else TextPrimary, textAlign = TextAlign.Center, maxLines = 1)
@@ -600,21 +733,33 @@ fun CreateLeadBottomSheet(
                     OutlinedTextField(
                         value = remarkNotes, onValueChange = { remarkNotes = it },
                         label = { Text("Conversation Notes (Optional)") },
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = ModernViolet, unfocusedBorderColor = BorderSubtle,
-                            focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary
-                        ),
-                        shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth(),
+                        colors = luxuryTextFieldColors,
+                        shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth(),
                         minLines = 1, maxLines = 4
                     )
                 }
                 
                 item {
+                    val buttonGradient = androidx.compose.ui.graphics.Brush.horizontalGradient(
+                        colors = listOf(ModernViolet, ModernVioletDark)
+                    )
+                    
                     Button(
-                        modifier = Modifier.fillMaxWidth().height(54.dp), 
-                        enabled = !isSaving, 
-                        colors = ButtonDefaults.buttonColors(containerColor = ModernViolet), 
-                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp)
+                            .then(
+                                if (!isSaving) {
+                                    Modifier.background(buttonGradient, RoundedCornerShape(100.dp))
+                                } else Modifier
+                            ),
+                        enabled = !isSaving,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.Transparent, 
+                            disabledContainerColor = BorderSubtle 
+                        ),
+                        contentPadding = PaddingValues(0.dp),
+                        shape = RoundedCornerShape(100.dp),
                         onClick = {
                             if (isSaving) return@Button
                             haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
@@ -639,7 +784,7 @@ fun CreateLeadBottomSheet(
                                 Toast.makeText(context, "Please select Status", Toast.LENGTH_SHORT).show()
                                 return@Button
                             }
-                            if ((selectedStatus == "Order Placed" || selectedStatus == "Product Inquiry Only") && selectedProduct.isEmpty()) {
+                            if ((selectedStatus == "Order Placed" || selectedStatus == "Product Inquiry Only" || selectedStatus == "Product Inquiry") && selectedProduct.isEmpty()) {
                                 Toast.makeText(context, "Please select a Product", Toast.LENGTH_SHORT).show()
                                 return@Button
                             }
@@ -670,10 +815,13 @@ fun CreateLeadBottomSheet(
                                 val finalTimeSlot = if (isFollowUpRelevant) selectedTimeSlot else ""
                                 val finalShippingAddress = if (isOrderRelevant) shippingAddress else ""
                                 val finalShippingCity = if (isOrderRelevant) shippingCity else ""
+                                val finalShippingState = if (isOrderRelevant) shippingState else ""
                                 val finalShippingPincode = if (isOrderRelevant) shippingPincode else ""
                                 val finalPaymentMethod = if (isOrderRelevant) paymentMethod else ""
                                 val finalPaymentStatus = if (isOrderRelevant) selectedPaymentStatus else ""
                                 val finalOrderAmount = if (isOrderRelevant) orderAmount else ""
+                                val finalOriginalTotal = if (isOrderRelevant) originalTotalValue else ""
+                                val finalDiscountAmount = if (isOrderRelevant) discountAmount else ""
 
                                 viewModel.createManualLead(
                                     name = clientName.trim(),
@@ -687,11 +835,14 @@ fun CreateLeadBottomSheet(
                                     product = finalProduct,
                                     address = finalShippingAddress,
                                     city = finalShippingCity,
+                                    state = finalShippingState,
                                     pincode = finalShippingPincode,
                                     paymentMethod = finalPaymentMethod,
                                     orderAmount = finalOrderAmount,
+                                    originalTotalValue = finalOriginalTotal,
+                                    discountAmount = finalDiscountAmount,
                                     paymentStatus = finalPaymentStatus,
-                                    onSuccess = {
+                                    onSuccess = { logId, newLead ->
                                         isSaving = false
                                         viewModel.clearDraft()
                                         Toast.makeText(context, "Lead saved successfully!", Toast.LENGTH_SHORT).show()
@@ -701,12 +852,14 @@ fun CreateLeadBottomSheet(
                                                 phone = purePhone,
                                                 customerName = clientName.trim(),
                                                 products = selectedProduct,
-                                                address = listOf(shippingAddress, shippingCity, shippingPincode).filter { it.isNotBlank() }.joinToString(", "),
+                                                address = listOf(shippingAddress, shippingCity, shippingState, shippingPincode).filter { it.isNotBlank() }.joinToString(", "),
                                                 paymentMode = if (paymentMethod.equals("Prepaid", ignoreCase = true)) "$paymentMethod - $selectedPaymentStatus" else paymentMethod,
                                                 includeAddress = includeAddress,
                                                 includePaymentLink = includePaymentLink,
                                                 includeDispatchNote = includeDispatchNote,
                                                 includeSupportPhone = includeSupportPhone,
+                                                originalTotal = finalOriginalTotal,
+                                                discountAmount = finalDiscountAmount,
                                                 language = selectedLanguage
                                             )
                                         }
@@ -771,23 +924,11 @@ fun CreateLeadBottomSheet(
             }
         }
     }
-
-    if (showSourcePopup) {
-        SmartGridPopup(
-            title = "Select Lead Source",
-            options = sources,
-            icons = sourceIcons,
-            selectedOption = source,
-            onSelect = { source = it; showSourcePopup = false },
-            onDismiss = { showSourcePopup = false }
-        )
-    }
-
+    
     if (showProductPopup) {
-        val productNames = productsList.map { it.name }.ifEmpty { Constants.PRODUCTS }
         SmartGridPopup(
-            title = "Select Product",
-            options = productNames,
+            title = "Select Products",
+            options = productsList.map { it.name },
             icons = productIcons,
             emojis = productsList.associate { it.name to it.emojiIcon },
             prices = pricesMap,

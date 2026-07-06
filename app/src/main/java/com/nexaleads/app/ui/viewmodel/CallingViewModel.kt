@@ -38,9 +38,12 @@ data class LeadFormDraft(
     val followUpDate: String = "",
     val shippingAddress: String = "",
     val shippingCity: String = "",
+    val shippingState: String = "",
     val shippingPincode: String = "",
     val paymentMethod: String = "",
-    val orderAmount: String = ""
+    val orderAmount: String = "",
+    val originalTotalValue: String = "",
+    val discountAmount: String = ""
 )
 
 @HiltViewModel
@@ -54,6 +57,9 @@ class CallingViewModel @Inject constructor(
 
     private val _leads = MutableStateFlow<List<Lead>>(emptyList())
     val leads: StateFlow<List<Lead>> = _leads
+
+    private val _telecallerContact = MutableStateFlow<String>("+91 98347 83503")
+    val telecallerContact: StateFlow<String> = _telecallerContact
 
     private val _pendingMediaLead = MutableStateFlow<Lead?>(null)
     val pendingMediaLead: StateFlow<Lead?> = _pendingMediaLead
@@ -85,6 +91,15 @@ class CallingViewModel @Inject constructor(
             }
         }
         
+        // Auto-clear ghost invoices (older than 2 hours)
+        val invoiceTimestamp = prefs.getLong("pending_invoice_timestamp", 0L)
+        if (invoiceTimestamp > 0L) {
+            val twoHoursInMillis = 2 * 60 * 60 * 1000L
+            if (System.currentTimeMillis() - invoiceTimestamp > twoHoursInMillis) {
+                clearPendingInvoice()
+            }
+        }
+        
         viewModelScope.launch {
             repository.seedProductsIfEmpty()
             repository.getProducts().collect { fetchedProducts ->
@@ -112,6 +127,25 @@ class CallingViewModel @Inject constructor(
         _pendingCallTimestamp.value = null
     }
 
+    private val _pendingInvoiceLead = MutableStateFlow<Lead?>(null)
+    val pendingInvoiceLead: StateFlow<Lead?> = _pendingInvoiceLead
+
+    fun setPendingInvoice(lead: Lead) {
+        prefs.edit()
+            .putString("pending_invoice_lead_id", lead.id)
+            .putLong("pending_invoice_timestamp", System.currentTimeMillis())
+            .apply()
+        _pendingInvoiceLead.value = lead
+    }
+
+    fun clearPendingInvoice() {
+        prefs.edit()
+            .remove("pending_invoice_lead_id")
+            .remove("pending_invoice_timestamp")
+            .apply()
+        _pendingInvoiceLead.value = null
+    }
+
     private fun loadDraftFromPrefs(): LeadFormDraft {
         return LeadFormDraft(
             selectedNumber = prefs.getString("draft_number", "") ?: "",
@@ -127,9 +161,12 @@ class CallingViewModel @Inject constructor(
             followUpDate = prefs.getString("draft_followup", "") ?: "",
             shippingAddress = prefs.getString("draft_address", "") ?: "",
             shippingCity = prefs.getString("draft_city", "") ?: "",
+            shippingState = prefs.getString("draft_state", "") ?: "",
             shippingPincode = prefs.getString("draft_pincode", "") ?: "",
             paymentMethod = prefs.getString("draft_payment_method", "") ?: "",
-            orderAmount = prefs.getString("draft_order_amount", "") ?: ""
+            orderAmount = prefs.getString("draft_order_amount", "") ?: "",
+            originalTotalValue = prefs.getString("draft_original_total", "") ?: "",
+            discountAmount = prefs.getString("draft_discount_amount", "") ?: ""
         )
     }
 
@@ -151,9 +188,12 @@ class CallingViewModel @Inject constructor(
             putString("draft_followup", draft.followUpDate)
             putString("draft_address", draft.shippingAddress)
             putString("draft_city", draft.shippingCity)
+            putString("draft_state", draft.shippingState)
             putString("draft_pincode", draft.shippingPincode)
             putString("draft_payment_method", draft.paymentMethod)
             putString("draft_order_amount", draft.orderAmount)
+            putString("draft_original_total", draft.originalTotalValue)
+            putString("draft_discount_amount", draft.discountAmount)
         }.apply()
         _leadDraft.value = draft
     }
@@ -170,15 +210,20 @@ class CallingViewModel @Inject constructor(
         _saveToContactsPreference.value = save
     }
 
-    fun initialize(userId: String, name: String) {
+    fun initialize(userId: String, name: String, contactNumber: String) {
         if (_currentUserId.value == userId) return
         _currentUserId.value = userId
         callerName = name
+        _telecallerContact.value = contactNumber
         viewModelScope.launch {
             repository.getLeadsForUser(userId)
                 .catch { /* Handle error */ }
                 .collect { newLeads ->
                     _leads.value = newLeads
+                    val pendingInvoiceId = prefs.getString("pending_invoice_lead_id", null)
+                    if (pendingInvoiceId != null && _pendingInvoiceLead.value == null) {
+                        _pendingInvoiceLead.value = newLeads.find { it.id == pendingInvoiceId }
+                    }
                 }
         }
     }
@@ -192,15 +237,18 @@ class CallingViewModel @Inject constructor(
         product: String,
         address: String,
         city: String,
+        state: String,
         pincode: String,
         paymentMethod: String,
         orderAmount: String,
+        originalTotalValue: String,
+        discountAmount: String,
         callDurationSeconds: Int,
         subStatus: String? = null,
         followUpTimeSlot: String? = null,
         paymentStatus: String? = null,
         isSuspiciousShortCall: Boolean = false,
-        onSuccess: (String) -> Unit,
+        onSuccess: (String, Lead) -> Unit,
         onError: (String) -> Unit
     ) {
         viewModelScope.launch {
@@ -218,9 +266,12 @@ class CallingViewModel @Inject constructor(
                     "product" to product,
                     "address" to address,
                     "city" to city,
+                    "state" to state,
                     "pincode" to pincode,
                     "paymentMethod" to paymentMethod,
                     "orderAmount" to orderAmount,
+                    "originalTotalValue" to originalTotalValue,
+                    "discountAmount" to discountAmount,
                     "subStatus" to subStatus,
                     "followUpTimeSlot" to followUpTimeSlot,
                     "paymentStatus" to paymentStatus,
@@ -251,10 +302,12 @@ class CallingViewModel @Inject constructor(
                     city = city,
                     pincode = pincode,
                     paymentMethod = paymentMethod,
-                    orderAmount = orderAmount
+                    orderAmount = orderAmount,
+                    originalTotalValue = originalTotalValue,
+                    discountAmount = discountAmount
                 )
                 repository.addInteraction(interaction)
-                onSuccess(logId)
+                onSuccess(logId, lead)
             } catch (e: Exception) {
                 onError(e.message ?: "Unknown error")
             }
@@ -295,11 +348,14 @@ class CallingViewModel @Inject constructor(
         product: String,
         address: String,
         city: String,
+        state: String,
         pincode: String,
         paymentMethod: String,
         orderAmount: String,
+        originalTotalValue: String,
+        discountAmount: String,
         paymentStatus: String = "",
-        onSuccess: (String) -> Unit,
+        onSuccess: (String, Lead) -> Unit,
         onError: (String) -> Unit
     ) {
         viewModelScope.launch {
@@ -329,9 +385,12 @@ class CallingViewModel @Inject constructor(
                     product = product,
                     address = address,
                     city = city,
+                    state = state,
                     pincode = pincode,
                     paymentMethod = paymentMethod,
                     orderAmount = orderAmount,
+                    originalTotalValue = originalTotalValue,
+                    discountAmount = discountAmount,
                     paymentStatus = paymentStatus
                 )
 
@@ -354,7 +413,7 @@ class CallingViewModel @Inject constructor(
 
                 val errorMsg = repository.createManualLeadBatch(lead, interaction)
                 if (errorMsg == null) {
-                    onSuccess(newLeadId)
+                    onSuccess(logId, lead)
                 } else {
                     onError("DB Error: $errorMsg")
                 }

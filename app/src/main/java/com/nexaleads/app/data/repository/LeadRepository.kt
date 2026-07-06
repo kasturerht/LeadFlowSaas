@@ -47,7 +47,9 @@ class LeadRepository @Inject constructor(
                             subStatus = doc.getString("subStatus"),
                             followUpTimeSlot = doc.getString("followUpTimeSlot"),
                             paymentStatus = doc.getString("paymentStatus"),
-                            isSuspiciousShortCall = doc.getBoolean("isSuspiciousShortCall") ?: false
+                            isSuspiciousShortCall = doc.getBoolean("isSuspiciousShortCall") ?: false,
+                            originalTotalValue = doc.getString("originalTotalValue") ?: "",
+                            discountAmount = doc.getString("discountAmount") ?: ""
                         )
                     }
                     trySend(leads)

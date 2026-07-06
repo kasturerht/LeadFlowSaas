@@ -14,7 +14,7 @@ import javax.inject.Inject
 sealed class AuthState {
     object Idle : AuthState()
     object Loading : AuthState()
-    data class Authenticated(val userId: String, val userName: String) : AuthState()
+    data class Authenticated(val userId: String, val userName: String, val contactNumber: String) : AuthState()
     data class Unauthenticated(val error: String? = null) : AuthState()
 }
 
@@ -42,7 +42,8 @@ class AuthViewModel @Inject constructor(
                         val isActive = doc.getBoolean("isActive") ?: true
                         if (isActive) {
                             val name = doc.getString("name") ?: "Agent"
-                            _authState.value = AuthState.Authenticated(currentUser.uid, name)
+                            val contactNumber = doc.getString("contactNumber") ?: "+91 98347 83503"
+                            _authState.value = AuthState.Authenticated(currentUser.uid, name, contactNumber)
                         } else {
                             auth.signOut()
                             _authState.value = AuthState.Unauthenticated("Your account has been disabled by Admin.")

@@ -27,6 +27,7 @@ import com.nexaleads.app.utils.WhatsAppSender
 @Composable
 fun SmartWhatsAppOrderCard(
     customerName: String,
+    status: String = "Order Placed",
     products: String,
     address: String,
     paymentMode: String,
@@ -41,6 +42,9 @@ fun SmartWhatsAppOrderCard(
     includeSupportPhone: Boolean,
     onIncludeSupportPhoneChange: (Boolean) -> Unit,
     selectedLanguage: String = "English",
+    originalTotalValue: String = "",
+    discountAmount: String = "",
+    supportNumber: String = "+91 98347 83503",
     onLanguageChange: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
@@ -62,20 +66,32 @@ fun SmartWhatsAppOrderCard(
     val isCod = paymentMode.equals("COD", ignoreCase = true) || paymentMode.contains("Cash", ignoreCase = true)
 
     val livePreviewText = remember(
-        customerName, products, address, paymentMode,
-        includeAddress, includePaymentLink, includeDispatchNote, includeSupportPhone, currentLanguage
+        status, customerName, products, address, paymentMode,
+        includeAddress, includePaymentLink, includeDispatchNote, includeSupportPhone, currentLanguage, originalTotalValue, discountAmount, supportNumber
     ) {
-        WhatsAppSender.generateOrderMessage(
-            customerName = customerName,
-            products = products,
-            address = address,
-            paymentMode = paymentMode,
-            includeAddress = includeAddress,
-            includePaymentLink = includePaymentLink,
-            includeDispatchNote = includeDispatchNote,
-            includeSupportPhone = includeSupportPhone,
-            language = currentLanguage
-        )
+        if (status == "Order Placed") {
+            WhatsAppSender.generateOrderMessage(
+                customerName = customerName,
+                products = products,
+                address = address,
+                paymentMode = paymentMode,
+                includeAddress = includeAddress,
+                includePaymentLink = includePaymentLink,
+                includeDispatchNote = includeDispatchNote,
+                includeSupportPhone = includeSupportPhone,
+                originalTotal = originalTotalValue,
+                discountAmount = discountAmount,
+                language = currentLanguage,
+                supportNumber = supportNumber
+            )
+        } else {
+            WhatsAppSender.generateDispositionMessage(
+                status = status,
+                customerName = customerName,
+                productName = products,
+                language = currentLanguage
+            )
+        }
     }
 
     Surface(
@@ -141,52 +157,54 @@ fun SmartWhatsAppOrderCard(
                     HorizontalDivider(color = borderLight, thickness = 1.dp)
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    Text(
-                        text = "Message Personalization",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = textSecondary,
-                        letterSpacing = 0.5.sp
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
+                    if (status == "Order Placed") {
+                        Text(
+                            text = "Message Personalization",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = textSecondary,
+                            letterSpacing = 0.5.sp
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
 
-                    // Minimalist Toggles
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        LuxuryToggleChip(
-                            label = "Address",
-                            icon = "📍",
-                            selected = includeAddress,
-                            onClick = { onIncludeAddressChange(!includeAddress) },
-                            modifier = Modifier.weight(1f)
-                        )
-                        LuxuryToggleChip(
-                            label = "Pay Link",
-                            icon = "💳",
-                            selected = !isCod && includePaymentLink,
-                            enabled = !isCod,
-                            onClick = { if (!isCod) onIncludePaymentLinkChange(!includePaymentLink) },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        LuxuryToggleChip(
-                            label = "Dispatch",
-                            icon = "🚚",
-                            selected = includeDispatchNote,
-                            onClick = { onIncludeDispatchNoteChange(!includeDispatchNote) },
-                            modifier = Modifier.weight(1f)
-                        )
-                        LuxuryToggleChip(
-                            label = "Support",
-                            icon = "📞",
-                            selected = includeSupportPhone,
-                            onClick = { onIncludeSupportPhoneChange(!includeSupportPhone) },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
+                        // Minimalist Toggles
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            LuxuryToggleChip(
+                                label = "Address",
+                                icon = "📍",
+                                selected = includeAddress,
+                                onClick = { onIncludeAddressChange(!includeAddress) },
+                                modifier = Modifier.weight(1f)
+                            )
+                            LuxuryToggleChip(
+                                label = "Pay Link",
+                                icon = "💳",
+                                selected = !isCod && includePaymentLink,
+                                enabled = !isCod,
+                                onClick = { if (!isCod) onIncludePaymentLinkChange(!includePaymentLink) },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            LuxuryToggleChip(
+                                label = "Dispatch",
+                                icon = "🚚",
+                                selected = includeDispatchNote,
+                                onClick = { onIncludeDispatchNoteChange(!includeDispatchNote) },
+                                modifier = Modifier.weight(1f)
+                            )
+                            LuxuryToggleChip(
+                                label = "Support",
+                                icon = "📞",
+                                selected = includeSupportPhone,
+                                onClick = { onIncludeSupportPhoneChange(!includeSupportPhone) },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
 
-                    Spacer(modifier = Modifier.height(20.dp))
+                        Spacer(modifier = Modifier.height(20.dp))
+                    }
 
                     Text(
                         text = "Client Language",

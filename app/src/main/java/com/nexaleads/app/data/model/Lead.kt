@@ -22,7 +22,10 @@ data class Lead(
     val subStatus: String? = null,
     val followUpTimeSlot: String? = null,
     val paymentStatus: String? = null,
-    val isSuspiciousShortCall: Boolean = false
+    val isSuspiciousShortCall: Boolean = false,
+    val state: String = "",
+    val originalTotalValue: String = "",
+    val discountAmount: String = ""
 )
 
 fun Lead.getPrimaryCategory(): String {

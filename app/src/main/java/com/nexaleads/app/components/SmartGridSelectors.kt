@@ -260,6 +260,7 @@ fun SmartTriggerChip(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SmartGridPopup(
     title: String,
@@ -274,6 +275,11 @@ fun SmartGridPopup(
     onDismiss: () -> Unit
 ) {
     val qtyMap = remember(selectedOption) { parseProductQuantities(selectedOption) }
+    var searchQuery by remember { mutableStateOf("") }
+    
+    val filteredOptions = remember(searchQuery, options) {
+        if (searchQuery.isBlank()) options else options.filter { it.contains(searchQuery, ignoreCase = true) }
+    }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -282,11 +288,13 @@ fun SmartGridPopup(
         Box(
             modifier = Modifier
                 .fillMaxWidth(0.94f)
+                .heightIn(max = 600.dp)
                 .clip(RoundedCornerShape(24.dp))
                 .background(SurfaceLight)
                 .padding(20.dp)
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                // Header
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -324,9 +332,31 @@ fun SmartGridPopup(
                     }
                 }
                 
-                if (isMultiSelect) {
-                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        options.forEach { option ->
+                if (options.size > 5) {
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text("Search...", color = BorderSubtle) },
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search", tint = ModernViolet) },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = ModernViolet,
+                            unfocusedBorderColor = BorderSubtle,
+                            focusedContainerColor = SurfaceLight,
+                            unfocusedContainerColor = SurfaceLight,
+                        ),
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                }
+                
+                androidx.compose.foundation.lazy.LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.fillMaxWidth().weight(1f, fill = false)
+                ) {
+                    if (isMultiSelect) {
+                        items(filteredOptions.size) { index ->
+                            val option = filteredOptions[index]
                             val iconData = icons[option]
                             val currentQty = qtyMap[option] ?: 0
                             val isOptionSelected = currentQty > 0
@@ -483,11 +513,10 @@ fun SmartGridPopup(
                                 }
                             }
                         }
-                    }
-                } else {
-                    val chunkedOptions = options.chunked(columns)
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        chunkedOptions.forEach { rowItems ->
+                    } else {
+                        val chunkedOptions = filteredOptions.chunked(columns)
+                        items(chunkedOptions.size) { index ->
+                            val rowItems = chunkedOptions[index]
                             Row(
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 modifier = Modifier.fillMaxWidth()
@@ -509,6 +538,7 @@ fun SmartGridPopup(
                                             )
                                             .clickable { 
                                                 if (isOptionSelected) onSelect("") else onSelect(option)
+                                                onDismiss() // Automatically dismiss for single select
                                             }
                                             .padding(vertical = 16.dp, horizontal = 10.dp),
                                         contentAlignment = Alignment.Center
@@ -601,4 +631,276 @@ fun calculateTotalAmount(selectedString: String, prices: Map<String, Double>): D
         total += price * qty
     }
     return total
+}
+
+@Composable
+fun SmartGridInline(
+    title: String? = null,
+    options: List<String>,
+    icons: Map<String, SmartIconData>,
+    emojis: Map<String, String>? = null,
+    prices: Map<String, Double>? = null,
+    columns: Int = 2,
+    selectedOption: String = "",
+    isMultiSelect: Boolean = false,
+    onSelect: (String) -> Unit
+) {
+    val qtyMap = remember(selectedOption) { parseProductQuantities(selectedOption) }
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        if (title != null) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = title,
+                    fontWeight = FontWeight.Black,
+                    fontSize = 14.sp,
+                    color = TextSecondary,
+                    modifier = Modifier.weight(1f)
+                )
+                if (selectedOption.isNotEmpty()) {
+                    TextButton(
+                        onClick = { onSelect("") },
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                        modifier = Modifier.defaultMinSize(minHeight = 36.dp)
+                    ) {
+                        Text("Clear", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFFF43F5E))
+                    }
+                }
+            }
+        }
+        
+        if (isMultiSelect) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                options.forEach { option ->
+                    val iconData = icons[option]
+                    val currentQty = qtyMap[option] ?: 0
+                    val isOptionSelected = currentQty > 0
+                    val cardTint = iconData?.tint ?: ModernViolet
+                    
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(if (isOptionSelected) cardTint.copy(alpha = 0.06f) else SurfaceLight)
+                            .border(
+                                width = if (isOptionSelected) 1.5.dp else 1.dp,
+                                color = if (isOptionSelected) cardTint else BorderSubtle,
+                                shape = RoundedCornerShape(16.dp)
+                            )
+                            .clickable { 
+                                val newMap = qtyMap.toMutableMap()
+                                if (isOptionSelected) {
+                                    newMap[option] = currentQty + 1
+                                } else {
+                                    newMap[option] = 1
+                                }
+                                onSelect(formatProductQuantities(newMap))
+                            }
+                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(if (isOptionSelected) cardTint.copy(alpha = 0.15f) else cardTint.copy(alpha = 0.08f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (emojis != null && emojis[option] != null) {
+                                    Text(
+                                        text = emojis[option]!!,
+                                        fontSize = 20.sp
+                                    )
+                                } else if (iconData != null) {
+                                    Icon(
+                                        imageVector = iconData.icon,
+                                        contentDescription = null,
+                                        tint = cardTint,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                }
+                            }
+                            Column {
+                                Text(
+                                    text = option,
+                                    fontSize = 14.sp,
+                                    lineHeight = 18.sp,
+                                    fontWeight = if (isOptionSelected) FontWeight.ExtraBold else FontWeight.Bold,
+                                    color = TextPrimary,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                if (prices != null && prices[option] != null) {
+                                    Text(
+                                        text = "₹${prices[option]?.toInt() ?: 0}",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = cardTint
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.width(10.dp))
+
+                        if (isOptionSelected) {
+                            Row(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(20.dp))
+                                    .background(Color(0xFFF1F5F9))
+                                    .border(1.dp, cardTint.copy(alpha = 0.3f), RoundedCornerShape(20.dp))
+                                    .padding(horizontal = 4.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(26.dp)
+                                        .clip(CircleShape)
+                                        .background(if (currentQty <= 1) Color(0xFFF43F5E).copy(alpha = 0.12f) else CleanWhite)
+                                        .clickable {
+                                            val newMap = qtyMap.toMutableMap()
+                                            if (currentQty <= 1) {
+                                                newMap.remove(option)
+                                            } else {
+                                                newMap[option] = currentQty - 1
+                                            }
+                                            onSelect(formatProductQuantities(newMap))
+                                        },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = if (currentQty <= 1) Icons.Default.Close else Icons.Default.Remove,
+                                        contentDescription = "Decrease",
+                                        tint = if (currentQty <= 1) Color(0xFFF43F5E) else TextPrimary,
+                                        modifier = Modifier.size(15.dp)
+                                    )
+                                }
+
+                                Text(
+                                    text = "$currentQty",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = cardTint
+                                )
+
+                                Box(
+                                    modifier = Modifier
+                                        .size(26.dp)
+                                        .clip(CircleShape)
+                                        .background(cardTint)
+                                        .clickable {
+                                            val newMap = qtyMap.toMutableMap()
+                                            newMap[option] = currentQty + 1
+                                            onSelect(formatProductQuantities(newMap))
+                                        },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Add,
+                                        contentDescription = "Increase",
+                                        tint = CleanWhite,
+                                        modifier = Modifier.size(15.dp)
+                                    )
+                                }
+                            }
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(cardTint.copy(alpha = 0.08f))
+                                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "+ Add",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = cardTint
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            val chunkedOptions = options.chunked(columns)
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                chunkedOptions.forEach { rowItems ->
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        rowItems.forEach { option ->
+                            val iconData = icons[option]
+                            val isOptionSelected = option.equals(selectedOption, ignoreCase = true)
+                            val cardTint = iconData?.tint ?: ModernViolet
+                            
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(if (isOptionSelected) cardTint.copy(alpha = 0.08f) else SurfaceLight)
+                                    .border(
+                                        width = if (isOptionSelected) 1.5.dp else 1.dp,
+                                        color = if (isOptionSelected) cardTint else BorderSubtle,
+                                        shape = RoundedCornerShape(16.dp)
+                                    )
+                                    .clickable { 
+                                        if (isOptionSelected) onSelect("") else onSelect(option)
+                                    }
+                                    .padding(vertical = 16.dp, horizontal = 10.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    if (emojis != null && emojis[option] != null) {
+                                        Text(
+                                            text = emojis[option]!!,
+                                            fontSize = 28.sp
+                                        )
+                                    } else if (iconData != null) {
+                                        Icon(
+                                            imageVector = iconData.icon,
+                                            contentDescription = null,
+                                            tint = cardTint,
+                                            modifier = Modifier.size(28.dp)
+                                        )
+                                    }
+                                    Text(
+                                        text = option,
+                                        fontSize = 13.sp,
+                                        fontWeight = if (isOptionSelected) FontWeight.ExtraBold else FontWeight.Bold,
+                                        color = TextPrimary,
+                                        textAlign = TextAlign.Center,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                        }
+                        repeat(columns - rowItems.size) {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

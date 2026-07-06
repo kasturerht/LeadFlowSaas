@@ -21,5 +21,7 @@ data class Interaction(
     val city: String? = null,
     val pincode: String? = null,
     val paymentMethod: String? = null,
-    val orderAmount: String? = null
+    val orderAmount: String? = null,
+    val originalTotalValue: String? = null,
+    val discountAmount: String? = null
 )

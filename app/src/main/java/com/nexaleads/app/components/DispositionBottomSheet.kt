@@ -84,13 +84,22 @@ fun DispositionBottomSheet(
     var includePaymentLink by remember { mutableStateOf(false) }
     var includeDispatchNote by remember { mutableStateOf(true) }
     var includeSupportPhone by remember { mutableStateOf(true) }
-    var selectedLanguage by remember { mutableStateOf("English") }
+    var selectedLanguage by remember { mutableStateOf("Marathi") }
+    val telecallerContact by viewModel.telecallerContact.collectAsState()
+
+    var originalTotalValue by remember { mutableStateOf(lead.originalTotalValue ?: "") }
+    var discountAmount by remember { mutableStateOf(lead.discountAmount ?: "") }
 
     val calculatedTotal = remember(selectedProduct, pricesMap) { calculateTotalAmount(selectedProduct, pricesMap) }
 
     LaunchedEffect(calculatedTotal) {
-        if (calculatedTotal > 0) {
-            orderAmount = calculatedTotal.toInt().toString()
+        val newTotalStr = calculatedTotal.toString()
+        if (originalTotalValue.isEmpty() || originalTotalValue == "0") {
+             originalTotalValue = newTotalStr
+        }
+        if (orderAmount.isEmpty() || orderAmount == "0") {
+             orderAmount = newTotalStr
+             discountAmount = "0"
         }
     }
 
@@ -143,6 +152,8 @@ fun DispositionBottomSheet(
         val finalPaymentMethod = if (isOrderRelevant) paymentMethod else ""
         val finalPaymentStatus = if (isOrderRelevant) selectedPaymentStatus else ""
         val finalOrderAmount = if (isOrderRelevant) orderAmount else ""
+        val finalOriginalTotal = if (isOrderRelevant) originalTotalValue else ""
+        val finalDiscountAmount = if (isOrderRelevant) discountAmount else ""
         
         viewModel.saveDisposition(
             lead = currentLead,
@@ -153,17 +164,25 @@ fun DispositionBottomSheet(
             product = finalProduct,
             address = finalShippingAddress,
             city = finalShippingCity,
+            state = "",
             pincode = finalShippingPincode,
             paymentMethod = finalPaymentMethod,
             orderAmount = finalOrderAmount,
+            originalTotalValue = finalOriginalTotal,
+            discountAmount = finalDiscountAmount,
             callDurationSeconds = durationSeconds,
             subStatus = finalSubStatus,
             followUpTimeSlot = finalTimeSlot,
             paymentStatus = finalPaymentStatus,
             isSuspiciousShortCall = (durationSeconds < 5 && isHighIntent),
-            onSuccess = { interactionId ->
+            onSuccess = { interactionId, updatedLead ->
                 coroutineScope.launch { sheetState.hide() }.invokeOnCompletion {
                     if ((selectedStatus == "Order Placed" || selectedStatus == Constants.STATUS_ORDER_PLACED) && autoLaunchWhatsApp) {
+                        
+                        if (finalPaymentStatus.contains("Verified", ignoreCase = true)) {
+                            viewModel.setPendingInvoice(updatedLead)
+                        }
+
                         com.nexaleads.app.utils.WhatsAppSender.sendOrderConfirmation(
                             context = context,
                             phone = currentLead.phone,
@@ -171,10 +190,13 @@ fun DispositionBottomSheet(
                             products = selectedProduct,
                             address = listOf(shippingAddress, shippingCity, shippingPincode).filter { it.isNotBlank() }.joinToString(", "),
                             paymentMode = if (paymentMethod.equals("Prepaid", ignoreCase = true)) "$paymentMethod - $selectedPaymentStatus" else paymentMethod,
+                            originalTotal = finalOriginalTotal,
+                            discountAmount = finalDiscountAmount,
                             includeAddress = includeAddress,
                             includePaymentLink = includePaymentLink,
                             includeDispatchNote = includeDispatchNote,
                             includeSupportPhone = includeSupportPhone,
+                            supportNumber = telecallerContact,
                             language = selectedLanguage
                         )
                     }
@@ -426,10 +448,38 @@ fun DispositionBottomSheet(
                                 label = { Text("Pincode") }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp)
                             )
                         }
-                        OutlinedTextField(
-                            value = orderAmount, onValueChange = { orderAmount = it },
-                            label = { Text("Order Amount (₹)") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)
-                        )
+
+                        val origVal = originalTotalValue.toIntOrNull() ?: 0
+                        val finalVal = orderAmount.toIntOrNull() ?: 0
+                        val diff = origVal - finalVal
+
+                        Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+                            Text("💰 FINAL DEAL VALUE", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextSecondary, letterSpacing = 1.2.sp)
+                            Spacer(Modifier.height(8.dp))
+                            OutlinedTextField(
+                                value = orderAmount,
+                                onValueChange = { 
+                                    orderAmount = it
+                                    val fVal = it.toIntOrNull() ?: 0
+                                    discountAmount = (origVal - fVal).coerceAtLeast(0).toString()
+                                },
+                                label = { Text("Final Price (₹)") }, 
+                                modifier = Modifier.fillMaxWidth(), 
+                                shape = RoundedCornerShape(12.dp),
+                                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
+                            )
+                            if (diff > 0) {
+                                val discountPercent = if (origVal > 0) (diff * 100) / origVal else 0
+                                if (discountPercent > 50) {
+                                    Text("⚠️ Discount is over 50%. Please verify this deal.", color = Color(0xFFEAB308), fontSize = 11.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 6.dp))
+                                } else {
+                                    Text("🎉 Customer Saves: ₹$diff", color = Color(0xFF10B981), fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 6.dp))
+                                }
+                            } else if (diff < 0) {
+                                Text("📈 Custom Upsell", color = Color(0xFF3B82F6), fontSize = 11.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 6.dp))
+                            }
+                        }
+
                         Text("PAYMENT METHOD", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextSecondary, letterSpacing = 1.2.sp)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             listOf("COD", "Prepaid").forEach { pm ->

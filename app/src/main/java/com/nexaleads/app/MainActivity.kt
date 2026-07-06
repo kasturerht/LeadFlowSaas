@@ -51,8 +51,20 @@ class MainActivity : ComponentActivity() {
                 val authState by authViewModel.authState.collectAsState()
                 
                 val callingViewModel: CallingViewModel = hiltViewModel()
+                val pendingInvoiceLead by callingViewModel.pendingInvoiceLead.collectAsState()
+                val telecallerContact by callingViewModel.telecallerContact.collectAsState()
 
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                    pendingInvoiceLead?.let { lead ->
+                        com.nexaleads.app.components.InvoiceDialog(
+                            lead = lead,
+                            supportNumber = telecallerContact,
+                            onDismiss = {
+                                callingViewModel.clearPendingInvoice()
+                            }
+                        )
+                    }
+
                     NavHost(navController = navController, startDestination = "splash") {
                         composable("splash") {
                             SplashScreen(
@@ -80,7 +92,7 @@ class MainActivity : ComponentActivity() {
                             val authStateFlow = authState
                             if (authStateFlow is AuthState.Authenticated) {
                                 LaunchedEffect(authStateFlow.userId) {
-                                    callingViewModel.initialize(authStateFlow.userId, authStateFlow.userName)
+                                    callingViewModel.initialize(authStateFlow.userId, authStateFlow.userName, authStateFlow.contactNumber)
                                 }
                                 val leads by callingViewModel.leads.collectAsState()
                                 
@@ -109,7 +121,7 @@ class MainActivity : ComponentActivity() {
                             val authStateFlow = authState
                             if (authStateFlow is AuthState.Authenticated) {
                                 LaunchedEffect(authStateFlow.userId) {
-                                    callingViewModel.initialize(authStateFlow.userId, authStateFlow.userName)
+                                    callingViewModel.initialize(authStateFlow.userId, authStateFlow.userName, authStateFlow.contactNumber)
                                 }
                                 val leads by callingViewModel.leads.collectAsState()
                                 
@@ -134,7 +146,7 @@ class MainActivity : ComponentActivity() {
                             val authStateFlow = authState
                             if (authStateFlow is AuthState.Authenticated) {
                                 LaunchedEffect(authStateFlow.userId) {
-                                    callingViewModel.initialize(authStateFlow.userId, authStateFlow.userName)
+                                    callingViewModel.initialize(authStateFlow.userId, authStateFlow.userName, authStateFlow.contactNumber)
                                 }
                                 val leads by callingViewModel.leads.collectAsState()
                                 
