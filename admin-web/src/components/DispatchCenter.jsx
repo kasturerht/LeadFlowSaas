@@ -44,7 +44,6 @@ export default function DispatchCenter() {
     let q = query(
       collection(db, 'leads'),
       where('status', 'in', tabConfig.statusQuery),
-      orderBy('createdAt', 'desc'),
       limit(50)
     );
 
