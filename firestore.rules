@@ -26,8 +26,16 @@ service cloud.firestore {
       allow read: if isTelecaller() && resource.data.assignedTo == request.auth.uid;
       allow update: if isTelecaller() 
         && resource.data.assignedTo == request.auth.uid 
-        && resource.data.dispatchStatus != 'Dispatched'
-        && resource.data.status != 'Dispatched';
+        && (
+          // Allow normal updates if not yet locked or dispatched
+          (!('dispatchStatus' in resource.data) || resource.data.dispatchStatus == null || resource.data.dispatchStatus == 'Pending')
+          
+          // If locked by admin, ONLY allow the Kill Switch (urgentCancelRequest) to be toggled
+          || (
+            resource.data.dispatchStatus == 'Processing' 
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['urgentCancelRequest'])
+          )
+        );
       
       // Telecallers can create leads assigned to them
       allow create: if isTelecaller() && request.resource.data.assignedTo == request.auth.uid;
