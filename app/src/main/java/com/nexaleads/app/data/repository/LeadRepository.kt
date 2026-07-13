@@ -19,6 +19,7 @@ class LeadRepository @Inject constructor(
     fun getLeadsForUser(userId: String): Flow<List<Lead>> = callbackFlow {
         val listener = db.collection("leads")
             .whereEqualTo("assignedTo", userId)
+            .whereEqualTo("archived", false)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     close(error)
@@ -49,7 +50,12 @@ class LeadRepository @Inject constructor(
                             paymentStatus = doc.getString("paymentStatus"),
                             isSuspiciousShortCall = doc.getBoolean("isSuspiciousShortCall") ?: false,
                             originalTotalValue = doc.getString("originalTotalValue") ?: "",
-                            discountAmount = doc.getString("discountAmount") ?: ""
+                            discountAmount = doc.getString("discountAmount") ?: "",
+                            convertedAt = doc.getString("convertedAt"),
+                            dispatchStatus = doc.getString("dispatchStatus") ?: "",
+                            cancellationReason = doc.getString("cancellationReason") ?: "",
+                            cancellationNotes = doc.getString("cancellationNotes") ?: "",
+                            cancellationRequestedAt = doc.getString("cancellationRequestedAt") ?: ""
                         )
                     }
                     trySend(leads)
@@ -251,6 +257,7 @@ class LeadRepository @Inject constructor(
             updateMap["pincode"] = ""
             updateMap["paymentMethod"] = ""
             updateMap["orderAmount"] = ""
+            updateMap["convertedAt"] = null
         }
 
         val batch = db.batch()
@@ -310,7 +317,12 @@ class LeadRepository @Inject constructor(
                     city = doc.getString("city") ?: "",
                     pincode = doc.getString("pincode") ?: "",
                     paymentMethod = doc.getString("paymentMethod") ?: "",
-                    orderAmount = doc.getString("orderAmount") ?: ""
+                    orderAmount = doc.getString("orderAmount") ?: "",
+                    convertedAt = doc.getString("convertedAt"),
+                    dispatchStatus = doc.getString("dispatchStatus") ?: "",
+                    cancellationReason = doc.getString("cancellationReason") ?: "",
+                    cancellationNotes = doc.getString("cancellationNotes") ?: "",
+                    cancellationRequestedAt = doc.getString("cancellationRequestedAt") ?: ""
                 )
             } else null
         } catch (e: Exception) {

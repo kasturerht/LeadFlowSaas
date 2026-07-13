@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { db, secondaryAuth } from '../firebase';
 import { collection, query, getDocs, doc, setDoc, updateDoc } from 'firebase/firestore';
 import { createUserWithEmailAndPassword, signOut } from 'firebase/auth';
+import { UserPlus, X } from 'lucide-react';
 
 export default function Telecallers() {
   const [telecallers, setTelecallers] = useState([]);
@@ -72,7 +73,7 @@ export default function Telecallers() {
 
   const toggleUserStatus = async (userId, currentStatus) => {
     try {
-      const newStatus = currentStatus === false ? true : false; // Handle undefined as true
+      const newStatus = currentStatus === false ? true : false;
       await updateDoc(doc(db, 'users', userId), {
         isActive: newStatus
       });
@@ -85,17 +86,17 @@ export default function Telecallers() {
 
   return (
     <>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
-        <div>
-          <h2 style={{ fontSize: '28px', marginBottom: '8px', fontWeight: 600 }}>Telecallers Team</h2>
-          <p style={{ color: 'var(--text-muted)' }}>Manage your telecallers and view their performance.</p>
+      <div className="page-header">
+        <div className="page-title-group">
+          <h2 className="page-title">Telecallers Team</h2>
+          <p className="page-subtitle">Manage your telecallers and view their performance.</p>
         </div>
-        <button className="btn-primary" onClick={() => setShowModal(true)}>
-          + Add New Telecaller
+        <button className="btn-primary" onClick={() => setShowModal(true)} style={{ padding: '6px 12px', fontSize: '13px' }}>
+          <UserPlus size={14} /> Add Telecaller
         </button>
       </div>
 
-      <div className="glass-panel" style={{ padding: '24px' }}>
+      <div className="glass-panel" style={{ padding: '16px' }}>
         <div className="table-container">
           <table>
             <thead>
@@ -104,23 +105,23 @@ export default function Telecallers() {
                 <th>Email</th>
                 <th>Phone</th>
                 <th>Status</th>
-                <th>Action</th>
+                <th style={{ textAlign: 'right' }}>Action</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="5" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '32px' }}>Loading...</td>
+                  <td colSpan="5" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '20px' }}>Loading telecallers...</td>
                 </tr>
               ) : telecallers.length === 0 ? (
                 <tr>
-                  <td colSpan="5" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '32px' }}>
-                    No telecallers registered yet. Click "Add New Telecaller" above.
+                  <td colSpan="5" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '20px' }}>
+                    No telecallers registered yet. Click "Add Telecaller" above.
                   </td>
                 </tr>
               ) : (
                 telecallers.map((t) => {
-                  const active = t.isActive !== false; // default to true if undefined
+                  const active = t.isActive !== false;
                   return (
                     <tr key={t.id} style={{ opacity: active ? 1 : 0.5 }}>
                       <td style={{ fontWeight: 500 }}>{t.name || 'N/A'}</td>
@@ -129,19 +130,18 @@ export default function Telecallers() {
                       <td>
                         {active 
                           ? <span className="badge badge-success">Active</span>
-                          : <span className="badge badge-warning" style={{ background: 'rgba(239,68,68,0.1)', color: 'var(--danger)', borderColor: 'var(--danger)' }}>Disabled</span>
+                          : <span className="badge badge-danger">Disabled</span>
                         }
                       </td>
-                      <td>
+                      <td style={{ textAlign: 'right' }}>
                         <button 
                           onClick={() => toggleUserStatus(t.id, t.isActive)}
+                          className="btn-secondary"
                           style={{
-                            background: 'transparent',
-                            border: '1px solid var(--surface-border)',
-                            color: active ? 'var(--danger)' : 'var(--secondary)',
-                            padding: '6px 12px',
-                            borderRadius: '6px',
-                            cursor: 'pointer'
+                            padding: '4px 8px',
+                            fontSize: '11px',
+                            borderColor: active ? 'rgba(239, 68, 68, 0.2)' : 'rgba(16, 185, 129, 0.2)',
+                            color: active ? 'var(--danger)' : 'var(--secondary)'
                           }}
                         >
                           {active ? 'Disable' : 'Enable'}
@@ -160,36 +160,88 @@ export default function Telecallers() {
       {showModal && (
         <div style={{
           position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
-          background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50
+          background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(3px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100
         }}>
-          <div className="glass-panel auth-box" style={{ width: '400px' }}>
-            <h3 style={{ fontSize: '20px', marginBottom: '16px', fontWeight: 600 }}>Register Telecaller</h3>
+          <div className="glass-panel auth-box" style={{ width: '100%', maxWidth: '340px', padding: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <h3 style={{ fontSize: '15px', fontWeight: 600 }}>Register Telecaller</h3>
+              <button 
+                onClick={() => setShowModal(false)} 
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+              >
+                <X size={16} />
+              </button>
+            </div>
             
-            {error && <div style={{ color: 'var(--danger)', marginBottom: '16px', fontSize: '13px' }}>{error}</div>}
+            {error && <div style={{ color: 'var(--danger)', marginBottom: '10px', fontSize: '11px' }}>{error}</div>}
             
             <form onSubmit={handleCreateTelecaller}>
-              <div className="form-group" style={{ marginBottom: '12px' }}>
+              <div className="form-group" style={{ marginBottom: '10px' }}>
                 <label className="form-label">Full Name</label>
-                <input type="text" className="input-field" required value={name} onChange={e => setName(e.target.value)} placeholder="John Doe" />
+                <input 
+                  type="text" 
+                  className="input-field" 
+                  style={{ padding: '6px 10px', fontSize: '12px' }}
+                  required 
+                  value={name} 
+                  onChange={e => setName(e.target.value)} 
+                  placeholder="John Doe" 
+                />
               </div>
-              <div className="form-group" style={{ marginBottom: '12px' }}>
+              <div className="form-group" style={{ marginBottom: '10px' }}>
                 <label className="form-label">Email Address</label>
-                <input type="email" className="input-field" required value={email} onChange={e => setEmail(e.target.value)} placeholder="john@nexaleads.com" />
+                <input 
+                  type="email" 
+                  className="input-field" 
+                  style={{ padding: '6px 10px', fontSize: '12px' }}
+                  required 
+                  value={email} 
+                  onChange={e => setEmail(e.target.value)} 
+                  placeholder="john@nexaleads.com" 
+                />
               </div>
-              <div className="form-group" style={{ marginBottom: '12px' }}>
+              <div className="form-group" style={{ marginBottom: '10px' }}>
                 <label className="form-label">Phone Number</label>
-                <input type="tel" className="input-field" required value={phone} onChange={e => setPhone(e.target.value)} placeholder="+91 9876543210" />
+                <input 
+                  type="tel" 
+                  className="input-field" 
+                  style={{ padding: '6px 10px', fontSize: '12px' }}
+                  required 
+                  value={phone} 
+                  onChange={e => setPhone(e.target.value)} 
+                  placeholder="+91 9876543210" 
+                />
               </div>
-              <div className="form-group" style={{ marginBottom: '24px' }}>
+              <div className="form-group" style={{ marginBottom: '18px' }}>
                 <label className="form-label">Temporary Password</label>
-                <input type="password" className="input-field" required value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" />
+                <input 
+                  type="password" 
+                  className="input-field" 
+                  style={{ padding: '6px 10px', fontSize: '12px' }}
+                  required 
+                  value={password} 
+                  onChange={e => setPassword(e.target.value)} 
+                  placeholder="••••••••" 
+                />
               </div>
 
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <button type="button" className="btn-primary" style={{ flex: 1, background: 'transparent', border: '1px solid var(--surface-border)', color: 'var(--text-main)' }} onClick={() => setShowModal(false)}>Cancel</button>
-                <button type="submit" className="btn-primary" style={{ flex: 1 }} disabled={isCreating}>
-                  {isCreating ? 'Creating...' : 'Register User'}
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button 
+                  type="button" 
+                  className="btn-secondary" 
+                  style={{ flex: 1, fontSize: '12px', padding: '6px 10px' }} 
+                  onClick={() => setShowModal(false)}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="btn-primary" 
+                  style={{ flex: 1, fontSize: '12px', padding: '6px 10px' }} 
+                  disabled={isCreating}
+                >
+                  {isCreating ? 'Creating...' : 'Register'}
                 </button>
               </div>
             </form>

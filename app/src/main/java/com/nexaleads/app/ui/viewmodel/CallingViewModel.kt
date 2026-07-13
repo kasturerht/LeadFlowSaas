@@ -1,9 +1,12 @@
 package com.nexaleads.app.ui.viewmodel
 
+import com.nexaleads.app.Constants
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexaleads.app.data.model.Interaction
 import com.nexaleads.app.data.model.Lead
+import com.nexaleads.app.data.model.getPrimaryCategory
 import com.nexaleads.app.data.models.Product
 import com.nexaleads.app.data.repository.LeadRepository
 import com.nexaleads.app.utils.PhoneUtils
@@ -12,6 +15,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -46,6 +50,23 @@ data class LeadFormDraft(
     val discountAmount: String = ""
 )
 
+data class SalesMetrics(
+    val todayOrdersCount: Int = 0,
+    val todayRevenue: Int = 0,
+    val weeklyRevenue: Int = 0,
+    val activeOrdersCount: Int = 0 // Used for general target tracking if needed
+)
+
+data class DashboardMetrics(
+    val pendingPaymentsCount: Int = 0,
+    val dueFollowupsCount: Int = 0,
+    val freshLeadsCount: Int = 0,
+    val confirmedOrdersCount: Int = 0,
+    val inquiriesCount: Int = 0,
+    val attemptedCount: Int = 0,
+    val rejectedCount: Int = 0
+)
+
 @HiltViewModel
 class CallingViewModel @Inject constructor(
     private val repository: LeadRepository,
@@ -57,6 +78,76 @@ class CallingViewModel @Inject constructor(
 
     private val _leads = MutableStateFlow<List<Lead>>(emptyList())
     val leads: StateFlow<List<Lead>> = _leads
+
+    val salesMetrics: StateFlow<SalesMetrics> = _leads.map { leadsList ->
+        val isoFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { timeZone = TimeZone.getTimeZone("Asia/Kolkata") }
+        val todayStr = isoFormat.format(Date())
+        val cal = java.util.Calendar.getInstance(TimeZone.getTimeZone("Asia/Kolkata"))
+        cal.add(java.util.Calendar.DAY_OF_YEAR, -7)
+        val lastWeekStr = isoFormat.format(cal.time)
+
+        var todayCount = 0
+        var todayRev = 0
+        var weekRev = 0
+        var totalActive = 0
+
+        leadsList.forEach { lead ->
+            if (!lead.archived && com.nexaleads.app.Constants.normalizeStatus(lead.status) == com.nexaleads.app.Constants.STATUS_ORDER_PLACED) {
+                totalActive++
+                val cAt = lead.convertedAt ?: ""
+                val amount = lead.orderAmount.toIntOrNull() ?: 0
+                if (cAt.startsWith(todayStr)) {
+                    todayCount++
+                    todayRev += amount
+                }
+                if (cAt >= lastWeekStr) {
+                    weekRev += amount
+                }
+            }
+        }
+        SalesMetrics(todayCount, todayRev, weekRev, totalActive)
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, SalesMetrics())
+
+    val dashboardMetrics: StateFlow<DashboardMetrics> = _leads.map { leadsList ->
+        val isoFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { timeZone = TimeZone.getTimeZone("Asia/Kolkata") }
+        val todayStr = isoFormat.format(Date())
+        val uid = _currentUserId.value
+
+        var pendingPayments = 0
+        var dueFollowups = 0
+        var freshLeads = 0
+        var confirmedOrders = 0
+        var inquiries = 0
+        var attempted = 0
+        var rejected = 0
+
+        // Use Dispatchers.Default for heavy calculations automatically because flow runs map in the context it collects or we should flowOn(Dispatchers.Default)
+        leadsList.forEach { lead ->
+            // Filter by assigned user to prevent telecaller data mix-up
+            if (!lead.archived && (uid == null || lead.assignedTo == uid || lead.assignedTo.isEmpty())) {
+                val category = lead.getPrimaryCategory()
+                when (category) {
+                    "PENDING" -> freshLeads++
+                    "FOLLOWUP", "VISIT_SCHEDULED" -> {
+                        if (lead.followUpDate.isNullOrEmpty() || lead.followUpDate <= todayStr) {
+                            dueFollowups++
+                        }
+                    }
+                    "CONVERTED" -> {
+                        if (lead.paymentMethod.equals("Prepaid", ignoreCase = true) && lead.paymentStatus?.contains("UPI Link Sent", ignoreCase = true) == true) {
+                            pendingPayments++
+                        } else {
+                            confirmedOrders++
+                        }
+                    }
+                    "INQUIRY" -> inquiries++
+                    "ATTEMPTED" -> attempted++
+                    "REJECTED" -> rejected++
+                }
+            }
+        }
+        DashboardMetrics(pendingPayments, dueFollowups, freshLeads, confirmedOrders, inquiries, attempted, rejected)
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, DashboardMetrics())
 
     private val _telecallerContact = MutableStateFlow<String>("+91 98347 83503")
     val telecallerContact: StateFlow<String> = _telecallerContact
@@ -419,6 +510,187 @@ class CallingViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 onError(e.message ?: "Unknown error")
+            }
+        }
+    }
+
+    fun updateLead(lead: Lead) {
+        viewModelScope.launch {
+            try {
+                val updateMap = mapOf(
+                    "name" to lead.name,
+                    "phone" to lead.phone,
+                    "source" to lead.source,
+                    "status" to lead.status,
+                    "subStatus" to lead.subStatus,
+                    "notes" to lead.notes,
+                    "followUpDate" to lead.followUpDate,
+                    "followUpTimeSlot" to lead.followUpTimeSlot,
+                    "product" to lead.product,
+                    "address" to lead.address,
+                    "city" to lead.city,
+                    "state" to lead.state,
+                    "pincode" to lead.pincode,
+                    "paymentMethod" to lead.paymentMethod,
+                    "orderAmount" to lead.orderAmount,
+                    "originalTotalValue" to lead.originalTotalValue,
+                    "discountAmount" to lead.discountAmount,
+                    "paymentStatus" to lead.paymentStatus,
+                    "dispatchStatus" to lead.dispatchStatus,
+                    "cancellationReason" to lead.cancellationReason,
+                    "cancellationNotes" to lead.cancellationNotes,
+                    "cancellationRequestedAt" to lead.cancellationRequestedAt
+                )
+                repository.updateLead(lead.id, updateMap)
+            } catch (e: Exception) {
+                // Ignore for now
+            }
+        }
+    }
+
+    fun requestOrderCancellation(
+        lead: Lead,
+        reason: String,
+        notes: String,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                if (lead.dispatchStatus == "Dispatched" || lead.status == "Dispatched") {
+                    onError("Cannot cancel: Order has already been dispatched.")
+                    return@launch
+                }
+
+                val isoTimestamp = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
+                    timeZone = TimeZone.getTimeZone("UTC")
+                }.format(Date())
+
+                val updates = mapOf(
+                    "status" to "Cancellation Pending",
+                    "cancellationReason" to reason,
+                    "cancellationNotes" to notes,
+                    "cancellationRequestedAt" to isoTimestamp
+                )
+                repository.updateLead(lead.id, updates)
+
+                val logId = "i-cancel-" + java.util.UUID.randomUUID().toString().take(6)
+                val interaction = Interaction(
+                    id = logId,
+                    leadId = lead.id,
+                    callerId = _currentUserId.value ?: "",
+                    callerName = callerName,
+                    statusBefore = lead.status,
+                    statusAfter = "Cancellation Pending",
+                    notes = "Cancellation Requested: $reason | $notes",
+                    timestamp = isoTimestamp
+                )
+                repository.addInteraction(interaction)
+                onSuccess()
+            } catch (e: com.google.firebase.firestore.FirebaseFirestoreException) {
+                if (e.code == com.google.firebase.firestore.FirebaseFirestoreException.Code.PERMISSION_DENIED) {
+                    onError("Access Denied: This order was dispatched in the background.")
+                } else {
+                    onError(e.message ?: "Database Error")
+                }
+            } catch (e: Exception) {
+                onError(e.message ?: "Unknown Error")
+            }
+        }
+    }
+
+    fun withdrawCancellationRequest(
+        lead: Lead,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                if (lead.dispatchStatus == "Dispatched" || lead.status == "Dispatched") {
+                    onError("Action locked: Order has been dispatched.")
+                    return@launch
+                }
+
+                val updates = mapOf(
+                    "status" to "Order Placed",
+                    "cancellationReason" to null,
+                    "cancellationNotes" to null,
+                    "cancellationRequestedAt" to null
+                )
+                repository.updateLead(lead.id, updates)
+
+                val logId = "i-withdraw-" + java.util.UUID.randomUUID().toString().take(6)
+                val interaction = Interaction(
+                    id = logId,
+                    leadId = lead.id,
+                    callerId = _currentUserId.value ?: "",
+                    callerName = callerName,
+                    statusBefore = lead.status,
+                    statusAfter = "Order Placed",
+                    notes = "Cancellation Request Withdrawn by Telecaller",
+                    timestamp = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
+                        timeZone = TimeZone.getTimeZone("UTC")
+                    }.format(Date())
+                )
+                repository.addInteraction(interaction)
+                onSuccess()
+            } catch (e: com.google.firebase.firestore.FirebaseFirestoreException) {
+                if (e.code == com.google.firebase.firestore.FirebaseFirestoreException.Code.PERMISSION_DENIED) {
+                    onError("Access Denied: This order was dispatched in the background.")
+                } else {
+                    onError(e.message ?: "Database Error")
+                }
+            } catch (e: Exception) {
+                onError(e.message ?: "Failed to withdraw request")
+            }
+        }
+    }
+
+    fun cancelOrder(
+        lead: Lead,
+        reason: String,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                if (lead.dispatchStatus == "Dispatched" || lead.status == "Dispatched") {
+                    onError("Action locked: Order has been dispatched.")
+                    return@launch
+                }
+
+                val isoTimestamp = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
+                    timeZone = TimeZone.getTimeZone("UTC")
+                }.format(Date())
+
+                val updates = mapOf(
+                    "status" to Constants.STATUS_ORDER_CANCELLED,
+                    "cancellationReason" to reason,
+                    "cancellationRequestedAt" to isoTimestamp
+                )
+                repository.updateLead(lead.id, updates)
+
+                val logId = "i-cancel-direct-" + java.util.UUID.randomUUID().toString().take(6)
+                val interaction = Interaction(
+                    id = logId,
+                    leadId = lead.id,
+                    callerId = _currentUserId.value ?: "",
+                    callerName = callerName,
+                    statusBefore = lead.status,
+                    statusAfter = Constants.STATUS_ORDER_CANCELLED,
+                    notes = "Order Cancelled Directly by Telecaller. Reason: $reason",
+                    timestamp = isoTimestamp
+                )
+                repository.addInteraction(interaction)
+                onSuccess()
+            } catch (e: com.google.firebase.firestore.FirebaseFirestoreException) {
+                if (e.code == com.google.firebase.firestore.FirebaseFirestoreException.Code.PERMISSION_DENIED) {
+                    onError("Access Denied: This order was dispatched in the background.")
+                } else {
+                    onError(e.message ?: "Database Error")
+                }
+            } catch (e: Exception) {
+                onError(e.message ?: "Failed to cancel order")
             }
         }
     }

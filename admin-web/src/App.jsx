@@ -8,6 +8,7 @@ import Dashboard from './components/Dashboard';
 import Telecallers from './components/Telecallers';
 import CallHistory from './components/CallHistory';
 import Products from './components/Products';
+import Reports from './components/Reports';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -43,6 +44,7 @@ function App() {
           <Route path="/telecallers" element={<Telecallers />} />
           <Route path="/history" element={<CallHistory />} />
           <Route path="/products" element={<Products />} />
+          <Route path="/reports" element={<Reports />} />
         </Route>
 
         <Route 

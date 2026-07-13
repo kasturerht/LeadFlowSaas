@@ -587,24 +587,24 @@ fun SmartGridPopup(
 
 fun getIconForSelection(selection: String, icons: Map<String, SmartIconData>): SmartIconData? {
     if (selection.isBlank()) return null
-    val firstItem = selection.split(", ").firstOrNull() ?: return null
-    val cleanName = firstItem.replace(Regex("\\s*\\(\\d+x\\)\$"), "").trim()
+    val firstItem = selection.split(",").firstOrNull()?.trim() ?: return null
+    val cleanName = firstItem.replace(Regex("\\s*\\(\\d+[xX]\\)\$"), "").trim()
     return icons[cleanName] ?: icons[firstItem]
 }
 
 fun getEmojiForSelection(selection: String, emojis: Map<String, String>?): String? {
     if (emojis == null || selection.isBlank()) return null
-    val firstItem = selection.split(", ").firstOrNull() ?: return null
-    val cleanName = firstItem.replace(Regex("\\s*\\(\\d+x\\)\$"), "").trim()
+    val firstItem = selection.split(",").firstOrNull()?.trim() ?: return null
+    val cleanName = firstItem.replace(Regex("\\s*\\(\\d+[xX]\\)\$"), "").trim()
     return emojis[cleanName] ?: emojis[firstItem]
 }
 
-private fun parseProductQuantities(selectedString: String): Map<String, Int> {
+fun parseProductQuantities(selectedString: String): Map<String, Int> {
     if (selectedString.isBlank()) return emptyMap()
     val map = mutableMapOf<String, Int>()
-    val items = selectedString.split(", ").map { it.trim() }.filter { it.isNotEmpty() }
+    val items = selectedString.split(",").map { it.trim() }.filter { it.isNotEmpty() }
     for (item in items) {
-        val match = Regex("^(.*?)\\s*\\((\\d+)x\\)\$").find(item)
+        val match = Regex("^(.*?)\\s*\\((\\d+)[xX]\\)\$").find(item)
         if (match != null && match.groupValues.size == 3) {
             val name = match.groupValues[1].trim()
             val qty = match.groupValues[2].toIntOrNull() ?: 1
@@ -620,6 +620,29 @@ private fun formatProductQuantities(map: Map<String, Int>): String {
     return map.filterValues { it > 0 }
         .map { "${it.key} (${it.value}x)" }
         .joinToString(", ")
+}
+
+fun sanitizeSelectedProducts(selectedString: String, masterProducts: List<String>): String {
+    if (selectedString.isBlank()) return ""
+    val qtyMap = parseProductQuantities(selectedString)
+    val newMap = mutableMapOf<String, Int>()
+    
+    for ((product, qty) in qtyMap) {
+        val exactMatch = masterProducts.find { it.equals(product, ignoreCase = true) }
+        if (exactMatch != null) {
+            newMap[exactMatch] = qty
+        } else {
+            val fuzzyMatch = masterProducts.find { 
+                it.contains(product, ignoreCase = true) || product.contains(it, ignoreCase = true)
+            }
+            if (fuzzyMatch != null) {
+                newMap[fuzzyMatch] = qty
+            } else {
+                newMap[product] = qty
+            }
+        }
+    }
+    return formatProductQuantities(newMap)
 }
 
 fun calculateTotalAmount(selectedString: String, prices: Map<String, Double>): Double {

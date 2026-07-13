@@ -7,6 +7,7 @@ object Constants {
     const val STATUS_ORDER_PLACED = "Order Placed"
     const val STATUS_NOT_INTERESTED = "Not Interested"
     const val STATUS_INVALID = "Invalid"
+    const val STATUS_ORDER_CANCELLED = "Order Cancelled"
 
     val PROCESSED_STATUSES = listOf(
         STATUS_CALL_NOT_ANSWERED,
@@ -51,6 +52,9 @@ object Constants {
             trimmed.equals("Invalid No.", ignoreCase = true) ||
             trimmed.equals("Invalid/Wrong Number", ignoreCase = true) ||
             trimmed.equals(STATUS_INVALID, ignoreCase = true) -> STATUS_INVALID
+            
+            trimmed.equals("Order Cancelled", ignoreCase = true) ||
+            trimmed.equals("Cancelled", ignoreCase = true) -> STATUS_ORDER_CANCELLED
 
             else -> trimmed
         }

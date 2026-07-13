@@ -95,13 +95,7 @@ fun DashboardScreen(
     }
 
     // Metrics
-    val activeLeads = leads.filter { !it.archived }
-    val pendingCount = activeLeads.count { it.getPrimaryCategory() == "PENDING" }
-    val followupCount = activeLeads.count { it.getPrimaryCategory() == "FOLLOWUP" }
-    val inquiryCount = activeLeads.count { it.getPrimaryCategory() == "INQUIRY" }
-    val attemptedCount = activeLeads.count { it.getPrimaryCategory() == "ATTEMPTED" }
-    val convertedCount = activeLeads.count { it.getPrimaryCategory() == "CONVERTED" }
-    val rejectedCount = activeLeads.count { it.getPrimaryCategory() == "REJECTED" }
+    val metrics by viewModel.dashboardMetrics.collectAsState()
 
     val currentHour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
     val greeting = when {
@@ -296,14 +290,14 @@ fun DashboardScreen(
                 )
             }
             
-            // TOP ZONE: Focus Metrics
+            // TOP ZONE: Action Required
             Column(
                 modifier = Modifier
                     .padding(horizontal = 24.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Text(
-                    text = "FOCUS METRICS",
+                    text = "ACTION REQUIRED",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Black,
                     color = TextSecondary,
@@ -312,21 +306,28 @@ fun DashboardScreen(
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     PriorityWidget(
                         modifier = Modifier.weight(1f), 
-                        title = "Pending", 
-                        count = pendingCount, 
-                        color = ModernViolet, 
-                        onClick = { onSelectCategory("PENDING") }
+                        title = "UPI Sent", 
+                        count = metrics.pendingPaymentsCount, 
+                        color = StatusDanger, 
+                        onClick = { onSelectCategory("PENDING_PAYMENTS") }
                     )
                     PriorityWidget(
                         modifier = Modifier.weight(1f), 
                         title = "Follow-ups", 
-                        count = followupCount, 
+                        count = metrics.dueFollowupsCount, 
                         color = StatusWarning, 
                         onClick = { onSelectCategory("FOLLOWUP") }
+                    )
+                    PriorityWidget(
+                        modifier = Modifier.weight(1f), 
+                        title = "Fresh", 
+                        count = metrics.freshLeadsCount, 
+                        color = ModernViolet, 
+                        onClick = { onSelectCategory("PENDING") }
                     )
                 }
             }
@@ -346,12 +347,12 @@ fun DashboardScreen(
                 
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        PipelineChip(modifier = Modifier.weight(1f), title = "Orders", count = convertedCount, color = StatusSuccess, onClick = { onSelectCategory("CONVERTED") })
-                        PipelineChip(modifier = Modifier.weight(1f), title = "Inquiries", count = inquiryCount, color = StatusBusy, onClick = { onSelectCategory("INQUIRY") })
+                        PipelineChip(modifier = Modifier.weight(1f), title = "Orders", count = metrics.confirmedOrdersCount, color = StatusSuccess, onClick = { onSelectCategory("CONVERTED") })
+                        PipelineChip(modifier = Modifier.weight(1f), title = "Inquiries", count = metrics.inquiriesCount, color = StatusBusy, onClick = { onSelectCategory("INQUIRY") })
                     }
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        PipelineChip(modifier = Modifier.weight(1f), title = "No Answer", count = attemptedCount, color = TextSecondary, onClick = { onSelectCategory("ATTEMPTED") })
-                        PipelineChip(modifier = Modifier.weight(1f), title = "Rejected", count = rejectedCount, color = StatusDanger, onClick = { onSelectCategory("REJECTED") })
+                        PipelineChip(modifier = Modifier.weight(1f), title = "No Answer", count = metrics.attemptedCount, color = TextSecondary, onClick = { onSelectCategory("ATTEMPTED") })
+                        PipelineChip(modifier = Modifier.weight(1f), title = "Rejected", count = metrics.rejectedCount, color = StatusDanger, onClick = { onSelectCategory("REJECTED") })
                     }
                 }
             }
@@ -599,15 +600,15 @@ fun PriorityWidget(modifier: Modifier = Modifier, title: String, count: Int, col
         ) {
             Text(
                 text = count.toString(),
-                fontSize = 54.sp,
+                fontSize = 42.sp, // Reduced to fit 3 in a row
                 fontWeight = FontWeight.Black,
                 color = color,
-                letterSpacing = (-1.5).sp
+                letterSpacing = (-1.0).sp
             )
             Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = title,
-                fontSize = 15.sp,
+                fontSize = 13.sp, // Reduced to fit 3 in a row
                 fontWeight = FontWeight.Bold,
                 color = TextSecondary
             )

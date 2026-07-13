@@ -1,5 +1,20 @@
 package com.nexaleads.app
 
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.Canvas
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import com.nexaleads.app.ui.viewmodel.SalesMetrics
+
+
 import android.Manifest
 import android.content.Context
 import android.content.Intent
@@ -19,6 +34,8 @@ import java.util.Calendar
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -33,6 +50,9 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -123,7 +143,7 @@ fun getCallDurationFromSystemLog(context: android.content.Context, phoneNumber: 
     return duration
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun TodayCallingListScreen(
     currentUserId: String,
@@ -134,6 +154,7 @@ fun TodayCallingListScreen(
     onLogout: () -> Unit,
     viewModel: CallingViewModel = hiltViewModel()
 ) {
+    val salesMetrics by viewModel.salesMetrics.collectAsState(initial = SalesMetrics())
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -158,6 +179,8 @@ fun TodayCallingListScreen(
     }
 
     var selectedLead by remember { mutableStateOf<Lead?>(null) }
+    var leadForQuickActions by remember { mutableStateOf<Lead?>(null) }
+    val quickActionsSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var isVisitToggleOn by remember { mutableStateOf(false) }
     var showBottomSheet by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -273,12 +296,15 @@ fun TodayCallingListScreen(
                 }
             }
             "VISITED" -> nonArchived.filter { it.getPrimaryCategory() == "VISITED" }
-            "CONVERTED" -> nonArchived.filter { it.getPrimaryCategory() == "CONVERTED" }
+            "CONVERTED" -> nonArchived.filter { it.getPrimaryCategory() == "CONVERTED" && !(it.paymentMethod.equals("Prepaid", ignoreCase = true) && it.paymentStatus?.contains("UPI Link Sent", ignoreCase = true) == true) }
+            "PENDING_PAYMENTS" -> nonArchived.filter { it.getPrimaryCategory() == "CONVERTED" && it.paymentMethod.equals("Prepaid", ignoreCase = true) && it.paymentStatus?.contains("UPI Link Sent", ignoreCase = true) == true }
             "REJECTED" -> nonArchived.filter { it.getPrimaryCategory() == "REJECTED" }
+            "INQUIRY" -> nonArchived.filter { it.getPrimaryCategory() == "INQUIRY" }
             else -> nonArchived
         }
     }
 
+    var selectedOrderIdForDetails by remember { mutableStateOf<String?>(null) }
     var selectedLabelFilter by remember { mutableStateOf("ALL") }
 
     val uniqueLabels = remember(leads) {
@@ -295,8 +321,10 @@ fun TodayCallingListScreen(
         "FOLLOWUP" -> "Follow-ups"
         "VISIT_SCHEDULED" -> "Visit Scheduled"
         "VISITED" -> "Visited Deals"
-        "CONVERTED" -> "Converted Deals"
+        "CONVERTED" -> "Confirmed Orders"
+        "PENDING_PAYMENTS" -> "Pending Payments (UPI Sent)"
         "REJECTED" -> "Rejected Leads"
+        "INQUIRY" -> "Inquiries"
         else -> "All Leads"
     }
 
@@ -344,7 +372,7 @@ fun TodayCallingListScreen(
                 }
             }
 
-            // Clean Label Filter deck
+            // Premium Segmented Controls
             if (uniqueLabels.size > 1) {
                 Spacer(modifier = Modifier.height(16.dp))
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp)) {
@@ -352,13 +380,14 @@ fun TodayCallingListScreen(
                         val isSelected = selectedLabelFilter == labelName
                         Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
+                                .shadow(if (isSelected) 4.dp else 0.dp, RoundedCornerShape(20.dp), spotColor = ModernViolet.copy(alpha = 0.3f))
+                                .clip(RoundedCornerShape(20.dp))
                                 .background(if (isSelected) ModernViolet else SurfaceLight)
                                 .clickable { selectedLabelFilter = labelName }
-                                .border(1.dp, if (isSelected) Color.Transparent else BorderSubtle, RoundedCornerShape(8.dp))
-                                .padding(horizontal = 14.dp, vertical = 8.dp)
+                                .border(1.dp, if (isSelected) Color.Transparent else BorderSubtle.copy(alpha = 0.5f), RoundedCornerShape(20.dp))
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
                         ) {
-                            Text(labelName, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (isSelected) CleanWhite else TextSecondary)
+                            Text(labelName, fontSize = 13.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium, color = if (isSelected) CleanWhite else TextSecondary)
                         }
                     }
                 }
@@ -405,15 +434,54 @@ fun TodayCallingListScreen(
                 }
             } else {
                 LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    items(filteredLeads) { item ->
+                    if (filter == "CONVERTED") {
+                        item {
+                            SalesLedgerDashboard(metrics = salesMetrics, callerName = callerName)
+                        }
+                        
+                        val isoFormat = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).apply { timeZone = java.util.TimeZone.getTimeZone("Asia/Kolkata") }
+                        val todayStr = isoFormat.format(java.util.Date())
+                        val cal = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("Asia/Kolkata"))
+                        cal.add(java.util.Calendar.DAY_OF_YEAR, -1)
+                        val yesterdayStr = isoFormat.format(cal.time)
+                        
+                        val grouped = filteredLeads.groupBy { lead ->
+                            val cAt = lead.convertedAt ?: ""
+                            if (cAt.startsWith(todayStr)) "Today"
+                            else if (cAt.startsWith(yesterdayStr)) "Yesterday"
+                            else "Earlier"
+                        }
+                        
+                        val order = listOf("Today", "Yesterday", "Earlier")
+                        order.forEach { groupName ->
+                            val groupLeads = grouped[groupName]
+                            if (!groupLeads.isNullOrEmpty()) {
+                                item {
+                                    Text(
+                                        text = groupName,
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = TextSecondary,
+                                        modifier = Modifier.padding(top = 12.dp, bottom = 4.dp, start = 4.dp)
+                                    )
+                                }
+                                items(groupLeads!!, key = { it.id }) { item ->
                         val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .shadow(elevation = 8.dp, shape = RoundedCornerShape(12.dp), spotColor = Color.Black.copy(alpha = 0.03f), ambientColor = Color.Transparent),
-                            shape = RoundedCornerShape(12.dp),
+                                .combinedClickable(
+                                    onClick = { selectedOrderIdForDetails = item.id },
+                                    onLongClick = {
+                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                        leadForQuickActions = item
+                                    }
+                                )
+                                .shadow(elevation = 12.dp, shape = RoundedCornerShape(16.dp), spotColor = ModernViolet.copy(alpha = 0.08f), ambientColor = Color.Transparent)
+                                .animateContentSize(animationSpec = tween(300)),
+                            shape = RoundedCornerShape(16.dp),
                             colors = CardDefaults.cardColors(containerColor = SurfaceLight),
-                            border = androidx.compose.foundation.BorderStroke(0.5.dp, BorderSubtle)
+                            border = androidx.compose.foundation.BorderStroke(0.5.dp, BorderSubtle.copy(alpha=0.3f))
                         ) {
                             Column(modifier = Modifier.padding(14.dp)) {
                                 Row(
@@ -445,7 +513,14 @@ fun TodayCallingListScreen(
                                 
                                 // Dynamic Meta Row
                                 val metaParts = mutableListOf<String>()
-                                if (item.product.isNotEmpty()) metaParts.add("📦 ${item.product}")
+                                if (item.product.isNotEmpty()) {
+                                    val products = item.product.split(",").map { it.trim() }
+                                    if (products.size > 1) {
+                                        metaParts.add("📦 ${products.first()} (+${products.size - 1})")
+                                    } else {
+                                        metaParts.add("📦 ${products.first()}")
+                                    }
+                                }
                                 if (item.orderAmount.isNotEmpty()) metaParts.add("₹${item.orderAmount}")
                                 if (item.city.isNotEmpty()) metaParts.add("📍 ${item.city}")
                                 if (item.source.isNotEmpty()) metaParts.add(item.source.uppercase(Locale.ROOT))
@@ -555,8 +630,7 @@ fun TodayCallingListScreen(
                                         IconButton(
                                             onClick = {
                                                 haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
-                                                selectedLead = item
-                                                showBottomSheet = true
+                                                selectedOrderIdForDetails = item.id
                                             },
                                             modifier = Modifier.size(42.dp).background(SurfaceLight, CircleShape).border(1.dp, BorderSubtle, CircleShape)
                                         ) {
@@ -570,6 +644,191 @@ fun TodayCallingListScreen(
                                     }
                                 }
                             }
+                        }
+                                }
+                            }
+                        }
+                    } else {
+                        items(filteredLeads, key = { it.id }) { item ->
+                        val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .combinedClickable(
+                                    onClick = { selectedOrderIdForDetails = item.id },
+                                    onLongClick = {
+                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                        leadForQuickActions = item
+                                    }
+                                )
+                                .shadow(elevation = 12.dp, shape = RoundedCornerShape(16.dp), spotColor = ModernViolet.copy(alpha = 0.08f), ambientColor = Color.Transparent)
+                                .animateContentSize(animationSpec = tween(300)),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(containerColor = SurfaceLight),
+                            border = androidx.compose.foundation.BorderStroke(0.5.dp, BorderSubtle.copy(alpha=0.3f))
+                        ) {
+                            Column(modifier = Modifier.padding(14.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        val rawName = getDisplayLeadName(item)
+                                        val displayName = rawName.split(" ").joinToString(" ") { it.replaceFirstChar { char -> if (char.isLowerCase()) char.titlecase(Locale.ROOT) else char.toString() } }
+                                        Text(displayName, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = TextPrimary, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                                        if (item.isSuspiciousShortCall) {
+                                            Text("⚠️", fontSize = 13.sp)
+                                        }
+                                    }
+                                    val statusColor = statusColors[item.status] ?: ModernViolet
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                        modifier = Modifier.clip(RoundedCornerShape(20.dp)).background(statusColor.copy(alpha = 0.1f)).padding(horizontal = 8.dp, vertical = 4.dp)
+                                    ) {
+                                        Box(modifier = Modifier.size(6.dp).background(statusColor, CircleShape))
+                                        val statusLabel = indianStatusLabels[item.status] ?: item.status
+                                        val fullStatusLabel = if (!item.subStatus.isNullOrEmpty()) "$statusLabel • ${item.subStatus}" else statusLabel
+                                        Text(fullStatusLabel, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = statusColor)
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(6.dp))
+                                
+                                // Dynamic Meta Row
+                                val metaParts = mutableListOf<String>()
+                                if (item.product.isNotEmpty()) {
+                                    val products = item.product.split(",").map { it.trim() }
+                                    if (products.size > 1) {
+                                        metaParts.add("📦 ${products.first()} (+${products.size - 1})")
+                                    } else {
+                                        metaParts.add("📦 ${products.first()}")
+                                    }
+                                }
+                                if (item.orderAmount.isNotEmpty()) metaParts.add("₹${item.orderAmount}")
+                                if (item.city.isNotEmpty()) metaParts.add("📍 ${item.city}")
+                                if (item.source.isNotEmpty()) metaParts.add(item.source.uppercase(Locale.ROOT))
+                                val labelText = if (item.label.isEmpty()) "General" else item.label
+                                metaParts.add(labelText.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString() })
+                                
+                                if (!item.followUpDate.isNullOrEmpty()) {
+                                    val formattedDate = try {
+                                        val inputFormat = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+                                        val outputFormat = java.text.SimpleDateFormat("dd MMM", java.util.Locale.US)
+                                        val date = inputFormat.parse(item.followUpDate)
+                                        if (date != null) "📅 ${outputFormat.format(date)}" else "📅 ${item.followUpDate}"
+                                    } catch (e: Exception) {
+                                        "📅 ${item.followUpDate}"
+                                    }
+                                    val dateWithSlot = if (!item.followUpTimeSlot.isNullOrEmpty()) "$formattedDate (${item.followUpTimeSlot})" else formattedDate
+                                    metaParts.add(dateWithSlot)
+                                }
+                                
+                                if (metaParts.isNotEmpty()) {
+                                    Text(
+                                        text = metaParts.joinToString(" • "),
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = TextSecondary,
+                                        maxLines = 1,
+                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                    )
+                                }
+
+                                val displayNotes = if (item.notes.contains("\n\n📞 ")) item.notes.substringAfterLast("\n\n📞 ") else { if (item.status == "New" || item.status == "Pending" || item.status.isEmpty()) "" else item.notes }
+                                if (displayNotes.trim().isNotEmpty()) {
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Text(displayNotes.trim(), fontSize = 13.sp, color = TextSecondary.copy(alpha = 0.9f), maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                                }
+                                
+                                Spacer(modifier = Modifier.height(14.dp))
+
+                                val maskedPhone = getMaskedLeadPhone(item)
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    // Subtle Phone Text on Left
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        androidx.compose.material3.Icon(
+                                            imageVector = Icons.Default.Phone,
+                                            contentDescription = "Phone",
+                                            modifier = Modifier.size(14.dp),
+                                            tint = TextSecondary
+                                        )
+                                        Text(maskedPhone, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = TextSecondary)
+                                    }
+                                    
+                                    // Quick Actions on Right
+                                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                        // Call Action
+                                        IconButton(
+                                            onClick = {
+                                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                                val cleanNum = getCleanLeadPhone(item)
+                                                if (cleanNum.isNotEmpty()) {
+                                                    val dialNum = getFormattedLeadPhone(item)
+                                                    clipboardManager.setText(AnnotatedString(cleanNum))
+                                                    Toast.makeText(context, "Number Copied to Dialer.", Toast.LENGTH_SHORT).show()
+                                                    selectedLead = item
+                                                    viewModel.setPendingCall(item.id)
+                                                    try {
+                                                        val intent = Intent(Intent.ACTION_DIAL).apply { data = Uri.parse("tel:$dialNum") }
+                                                        context.startActivity(intent)
+                                                    } catch (e: Exception) {}
+                                                    showBottomSheet = true
+                                                }
+                                            },
+                                            modifier = Modifier.size(42.dp).background(ModernViolet, CircleShape)
+                                        ) {
+                                            androidx.compose.material3.Icon(
+                                                imageVector = Icons.Default.Call,
+                                                contentDescription = "Call",
+                                                modifier = Modifier.size(20.dp),
+                                                tint = Color.White
+                                            )
+                                        }
+                                        
+                                        // WhatsApp Quick Action
+                                        IconButton(
+                                            onClick = {
+                                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                                selectedLead = item
+                                                showWhatsAppSheet = true
+                                            },
+                                            modifier = Modifier.size(42.dp).background(Color(0xFF25D366).copy(alpha = 0.15f), CircleShape)
+                                        ) {
+                                            androidx.compose.material3.Icon(
+                                                painter = androidx.compose.ui.res.painterResource(id = com.nexaleads.app.R.drawable.ic_whatsapp),
+                                                contentDescription = "WhatsApp",
+                                                modifier = Modifier.size(24.dp),
+                                                tint = androidx.compose.ui.graphics.Color.Unspecified
+                                            )
+                                        }
+                                        
+                                        // Edit Action
+                                        IconButton(
+                                            onClick = {
+                                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                                selectedOrderIdForDetails = item.id
+                                            },
+                                            modifier = Modifier.size(42.dp).background(SurfaceLight, CircleShape).border(1.dp, BorderSubtle, CircleShape)
+                                        ) {
+                                            androidx.compose.material3.Icon(
+                                                imageVector = Icons.Default.Edit,
+                                                contentDescription = "Edit",
+                                                modifier = Modifier.size(18.dp),
+                                                tint = TextSecondary
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
                         }
                     }
                 }
@@ -676,6 +935,330 @@ fun TodayCallingListScreen(
         }
     }
 
+
+
+    
+    if (selectedOrderIdForDetails != null) {
+        val leadToEdit = leads.find { it.id == selectedOrderIdForDetails }
+        if (leadToEdit != null) {
+            com.nexaleads.app.components.CreateLeadBottomSheet(
+                viewModel = viewModel,
+                sheetState = sheetState,
+                leadToEdit = leadToEdit,
+                onDismiss = { selectedOrderIdForDetails = null },
+                onExistingLeadFound = { existingLead ->
+                    selectedOrderIdForDetails = null
+                    selectedLead = existingLead
+                    showBottomSheet = true
+                }
+            )
+        } else {
+            selectedOrderIdForDetails = null
+        }
+    }
+    
+    if (leadForQuickActions != null) {
+        val lead = leadForQuickActions!!
+        val isDispatched = lead.dispatchStatus == "Dispatched" || lead.status == "Dispatched"
+        val isConverted = lead.status.equals("Order Placed", ignoreCase = true) || lead.status.equals("Converted", ignoreCase = true) || lead.getPrimaryCategory() == "CONVERTED"
+        val isCancelled = lead.status.equals("Order Cancelled", ignoreCase = true) || lead.status.equals(Constants.STATUS_ORDER_CANCELLED, ignoreCase = true)
+
+        var isCancelling by remember { mutableStateOf(false) }
+        var selectedReason by remember { mutableStateOf("") }
+        var cancelNotes by remember { mutableStateOf("") }
+
+        ModalBottomSheet(
+            onDismissRequest = { leadForQuickActions = null },
+            sheetState = quickActionsSheetState,
+            containerColor = SurfaceLight,
+            dragHandle = { BottomSheetDefaults.DragHandle(color = BorderSubtle) }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .padding(horizontal = 24.dp, vertical = 8.dp)
+                    .animateContentSize(animationSpec = tween(300)),
+                verticalArrangement = Arrangement.spacedBy(20.dp)
+            ) {
+                // Header Panel
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(52.dp)
+                            .clip(CircleShape)
+                            .background(
+                                androidx.compose.ui.graphics.Brush.horizontalGradient(
+                                    colors = listOf(ModernViolet, ModernVioletDark)
+                                )
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = lead.name.take(1).uppercase(Locale.ROOT).ifEmpty { "#" },
+                            color = CleanWhite,
+                            fontWeight = FontWeight.Black,
+                            fontSize = 20.sp
+                        )
+                    }
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = lead.name.ifEmpty { "Unknown Name" },
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary,
+                            fontSize = 18.sp
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = getMaskedLeadPhone(lead),
+                            color = TextSecondary,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+
+                    // Soft Status Badge
+                    val badgeColor = when {
+                        isDispatched -> Color(0xFFFEF2F2)
+                        isCancelled -> Color(0xFFFEF2F2)
+                        isConverted -> Color(0xFFECFDF5)
+                        else -> Color(0xFFF3F4F6)
+                    }
+                    val badgeTextColor = when {
+                        isDispatched -> Color(0xFFEF4444)
+                        isCancelled -> Color(0xFFEF4444)
+                        isConverted -> Color(0xFF10B981)
+                        else -> TextSecondary
+                    }
+                    val badgeText = when {
+                        isDispatched -> "Dispatched"
+                        isCancelled -> "Cancelled"
+                        isConverted -> "Order Placed"
+                        else -> lead.status
+                    }
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(100.dp))
+                            .background(badgeColor)
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Text(
+                            text = badgeText,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = badgeTextColor
+                        )
+                    }
+                }
+
+                Divider(color = BorderSubtle.copy(alpha = 0.5f), thickness = 0.5.dp)
+
+                if (isDispatched) {
+                    // Dispatched Locked Info Box
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Color(0xFFFEF2F2))
+                            .border(0.5.dp, Color(0xFFFCA5A5), RoundedCornerShape(16.dp))
+                            .padding(16.dp)
+                    ) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Text("🔒", fontSize = 18.sp)
+                            Column {
+                                Text("Order Dispatched & Locked", fontWeight = FontWeight.Bold, color = Color(0xFF991B1B), fontSize = 14.sp)
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text("This parcel has been dispatched. Telecallers cannot edit, cancel, or delete this record.", color = Color(0xFFB91C1C), fontSize = 12.sp)
+                            }
+                        }
+                    }
+                } else if (isCancelled) {
+                    // Cancelled Info Box
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Color(0xFFF9FAFB))
+                            .border(0.5.dp, BorderSubtle, RoundedCornerShape(16.dp))
+                            .padding(16.dp)
+                    ) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Text("❌", fontSize = 18.sp)
+                            Column {
+                                Text("Order Cancelled", fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 14.sp)
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text("Reason: ${lead.cancellationReason.orEmpty().ifEmpty { "Not specified" }}", color = TextSecondary, fontSize = 12.sp)
+                            }
+                        }
+                    }
+                } else if (isCancelling) {
+                    // Cancellation Reason Panel inside bottom sheet!
+                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { isCancelling = false },
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text("←", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = ModernViolet)
+                            Text("Back to Quick Actions", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = ModernViolet)
+                        }
+
+                        Text("Select reason for cancellation:", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                        
+                        val reasons = listOf("Client Changed Mind", "Double Entry / Error", "Payment Failed", "Other")
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            reasons.forEach { r ->
+                                val isSel = selectedReason == r
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(if (isSel) ModernViolet.copy(alpha = 0.1f) else SurfaceLight)
+                                        .border(1.dp, if (isSel) ModernViolet else BorderSubtle, RoundedCornerShape(12.dp))
+                                        .clickable { selectedReason = r }
+                                        .padding(horizontal = 14.dp, vertical = 10.dp)
+                                ) {
+                                    Text(r, fontSize = 12.sp, color = if (isSel) ModernViolet else TextPrimary, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+
+                        OutlinedTextField(
+                            value = cancelNotes,
+                            onValueChange = { cancelNotes = it },
+                            label = { Text("Additional notes (optional)") },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = ModernViolet, unfocusedBorderColor = BorderSubtle)
+                        )
+
+                        Button(
+                            onClick = {
+                                if (selectedReason.isEmpty()) {
+                                    Toast.makeText(context, "Please select a reason", Toast.LENGTH_SHORT).show()
+                                    return@Button
+                                }
+                                viewModel.cancelOrder(
+                                    lead = lead,
+                                    reason = if (cancelNotes.isNotEmpty()) "$selectedReason: $cancelNotes" else selectedReason,
+                                    onSuccess = {
+                                        Toast.makeText(context, "Order Cancelled successfully", Toast.LENGTH_SHORT).show()
+                                        leadForQuickActions = null
+                                    },
+                                    onError = { err ->
+                                        Toast.makeText(context, err, Toast.LENGTH_SHORT).show()
+                                    }
+                                )
+                            },
+                            modifier = Modifier.fillMaxWidth().height(52.dp),
+                            shape = RoundedCornerShape(100.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = ModernViolet)
+                        ) {
+                            Text("Confirm Cancellation", color = CleanWhite, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                } else {
+                    // Quick Action List Items
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        
+                        // Action 1: Call Client
+                        QuickActionRow(
+                            icon = Icons.Filled.Call,
+                            iconBg = Color(0xFFEEF2FF),
+                            iconColor = Color(0xFF6366F1),
+                            title = "Voice Call Client",
+                            subtitle = "Call via default phone app",
+                            onClick = {
+                                leadForQuickActions = null
+                                val dialNum = getCleanLeadPhone(lead)
+                                if (dialNum.isNotEmpty()) {
+                                    val intent = Intent(Intent.ACTION_DIAL).apply { data = Uri.parse("tel:$dialNum") }
+                                    context.startActivity(intent)
+                                } else {
+                                    Toast.makeText(context, "No phone number available", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        )
+
+                        // Action 2: WhatsApp Client
+                        QuickActionRow(
+                            icon = Icons.Filled.Phone,
+                            iconBg = Color(0xFFECFDF5),
+                            iconColor = Color(0xFF10B981),
+                            title = "Send WhatsApp Template",
+                            subtitle = "Share confirmation or payment links",
+                            onClick = {
+                                leadForQuickActions = null
+                                selectedLead = lead
+                                showWhatsAppSheet = true
+                            }
+                        )
+
+                        // Action 3: Edit Details
+                        QuickActionRow(
+                            icon = Icons.Filled.Edit,
+                            iconBg = Color(0xFFFFF7ED),
+                            iconColor = Color(0xFFF97316),
+                            title = "View & Edit Details",
+                            subtitle = "View call logs, address or change status",
+                            onClick = {
+                                leadForQuickActions = null
+                                selectedOrderIdForDetails = lead.id
+                            }
+                        )
+
+                        // Action 4: Cancel Order (Only if converted)
+                        if (isConverted) {
+                            QuickActionRow(
+                                icon = Icons.Filled.Close,
+                                iconBg = Color(0xFFFEF2F2),
+                                iconColor = Color(0xFFEF4444),
+                                title = "Cancel Order Directly",
+                                subtitle = "Mark this placed order as cancelled",
+                                onClick = {
+                                    isCancelling = true
+                                }
+                            )
+                        }
+
+                        // Action 5: Delete Lead (Always shown if not locked)
+                        QuickActionRow(
+                            icon = Icons.Filled.Delete,
+                            iconBg = Color(0xFFF3F4F6),
+                            iconColor = Color(0xFF4B5563),
+                            title = "Delete Lead entirely",
+                            subtitle = "Remove this lead from calling queue",
+                            onClick = {
+                                viewModel.archiveLead(
+                                    leadId = lead.id,
+                                    onSuccess = {
+                                        Toast.makeText(context, "Lead deleted successfully", Toast.LENGTH_SHORT).show()
+                                        leadForQuickActions = null
+                                    },
+                                    onError = { err ->
+                                        Toast.makeText(context, err, Toast.LENGTH_SHORT).show()
+                                    }
+                                )
+                            }
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+        }
+    }
+
     if (showCustomTagDialog) {
         AlertDialog(
             onDismissRequest = { showCustomTagDialog = false },
@@ -716,6 +1299,170 @@ fun TodayCallingListScreen(
                     Text("Cancel", color = TextSecondary, fontWeight = FontWeight.Medium)
                 }
             }
+        )
+    }
+}
+
+
+
+
+@Composable
+fun SalesLedgerDashboard(metrics: SalesMetrics, callerName: String) {
+    val targetOrders = 5
+    val progress = (metrics.todayOrdersCount.toFloat() / targetOrders).coerceIn(0f, 1f)
+    
+    val animatedProgress by animateFloatAsState(
+        targetValue = progress,
+        animationSpec = tween(durationMillis = 1500, easing = FastOutSlowInEasing),
+        label = "progress"
+    )
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 16.dp)
+            .shadow(24.dp, RoundedCornerShape(24.dp), ambientColor = ModernViolet, spotColor = ModernViolet.copy(alpha = 0.2f)),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent)
+    ) {
+        androidx.compose.foundation.layout.Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    brush = androidx.compose.ui.graphics.Brush.linearGradient(
+                        colors = listOf(Color(0xFF0F172A), Color(0xFF1E1B4B))
+                    )
+                )
+        ) {
+        Column(modifier = Modifier.padding(24.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                androidx.compose.material3.Icon(imageVector = Icons.Default.Person, contentDescription = null, tint = ModernViolet, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(8.dp))
+                val firstName = callerName.split(" ").firstOrNull() ?: "My"
+                Text(
+                    "${firstName}'s Ledger",
+                    fontSize = 14.sp,
+                    color = Color.White.copy(alpha = 0.9f),
+                    fontWeight = FontWeight.Medium,
+                    letterSpacing = 1.sp
+                )
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        "₹${metrics.todayRevenue}",
+                        fontSize = 32.sp,
+                        fontWeight = FontWeight.Black,
+                        color = Color.White
+                    )
+                    Text("Today's Revenue", fontSize = 13.sp, color = Color.White.copy(alpha = 0.5f))
+                    
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    Text("₹${metrics.weeklyRevenue}", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White.copy(alpha = 0.8f))
+                    Text("This Week", fontSize = 12.sp, color = Color.White.copy(alpha = 0.5f))
+                }
+                
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.size(90.dp)) {
+                    Canvas(modifier = Modifier.fillMaxSize()) {
+                        drawArc(
+                            color = Color.White.copy(alpha = 0.1f),
+                            startAngle = 0f,
+                            sweepAngle = 360f,
+                            useCenter = false,
+                            style = Stroke(width = 8.dp.toPx(), cap = StrokeCap.Round)
+                        )
+                        drawArc(
+                            color = ModernViolet,
+                            startAngle = -90f,
+                            sweepAngle = animatedProgress * 360f,
+                            useCenter = false,
+                            style = Stroke(width = 8.dp.toPx(), cap = StrokeCap.Round)
+                        )
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            "${metrics.todayOrdersCount}",
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Black,
+                            color = Color.White
+                        )
+                        Text(
+                            "/ $targetOrders",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color.White.copy(alpha = 0.5f)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+}
+
+@Composable
+private fun QuickActionRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    iconBg: Color,
+    iconColor: Color,
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(SurfaceLight)
+            .border(0.5.dp, BorderSubtle.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick)
+            .padding(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(42.dp)
+                .clip(CircleShape)
+                .background(iconBg),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = title,
+                tint = iconColor,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                fontWeight = FontWeight.Bold,
+                color = TextPrimary,
+                fontSize = 14.sp
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = subtitle,
+                color = TextSecondary,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium
+            )
+        }
+
+        Text(
+            text = "→",
+            color = BorderSubtle,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold
         )
     }
 }

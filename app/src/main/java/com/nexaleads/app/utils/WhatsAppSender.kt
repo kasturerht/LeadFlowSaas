@@ -217,10 +217,11 @@ Best Regards,
                 
                 if (discVal > 0 && finalVal > 0) {
                     val percentOff = (discVal * 100) / origVal
+                    sb.append("🎁 *स्पेशल ऑफर!* 🎁\n")
                     sb.append("❌ मूळ किंमत: ~₹$origVal~\n")
-                    sb.append("✅ *आजची खास किंमत: ₹$finalVal*\n")
+                    sb.append("✅ *तुम्हाला मिळालेली किंमत: ₹$finalVal*\n")
                     sb.append("━━━━━━━━━━━━━━━━━━\n")
-                    sb.append("🎉 *अभिनंदन! तुमचे ₹$discVal ($percentOff% OFF) वाचले* 🎉\n")
+                    sb.append("🎉 *जबरदस्त! तुमचे थेट ₹$discVal ($percentOff% OFF) वाचले* 🎉\n")
                 } else if (origVal > 0 && discVal == 0) {
                     sb.append("💰 *एकूण रक्कम:* ₹$origVal\n")
                 } else if (origVal > 0 && discVal < 0) {
@@ -290,10 +291,11 @@ Best Regards,
                 
                 if (discVal > 0 && finalVal > 0) {
                     val percentOff = (discVal * 100) / origVal
+                    sb.append("🎁 *स्पेशल ऑफर!* 🎁\n")
                     sb.append("❌ मूल कीमत: ~₹$origVal~\n")
-                    sb.append("✅ *आज की विशेष कीमत: ₹$finalVal*\n")
+                    sb.append("✅ *आपको मिली कीमत: ₹$finalVal*\n")
                     sb.append("━━━━━━━━━━━━━━━━━━\n")
-                    sb.append("🎉 *बधाई हो! आपने ₹$discVal ($percentOff% OFF) बचाए* 🎉\n")
+                    sb.append("🎉 *शानदार! आपके सीधे ₹$discVal ($percentOff% OFF) बच गए* 🎉\n")
                 } else if (origVal > 0 && discVal == 0) {
                     sb.append("💰 *कुल राशि:* ₹$origVal\n")
                 } else if (origVal > 0 && discVal < 0) {
@@ -364,10 +366,11 @@ Best Regards,
                 
                 if (discVal > 0 && finalVal > 0) {
                     val percentOff = (discVal * 100) / origVal
-                    sb.append("❌ Original Price: ~₹$origVal~\n")
-                    sb.append("✅ *Our Price: ₹$finalVal*\n")
+                    sb.append("🎁 *SPECIAL OFFER APPLIED!* 🎁\n")
+                    sb.append("❌ Regular Price: ~₹$origVal~\n")
+                    sb.append("✅ *Your Special Price: ₹$finalVal*\n")
                     sb.append("━━━━━━━━━━━━━━━━━━\n")
-                    sb.append("🎉 *AWESOME! YOU SAVED ₹$discVal ($percentOff% OFF)* 🎉\n")
+                    sb.append("🎉 *CONGRATULATIONS! YOU SAVED ₹$discVal ($percentOff% OFF)* 🎉\n")
                 } else if (origVal > 0 && discVal == 0) {
                     sb.append("💰 *Total Value:* ₹$origVal\n")
                 } else if (origVal > 0 && discVal < 0) {

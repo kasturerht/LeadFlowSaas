@@ -25,14 +25,19 @@ data class Lead(
     val isSuspiciousShortCall: Boolean = false,
     val state: String = "",
     val originalTotalValue: String = "",
-    val discountAmount: String = ""
+    val discountAmount: String = "",
+    val convertedAt: String? = null,
+    val dispatchStatus: String? = null,
+    val cancellationReason: String? = null,
+    val cancellationNotes: String? = null,
+    val cancellationRequestedAt: String? = null
 )
 
 fun Lead.getPrimaryCategory(): String {
     if (this.archived) return "ARCHIVED"
     val normStatus = Constants.normalizeStatus(this.status)
     if (normStatus == Constants.STATUS_ORDER_PLACED) return "CONVERTED"
-    if (normStatus == Constants.STATUS_NOT_INTERESTED || normStatus == Constants.STATUS_INVALID) return "REJECTED"
+    if (normStatus == Constants.STATUS_NOT_INTERESTED || normStatus == Constants.STATUS_INVALID || normStatus == Constants.STATUS_ORDER_CANCELLED) return "REJECTED"
     if (normStatus == Constants.STATUS_FOLLOW_UP) return "FOLLOWUP"
     if (normStatus == Constants.STATUS_CALL_NOT_ANSWERED) return "ATTEMPTED"
     if (normStatus == Constants.STATUS_INQUIRY) return "INQUIRY"

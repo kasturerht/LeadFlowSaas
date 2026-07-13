@@ -23,7 +23,11 @@ service cloud.firestore {
     match /leads/{leadId} {
       allow read, write: if isAdmin();
       
-      allow read, update: if isTelecaller() && resource.data.assignedTo == request.auth.uid;
+      allow read: if isTelecaller() && resource.data.assignedTo == request.auth.uid;
+      allow update: if isTelecaller() 
+        && resource.data.assignedTo == request.auth.uid 
+        && resource.data.dispatchStatus != 'Dispatched'
+        && resource.data.status != 'Dispatched';
       
       // Telecallers can create leads assigned to them
       allow create: if isTelecaller() && request.resource.data.assignedTo == request.auth.uid;

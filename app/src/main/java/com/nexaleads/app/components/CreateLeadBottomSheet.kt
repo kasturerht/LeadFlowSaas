@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nexaleads.app.Constants
 import com.nexaleads.app.data.model.Lead
+import com.nexaleads.app.data.model.getPrimaryCategory
 import com.nexaleads.app.utils.PhoneUtils
 
 import com.nexaleads.app.ui.theme.*
@@ -53,6 +54,7 @@ import java.util.Locale
 fun CreateLeadBottomSheet(
     viewModel: CallingViewModel,
     sheetState: SheetState,
+    leadToEdit: Lead? = null,
     onDismiss: () -> Unit,
     onExistingLeadFound: (Lead) -> Unit
 ) {
@@ -66,37 +68,83 @@ fun CreateLeadBottomSheet(
     val pricesMap = remember(productsList) { productsList.associate { it.name to it.price } }
 
     var callLogs by remember { mutableStateOf<List<CallLogEntry>>(emptyList()) }
-    var selectedNumber by remember { mutableStateOf(draft.selectedNumber) }
-    var manualMode by remember { mutableStateOf(draft.manualMode) }
+    var selectedNumber by remember { mutableStateOf(leadToEdit?.phone ?: draft.selectedNumber) }
+    var manualMode by remember { mutableStateOf(leadToEdit != null || draft.manualMode) }
 
     // Form State
-    var clientName by remember { mutableStateOf(draft.clientName) }
-    var source by remember { mutableStateOf(draft.source) }
-    var selectedProduct by remember { mutableStateOf(draft.selectedProduct) }
-    var selectedStatus by remember { mutableStateOf(draft.selectedStatus) }
-    var selectedSubStatus by remember { mutableStateOf(draft.selectedSubStatus) }
-    var selectedTimeSlot by remember { mutableStateOf(draft.selectedTimeSlot) }
-    var selectedPaymentStatus by remember { mutableStateOf(draft.selectedPaymentStatus) }
-    var remarkNotes by remember { mutableStateOf(draft.remarkNotes) }
-    var followUpDate by remember { mutableStateOf(draft.followUpDate) }
+    var clientName by remember { mutableStateOf(leadToEdit?.name ?: draft.clientName) }
+    var source by remember { mutableStateOf(leadToEdit?.source ?: draft.source) }
+    var selectedProduct by remember { mutableStateOf(leadToEdit?.product ?: draft.selectedProduct) }
+    var selectedStatus by remember { mutableStateOf(leadToEdit?.status ?: draft.selectedStatus) }
+    var selectedSubStatus by remember { mutableStateOf(leadToEdit?.subStatus ?: draft.selectedSubStatus) }
+    var selectedTimeSlot by remember { mutableStateOf(leadToEdit?.followUpTimeSlot ?: draft.selectedTimeSlot) }
+    var selectedPaymentStatus by remember { mutableStateOf(leadToEdit?.paymentStatus ?: draft.selectedPaymentStatus) }
+    var remarkNotes by remember { mutableStateOf(leadToEdit?.notes ?: draft.remarkNotes) }
+    var followUpDate by remember { mutableStateOf(leadToEdit?.followUpDate ?: draft.followUpDate) }
     var showDatePicker by remember { mutableStateOf(false) }
     var showProductPopup by remember { mutableStateOf(false) }
+    var userModifiedProducts by remember { mutableStateOf(false) }
+    var showCancellationReasonDialog by remember { mutableStateOf(false) }
     
     // Order Dispatch Fields
-    var shippingAddress by remember { mutableStateOf(draft.shippingAddress) }
-    var shippingCity by remember { mutableStateOf(draft.shippingCity) }
-    var shippingPincode by remember { mutableStateOf(draft.shippingPincode) }
-    var paymentMethod by remember { mutableStateOf(draft.paymentMethod) }
-    var orderAmount by remember { mutableStateOf(draft.orderAmount) }
-    var shippingState by remember { mutableStateOf("") }
-    var originalTotalValue by remember { mutableStateOf("") }
-    var discountAmount by remember { mutableStateOf("") }
+    var shippingAddress by remember { mutableStateOf(leadToEdit?.address ?: draft.shippingAddress) }
+    var shippingCity by remember { mutableStateOf(leadToEdit?.city ?: draft.shippingCity) }
+    var shippingPincode by remember { mutableStateOf(leadToEdit?.pincode ?: draft.shippingPincode) }
+    var paymentMethod by remember { mutableStateOf(leadToEdit?.paymentMethod ?: draft.paymentMethod) }
+    var orderAmount by remember { mutableStateOf(leadToEdit?.orderAmount ?: draft.orderAmount) }
+    var shippingState by remember { mutableStateOf(leadToEdit?.state ?: "") }
+    var originalTotalValue by remember { mutableStateOf(leadToEdit?.originalTotalValue ?: "") }
+    var discountAmount by remember { mutableStateOf(leadToEdit?.discountAmount ?: "") }
+    val isConverted = remember(leadToEdit?.status, leadToEdit?.dispatchStatus) {
+        leadToEdit?.status?.equals("Order Placed", ignoreCase = true) == true || 
+        leadToEdit?.status?.equals("Converted", ignoreCase = true) == true || 
+        leadToEdit?.getPrimaryCategory() == "CONVERTED"
+    }
+    val isDispatched = remember(leadToEdit?.status, leadToEdit?.dispatchStatus) {
+        leadToEdit?.status?.equals("Dispatched", ignoreCase = true) == true || 
+        (leadToEdit?.dispatchStatus != null && leadToEdit.dispatchStatus.equals("Dispatched", ignoreCase = true))
+    }
+    val isCancelled = remember(leadToEdit?.status) {
+        leadToEdit?.status?.equals("Order Cancelled", ignoreCase = true) == true || 
+        leadToEdit?.status?.equals(Constants.STATUS_ORDER_CANCELLED, ignoreCase = true) == true
+    }
+    val isLocked = isDispatched || isCancelled
 
     val calculatedTotal = remember(selectedProduct, pricesMap) { calculateTotalAmount(selectedProduct, pricesMap) }
 
     LaunchedEffect(calculatedTotal) {
-        if (calculatedTotal > 0) {
-            orderAmount = calculatedTotal.toInt().toString()
+        val newTotalStr = calculatedTotal.toInt().toString()
+        if (userModifiedProducts) {
+            orderAmount = newTotalStr
+            originalTotalValue = newTotalStr
+            discountAmount = "0"
+            userModifiedProducts = false
+        } else {
+            if (orderAmount.isEmpty() || orderAmount == "0") {
+                orderAmount = newTotalStr
+            }
+            if (originalTotalValue.isEmpty() || originalTotalValue == "0") {
+                originalTotalValue = newTotalStr
+            }
+        }
+    }
+    
+    LaunchedEffect(orderAmount, originalTotalValue) {
+        val original = originalTotalValue.toIntOrNull() ?: 0
+        val current = orderAmount.toIntOrNull() ?: 0
+        if (original > 0 && current < original) {
+            discountAmount = (original - current).toString()
+        } else {
+            discountAmount = "0"
+        }
+    }
+    
+    LaunchedEffect(productsList) {
+        if (productsList.isNotEmpty() && selectedProduct.isNotEmpty()) {
+            val sanitized = sanitizeSelectedProducts(selectedProduct, productsList.map { it.name })
+            if (sanitized != selectedProduct) {
+                selectedProduct = sanitized
+            }
         }
     }
 
@@ -106,27 +154,29 @@ fun CreateLeadBottomSheet(
         remarkNotes, followUpDate, shippingAddress, shippingCity, shippingPincode,
         paymentMethod, orderAmount
     ) {
-        kotlinx.coroutines.delay(500) // Debounce for 500ms to prevent SharedPreferences thrashing on fast typing
-        viewModel.saveDraft(
-            LeadFormDraft(
-                selectedNumber = selectedNumber,
-                manualMode = manualMode,
-                clientName = clientName,
-                source = source,
-                selectedProduct = selectedProduct,
-                selectedStatus = selectedStatus,
-                selectedSubStatus = selectedSubStatus,
-                selectedTimeSlot = selectedTimeSlot,
-                selectedPaymentStatus = selectedPaymentStatus,
-                remarkNotes = remarkNotes,
-                followUpDate = followUpDate,
-                shippingAddress = shippingAddress,
-                shippingCity = shippingCity,
-                shippingPincode = shippingPincode,
-                paymentMethod = paymentMethod,
-                orderAmount = orderAmount
+        if (leadToEdit == null) {
+            kotlinx.coroutines.delay(500) // Debounce for 500ms to prevent SharedPreferences thrashing on fast typing
+            viewModel.saveDraft(
+                LeadFormDraft(
+                    selectedNumber = selectedNumber,
+                    manualMode = manualMode,
+                    clientName = clientName,
+                    source = source,
+                    selectedProduct = selectedProduct,
+                    selectedStatus = selectedStatus,
+                    selectedSubStatus = selectedSubStatus,
+                    selectedTimeSlot = selectedTimeSlot,
+                    selectedPaymentStatus = selectedPaymentStatus,
+                    remarkNotes = remarkNotes,
+                    followUpDate = followUpDate,
+                    shippingAddress = shippingAddress,
+                    shippingCity = shippingCity,
+                    shippingPincode = shippingPincode,
+                    paymentMethod = paymentMethod,
+                    orderAmount = orderAmount
+                )
             )
-        )
+        }
     }
 
     val saveToContactsPref by viewModel.saveToContactsPreference.collectAsState()
@@ -366,29 +416,81 @@ fun CreateLeadBottomSheet(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("New Lead Registration", fontWeight = FontWeight.Black, color = TextPrimary, fontSize = 22.sp)
-                        TextButton(
-                            onClick = {
-                                viewModel.clearDraft()
-                                selectedNumber = ""
-                                manualMode = false
-                                clientName = ""
-                                source = ""
-                                selectedProduct = ""
-                                selectedStatus = ""
-                                selectedSubStatus = ""
-                                selectedTimeSlot = ""
-                                selectedPaymentStatus = ""
-                                remarkNotes = ""
-                                followUpDate = ""
-                                shippingAddress = ""
-                                shippingCity = ""
-                                shippingPincode = ""
-                                paymentMethod = ""
-                                orderAmount = ""
+                        Text(if (leadToEdit != null) "Edit Lead" else "New Lead Registration", fontWeight = FontWeight.Black, color = TextPrimary, fontSize = 22.sp)
+                        if (!isLocked) {
+                            TextButton(
+                                onClick = {
+                                    viewModel.clearDraft()
+                                    selectedNumber = ""
+                                    manualMode = false
+                                    clientName = ""
+                                    source = ""
+                                    selectedProduct = ""
+                                    selectedStatus = ""
+                                    selectedSubStatus = ""
+                                    selectedTimeSlot = ""
+                                    selectedPaymentStatus = ""
+                                    remarkNotes = ""
+                                    followUpDate = ""
+                                    shippingAddress = ""
+                                    shippingCity = ""
+                                    shippingPincode = ""
+                                    paymentMethod = ""
+                                    orderAmount = ""
+                                }
+                            ) {
+                                Text("Clear", color = ModernViolet, fontWeight = FontWeight.Bold)
                             }
+                        }
+                    }
+                }
+
+                if (isCancelled) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color(0xFFFEF2F2))
+                                .border(1.dp, Color(0xFFFCA5A5), RoundedCornerShape(12.dp))
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Text("Clear", color = ModernViolet, fontWeight = FontWeight.Bold)
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("❌ ORDER CANCELLED", color = Color(0xFFEF4444), fontWeight = FontWeight.Black, fontSize = 11.sp, letterSpacing = 1.2.sp)
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "This order was cancelled. Reason: ${leadToEdit?.cancellationReason.orEmpty().ifEmpty { "Not specified" }}",
+                                    color = Color(0xFF991B1B),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+                    }
+                } else if (isDispatched) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color(0xFFFEF2F2))
+                                .border(1.dp, Color(0xFFFCA5A5), RoundedCornerShape(12.dp))
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("🔒 ORDER DISPATCHED", color = Color(0xFFEF4444), fontWeight = FontWeight.Black, fontSize = 11.sp, letterSpacing = 1.2.sp)
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "This parcel is packed and shipped. Modifying, deleting, or requesting cancellation is disabled.",
+                                    color = Color(0xFF991B1B),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
                         }
                     }
                 }
@@ -402,7 +504,7 @@ fun CreateLeadBottomSheet(
                         shape = RoundedCornerShape(16.dp),
                         colors = luxuryTextFieldColors,
                         singleLine = true,
-                        readOnly = !manualMode,
+                        readOnly = !manualMode || isLocked,
                         keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                             keyboardType = androidx.compose.ui.text.input.KeyboardType.Phone,
                             imeAction = androidx.compose.ui.text.input.ImeAction.Next
@@ -419,6 +521,7 @@ fun CreateLeadBottomSheet(
                         shape = RoundedCornerShape(16.dp),
                         colors = luxuryTextFieldColors,
                         singleLine = true,
+                        readOnly = isLocked,
                         keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                             capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Words,
                             imeAction = androidx.compose.ui.text.input.ImeAction.Next
@@ -456,7 +559,7 @@ fun CreateLeadBottomSheet(
                                         .clip(RoundedCornerShape(100.dp))
                                         .background(if (isSelected) tint.copy(alpha = 0.12f) else AccentSurface)
                                         .border(1.dp, if (isSelected) tint else Color.Transparent, RoundedCornerShape(100.dp))
-                                        .clickable { 
+                                        .clickable(enabled = !isLocked) { 
                                             haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
                                             source = if (isSelected) "" else src 
                                         }
@@ -498,7 +601,7 @@ fun CreateLeadBottomSheet(
                                                 .clip(RoundedCornerShape(100.dp))
                                                 .background(if (isSelected) (iconData?.tint ?: ModernViolet).copy(alpha = 0.12f) else AccentSurface)
                                                 .border(1.dp, if (isSelected) (iconData?.tint ?: ModernViolet) else Color.Transparent, RoundedCornerShape(100.dp))
-                                                .clickable { 
+                                                .clickable(enabled = !isLocked) { 
                                                     focusManager.clearFocus()
                                                     haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
                                                     if (selectedStatus == option) {
@@ -553,7 +656,7 @@ fun CreateLeadBottomSheet(
                                 listOf("🔔 Ringing", "🔴 Busy", "📵 Switched Off").forEach { sub ->
                                     val isSelected = selectedSubStatus == sub
                                     Box(
-                                        modifier = Modifier.weight(1f).clip(RoundedCornerShape(100.dp)).background(if (isSelected) Color(0xFFF43F5E) else AccentSurface).border(1.dp, if (isSelected) Color(0xFFF43F5E) else Color.Transparent, RoundedCornerShape(100.dp)).clickable { selectedSubStatus = if (selectedSubStatus == sub) "" else sub }.padding(horizontal = 8.dp, vertical = 12.dp),
+                                        modifier = Modifier.weight(1f).clip(RoundedCornerShape(100.dp)).background(if (isSelected) Color(0xFFF43F5E) else AccentSurface).border(1.dp, if (isSelected) Color(0xFFF43F5E) else Color.Transparent, RoundedCornerShape(100.dp)).clickable(enabled = !isLocked) { selectedSubStatus = if (selectedSubStatus == sub) "" else sub }.padding(horizontal = 8.dp, vertical = 12.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Text(sub, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (isSelected) CleanWhite else TextPrimary, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -572,7 +675,7 @@ fun CreateLeadBottomSheet(
                             Text("PRODUCTS / SERVICES", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextSecondary, letterSpacing = 1.2.sp)
                             
                             if (selectedProduct.isNotEmpty()) {
-                                val selectedItems = selectedProduct.split(", ").filter { it.isNotEmpty() }
+                                val selectedItems = selectedProduct.split(",").map { it.trim() }.filter { it.isNotEmpty() }
                                 FlowRow(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                     verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -611,7 +714,7 @@ fun CreateLeadBottomSheet(
                                 Row(
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(8.dp))
-                                        .clickable { showProductPopup = true }
+                                        .clickable(enabled = !isLocked) { showProductPopup = true }
                                         .padding(horizontal = 8.dp, vertical = 6.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
@@ -638,7 +741,7 @@ fun CreateLeadBottomSheet(
                     item {
                         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             Text("FOLLOW-UP DATE", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextSecondary, letterSpacing = 1.2.sp)
-                            Box(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(SurfaceLight).border(1.dp, BorderSubtle, RoundedCornerShape(10.dp)).clickable { showDatePicker = true }.padding(14.dp)) {
+                            Box(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(SurfaceLight).border(1.dp, BorderSubtle, RoundedCornerShape(10.dp)).clickable(enabled = !isLocked) { showDatePicker = true }.padding(14.dp)) {
                                 Text(if (followUpDate.isEmpty()) "Select Date" else followUpDate, color = if (followUpDate.isEmpty()) TextSecondary else TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
                             }
                             Text("PREFERRED TIME SLOT", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextSecondary, letterSpacing = 1.2.sp)
@@ -646,7 +749,7 @@ fun CreateLeadBottomSheet(
                                 listOf("🌅 Morning", "☀️ Afternoon", "🌙 Evening").forEach { slot ->
                                     val isSelected = selectedTimeSlot == slot
                                     Box(
-                                        modifier = Modifier.weight(1f).clip(RoundedCornerShape(100.dp)).background(if (isSelected) StatusWarning else AccentSurface).border(1.dp, if (isSelected) StatusWarning else Color.Transparent, RoundedCornerShape(100.dp)).clickable { selectedTimeSlot = if (selectedTimeSlot == slot) "" else slot }.padding(horizontal = 8.dp, vertical = 12.dp),
+                                        modifier = Modifier.weight(1f).clip(RoundedCornerShape(100.dp)).background(if (isSelected) StatusWarning else AccentSurface).border(1.dp, if (isSelected) StatusWarning else Color.Transparent, RoundedCornerShape(100.dp)).clickable(enabled = !isLocked) { selectedTimeSlot = if (selectedTimeSlot == slot) "" else slot }.padding(horizontal = 8.dp, vertical = 12.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Text(slot, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (isSelected) CleanWhite else TextPrimary, textAlign = TextAlign.Center, maxLines = 1)
@@ -665,28 +768,66 @@ fun CreateLeadBottomSheet(
                             OutlinedTextField(
                                 value = shippingAddress, onValueChange = { shippingAddress = it },
                                 label = { Text("Full Shipping Address") }, modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(16.dp), colors = luxuryTextFieldColors
+                                shape = RoundedCornerShape(16.dp), colors = luxuryTextFieldColors,
+                                readOnly = isLocked
                             )
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                 OutlinedTextField(
                                     value = shippingCity, onValueChange = { shippingCity = it },
-                                    label = { Text("City") }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(16.dp), colors = luxuryTextFieldColors
+                                    label = { Text("City") }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(16.dp), colors = luxuryTextFieldColors,
+                                    readOnly = isLocked
                                 )
                                 OutlinedTextField(
                                     value = shippingPincode, onValueChange = { shippingPincode = it },
-                                    label = { Text("Pincode") }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(16.dp), colors = luxuryTextFieldColors
+                                    label = { Text("Pincode") }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(16.dp), colors = luxuryTextFieldColors,
+                                    readOnly = isLocked
                                 )
                             }
                             OutlinedTextField(
                                 value = orderAmount, onValueChange = { orderAmount = it },
-                                label = { Text("Order Amount (₹)") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = luxuryTextFieldColors
+                                label = { Text("Order Amount (₹)") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = luxuryTextFieldColors,
+                                readOnly = isLocked,
+                                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
+                                )
                             )
+                            
+                            val originalAmt = originalTotalValue.toIntOrNull() ?: 0
+                            val currentAmt = orderAmount.toIntOrNull() ?: 0
+                            if (originalAmt > 0 && currentAmt < originalAmt) {
+                                val saved = originalAmt - currentAmt
+                                val percent = (saved * 100) / originalAmt
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "🎉 Discount Applied: ₹$saved ($percent% OFF)",
+                                        color = Color(0xFF10B981),
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp
+                                    )
+                                }
+                            } else if (originalAmt > 0 && currentAmt > originalAmt) {
+                                val extra = currentAmt - originalAmt
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "⚠️ Amount is ₹$extra higher than product price.",
+                                        color = StatusWarning,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 12.sp
+                                    )
+                                }
+                            }
                             Text("PAYMENT METHOD", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextSecondary, letterSpacing = 1.2.sp)
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 listOf("COD", "Prepaid").forEach { pm ->
                                     val isSelected = paymentMethod == pm
                                     Box(
-                                        modifier = Modifier.clip(RoundedCornerShape(100.dp)).background(if (isSelected) ModernViolet else AccentSurface).border(1.dp, if (isSelected) ModernViolet else Color.Transparent, RoundedCornerShape(100.dp)).clickable { paymentMethod = if (paymentMethod == pm) "" else pm }.padding(horizontal = 16.dp, vertical = 10.dp)
+                                        modifier = Modifier.clip(RoundedCornerShape(100.dp)).background(if (isSelected) ModernViolet else AccentSurface).border(1.dp, if (isSelected) ModernViolet else Color.Transparent, RoundedCornerShape(100.dp)).clickable(enabled = !isLocked) { paymentMethod = if (paymentMethod == pm) "" else pm }.padding(horizontal = 16.dp, vertical = 10.dp)
                                     ) { Text(pm, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (isSelected) CleanWhite else TextSecondary) }
                                 }
                             }
@@ -696,7 +837,7 @@ fun CreateLeadBottomSheet(
                                     listOf("⏳ UPI Link Sent", "✅ Payment Verified").forEach { pStatus ->
                                         val isSelected = selectedPaymentStatus == pStatus
                                         Box(
-                                            modifier = Modifier.weight(1f).clip(RoundedCornerShape(100.dp)).background(if (isSelected) StatusSuccess else AccentSurface).border(1.dp, if (isSelected) StatusSuccess else Color.Transparent, RoundedCornerShape(100.dp)).clickable { selectedPaymentStatus = if (selectedPaymentStatus == pStatus) "" else pStatus }.padding(horizontal = 8.dp, vertical = 12.dp),
+                                            modifier = Modifier.weight(1f).clip(RoundedCornerShape(100.dp)).background(if (isSelected) StatusSuccess else AccentSurface).border(1.dp, if (isSelected) StatusSuccess else Color.Transparent, RoundedCornerShape(100.dp)).clickable(enabled = !isLocked) { selectedPaymentStatus = if (selectedPaymentStatus == pStatus) "" else pStatus }.padding(horizontal = 8.dp, vertical = 12.dp),
                                             contentAlignment = Alignment.Center
                                         ) {
                                             Text(pStatus, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (isSelected) CleanWhite else TextPrimary, textAlign = TextAlign.Center, maxLines = 1)
@@ -721,7 +862,9 @@ fun CreateLeadBottomSheet(
                                 includeSupportPhone = includeSupportPhone,
                                 onIncludeSupportPhoneChange = { includeSupportPhone = it },
                                 selectedLanguage = selectedLanguage,
-                                onLanguageChange = { selectedLanguage = it }
+                                onLanguageChange = { selectedLanguage = it },
+                                originalTotalValue = originalTotalValue,
+                                discountAmount = discountAmount
                             )
                         }
                     }
@@ -733,6 +876,7 @@ fun CreateLeadBottomSheet(
                         label = { Text("Conversation Notes (Optional)") },
                         colors = luxuryTextFieldColors,
                         shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth(),
+                        readOnly = isLocked,
                         minLines = 1, maxLines = 4
                     )
                 }
@@ -747,11 +891,11 @@ fun CreateLeadBottomSheet(
                             .fillMaxWidth()
                             .height(56.dp)
                             .then(
-                                if (!isSaving) {
+                                if (!isSaving && !isLocked) {
                                     Modifier.background(buttonGradient, RoundedCornerShape(100.dp))
                                 } else Modifier
                             ),
-                        enabled = !isSaving,
+                        enabled = !isSaving && !isLocked,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color.Transparent, 
                             disabledContainerColor = BorderSubtle 
@@ -782,6 +926,13 @@ fun CreateLeadBottomSheet(
                                 Toast.makeText(context, "Please select Status", Toast.LENGTH_SHORT).show()
                                 return@Button
                             }
+                            
+                            // Sub-status validation
+                            if (selectedStatus in listOf(Constants.STATUS_CALL_NOT_ANSWERED, "No Answer", "Busy") && selectedSubStatus.isEmpty()) {
+                                Toast.makeText(context, "Please select a reason (Sub-status)", Toast.LENGTH_SHORT).show()
+                                return@Button
+                            }
+
                             if ((selectedStatus == "Order Placed" || selectedStatus == "Product Inquiry Only" || selectedStatus == "Product Inquiry") && selectedProduct.isEmpty()) {
                                 Toast.makeText(context, "Please select a Product", Toast.LENGTH_SHORT).show()
                                 return@Button
@@ -792,8 +943,29 @@ fun CreateLeadBottomSheet(
                             }
                             
                             if (selectedStatus == "Order Placed") {
-                                if (shippingAddress.isEmpty() || shippingCity.isEmpty() || shippingPincode.isEmpty() || paymentMethod.isEmpty() || orderAmount.isEmpty()) {
-                                    Toast.makeText(context, "Please fill all dispatch details", Toast.LENGTH_SHORT).show()
+                                if (shippingAddress.isEmpty()) {
+                                    Toast.makeText(context, "Please enter delivery address", Toast.LENGTH_SHORT).show()
+                                    return@Button
+                                }
+                                if (shippingCity.isEmpty()) {
+                                    Toast.makeText(context, "Please enter delivery city", Toast.LENGTH_SHORT).show()
+                                    return@Button
+                                }
+                                if (shippingPincode.length != 6 || shippingPincode.any { !it.isDigit() }) {
+                                    Toast.makeText(context, "Please enter a valid 6-digit Pincode", Toast.LENGTH_SHORT).show()
+                                    return@Button
+                                }
+                                val amountValue = orderAmount.toIntOrNull() ?: 0
+                                if (orderAmount.isEmpty() || amountValue <= 0) {
+                                    Toast.makeText(context, "Order amount must be greater than 0", Toast.LENGTH_SHORT).show()
+                                    return@Button
+                                }
+                                if (paymentMethod.isEmpty()) {
+                                    Toast.makeText(context, "Please select a Payment Method (COD or Prepaid)", Toast.LENGTH_SHORT).show()
+                                    return@Button
+                                }
+                                if (paymentMethod.equals("Prepaid", ignoreCase = true) && selectedPaymentStatus.isEmpty()) {
+                                    Toast.makeText(context, "Please select Prepaid Payment Verification status", Toast.LENGTH_SHORT).show()
                                     return@Button
                                 }
                             }
@@ -821,53 +993,97 @@ fun CreateLeadBottomSheet(
                                 val finalOriginalTotal = if (isOrderRelevant) originalTotalValue else ""
                                 val finalDiscountAmount = if (isOrderRelevant) discountAmount else ""
 
-                                viewModel.createManualLead(
-                                    name = clientName.trim(),
-                                    phone = purePhone,
-                                    source = source,
-                                    status = selectedStatus,
-                                    subStatus = finalSubStatus,
-                                    notes = remarkNotes,
-                                    followUpDate = finalFollowUpDate,
-                                    followUpTimeSlot = finalTimeSlot,
-                                    product = finalProduct,
-                                    address = finalShippingAddress,
-                                    city = finalShippingCity,
-                                    state = finalShippingState,
-                                    pincode = finalShippingPincode,
-                                    paymentMethod = finalPaymentMethod,
-                                    orderAmount = finalOrderAmount,
-                                    originalTotalValue = finalOriginalTotal,
-                                    discountAmount = finalDiscountAmount,
-                                    paymentStatus = finalPaymentStatus,
-                                    onSuccess = { logId, newLead ->
-                                        isSaving = false
-                                        viewModel.clearDraft()
-                                        Toast.makeText(context, "Lead saved successfully!", Toast.LENGTH_SHORT).show()
-                                        if (selectedStatus == "Order Placed" && autoLaunchWhatsApp) {
-                                            com.nexaleads.app.utils.WhatsAppSender.sendOrderConfirmation(
-                                                context = context,
-                                                phone = purePhone,
-                                                customerName = clientName.trim(),
-                                                products = selectedProduct,
-                                                address = listOf(shippingAddress, shippingCity, shippingState, shippingPincode).filter { it.isNotBlank() }.joinToString(", "),
-                                                paymentMode = if (paymentMethod.equals("Prepaid", ignoreCase = true)) "$paymentMethod - $selectedPaymentStatus" else paymentMethod,
-                                                includeAddress = includeAddress,
-                                                includePaymentLink = includePaymentLink,
-                                                includeDispatchNote = includeDispatchNote,
-                                                includeSupportPhone = includeSupportPhone,
-                                                originalTotal = finalOriginalTotal,
-                                                discountAmount = finalDiscountAmount,
-                                                language = selectedLanguage
-                                            )
-                                        }
-                                        onDismiss()
-                                    },
-                                    onError = { err ->
-                                        isSaving = false
-                                        Toast.makeText(context, "Error: $err", Toast.LENGTH_SHORT).show()
+                                if (leadToEdit != null) {
+                                    val updatedLead = leadToEdit.copy(
+                                        name = clientName.trim(),
+                                        phone = purePhone,
+                                        source = source,
+                                        status = selectedStatus,
+                                        subStatus = finalSubStatus,
+                                        notes = remarkNotes,
+                                        followUpDate = finalFollowUpDate,
+                                        followUpTimeSlot = finalTimeSlot,
+                                        product = finalProduct,
+                                        address = finalShippingAddress,
+                                        city = finalShippingCity,
+                                        state = finalShippingState,
+                                        pincode = finalShippingPincode,
+                                        paymentMethod = finalPaymentMethod,
+                                        orderAmount = finalOrderAmount,
+                                        originalTotalValue = finalOriginalTotal,
+                                        discountAmount = finalDiscountAmount,
+                                        paymentStatus = finalPaymentStatus
+                                    )
+                                    viewModel.updateLead(updatedLead)
+                                    isSaving = false
+                                    Toast.makeText(context, "Lead updated successfully!", Toast.LENGTH_SHORT).show()
+                                    if (selectedStatus == "Order Placed" && autoLaunchWhatsApp) {
+                                        com.nexaleads.app.utils.WhatsAppSender.sendOrderConfirmation(
+                                            context = context,
+                                            phone = purePhone,
+                                            customerName = clientName.trim(),
+                                            products = selectedProduct,
+                                            address = listOf(shippingAddress, shippingCity, shippingState, shippingPincode).filter { it.isNotBlank() }.joinToString(", "),
+                                            paymentMode = if (paymentMethod.equals("Prepaid", ignoreCase = true)) "$paymentMethod - $selectedPaymentStatus" else paymentMethod,
+                                            includeAddress = includeAddress,
+                                            includePaymentLink = includePaymentLink,
+                                            includeDispatchNote = includeDispatchNote,
+                                            includeSupportPhone = includeSupportPhone,
+                                            originalTotal = finalOriginalTotal,
+                                            discountAmount = finalDiscountAmount,
+                                            language = selectedLanguage
+                                        )
                                     }
-                                )
+                                    onDismiss()
+                                } else {
+                                    viewModel.createManualLead(
+                                        name = clientName.trim(),
+                                        phone = purePhone,
+                                        source = source,
+                                        status = selectedStatus,
+                                        subStatus = finalSubStatus,
+                                        notes = remarkNotes,
+                                        followUpDate = finalFollowUpDate,
+                                        followUpTimeSlot = finalTimeSlot,
+                                        product = finalProduct,
+                                        address = finalShippingAddress,
+                                        city = finalShippingCity,
+                                        state = finalShippingState,
+                                        pincode = finalShippingPincode,
+                                        paymentMethod = finalPaymentMethod,
+                                        orderAmount = finalOrderAmount,
+                                        originalTotalValue = finalOriginalTotal,
+                                        discountAmount = finalDiscountAmount,
+                                        paymentStatus = finalPaymentStatus,
+                                        onSuccess = { logId, newLead ->
+                                            isSaving = false
+                                            viewModel.clearDraft()
+                                            Toast.makeText(context, "Lead saved successfully!", Toast.LENGTH_SHORT).show()
+                                            if (selectedStatus == "Order Placed" && autoLaunchWhatsApp) {
+                                                com.nexaleads.app.utils.WhatsAppSender.sendOrderConfirmation(
+                                                    context = context,
+                                                    phone = purePhone,
+                                                    customerName = clientName.trim(),
+                                                    products = selectedProduct,
+                                                    address = listOf(shippingAddress, shippingCity, shippingState, shippingPincode).filter { it.isNotBlank() }.joinToString(", "),
+                                                    paymentMode = if (paymentMethod.equals("Prepaid", ignoreCase = true)) "$paymentMethod - $selectedPaymentStatus" else paymentMethod,
+                                                    includeAddress = includeAddress,
+                                                    includePaymentLink = includePaymentLink,
+                                                    includeDispatchNote = includeDispatchNote,
+                                                    includeSupportPhone = includeSupportPhone,
+                                                    originalTotal = finalOriginalTotal,
+                                                    discountAmount = finalDiscountAmount,
+                                                    language = selectedLanguage
+                                                )
+                                            }
+                                            onDismiss()
+                                        },
+                                        onError = { err ->
+                                            isSaving = false
+                                            Toast.makeText(context, "Error: $err", Toast.LENGTH_SHORT).show()
+                                        }
+                                    )
+                                }
                             }
 
                             val processSaveLogic = {
@@ -892,7 +1108,7 @@ fun CreateLeadBottomSheet(
                                 }
                             }
 
-                            if (manualMode) {
+                            if (manualMode && leadToEdit == null) {
                                 isSaving = true
                                 coroutineScope.launch {
                                     val dup = viewModel.checkDuplicateLead(purePhone)
@@ -915,7 +1131,47 @@ fun CreateLeadBottomSheet(
                         if (isSaving) {
                             CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = CleanWhite)
                         } else {
-                            Text("Create & Save Lead", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = CleanWhite)
+                            Text(if (leadToEdit != null) "Update Lead" else "Create & Save Lead", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = CleanWhite)
+                        }
+                    }
+                }
+                
+                if (leadToEdit != null) {
+                    item {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        if (isLocked) {
+                            // Do not show any cancellation or delete button, warning is already at the top
+                        } else if (isConverted) {
+                            Button(
+                                onClick = { showCancellationReasonDialog = true },
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFEE2E2)),
+                                modifier = Modifier.fillMaxWidth().height(50.dp),
+                                shape = RoundedCornerShape(100.dp)
+                            ) {
+                                Text("❌ Cancel Order Directly", color = Color(0xFFEF4444), fontWeight = FontWeight.Bold)
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            TextButton(
+                                onClick = {
+                                    if (isSaving) return@TextButton
+                                    isSaving = true
+                                    viewModel.archiveLead(
+                                        leadId = leadToEdit.id,
+                                        onSuccess = {
+                                            isSaving = false
+                                            Toast.makeText(context, "Lead Deleted", Toast.LENGTH_SHORT).show()
+                                            onDismiss()
+                                        },
+                                        onError = { err ->
+                                            isSaving = false
+                                            Toast.makeText(context, err, Toast.LENGTH_SHORT).show()
+                                        }
+                                    )
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("Delete Lead entirely", color = Color.Red, fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
                 }
@@ -926,14 +1182,101 @@ fun CreateLeadBottomSheet(
     if (showProductPopup) {
         SmartGridPopup(
             title = "Select Products",
-            options = productsList.map { it.name },
+            options = (productsList.map { it.name } + parseProductQuantities(selectedProduct).keys).distinct(),
             icons = productIcons,
             emojis = productsList.associate { it.name to it.emojiIcon },
             prices = pricesMap,
             selectedOption = selectedProduct,
             isMultiSelect = true,
-            onSelect = { selectedProduct = it },
+            onSelect = { 
+                selectedProduct = it 
+                userModifiedProducts = true
+            },
             onDismiss = { showProductPopup = false }
+        )
+    }
+
+    if (showCancellationReasonDialog && leadToEdit != null) {
+        var localReason by remember { mutableStateOf("") }
+        var localNotes by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { showCancellationReasonDialog = false },
+            title = { Text("Request Order Cancellation", fontWeight = FontWeight.Bold, color = TextPrimary) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Select a reason for cancellation:", fontSize = 13.sp, color = TextSecondary)
+                    
+                    val reasons = listOf(
+                        "Client Changed Mind",
+                        "Double Entry / Error",
+                        "Payment Failed",
+                        "Alternative Found",
+                        "Other"
+                    )
+                    
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        reasons.forEach { r ->
+                            val isSel = localReason == r
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(if (isSel) ModernViolet.copy(alpha = 0.1f) else SurfaceLight)
+                                    .border(1.dp, if (isSel) ModernViolet else BorderSubtle, RoundedCornerShape(8.dp))
+                                    .clickable { localReason = r }
+                                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                            ) {
+                                Text(r, fontSize = 12.sp, color = if (isSel) ModernViolet else TextPrimary, fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+                    }
+                    
+                    OutlinedTextField(
+                        value = localNotes,
+                        onValueChange = { localNotes = it },
+                        label = { Text("Additional Notes (Optional)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = ModernViolet, unfocusedBorderColor = BorderSubtle),
+                        shape = RoundedCornerShape(8.dp),
+                        minLines = 2
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (localReason.isEmpty()) {
+                            Toast.makeText(context, "Please select a reason", Toast.LENGTH_SHORT).show()
+                            return@Button
+                        }
+                        showCancellationReasonDialog = false
+                        viewModel.cancelOrder(
+                            lead = leadToEdit,
+                            reason = if (localNotes.isNotEmpty()) "$localReason: $localNotes" else localReason,
+                            onSuccess = {
+                                Toast.makeText(context, "Order Cancelled.", Toast.LENGTH_SHORT).show()
+                                onDismiss()
+                            },
+                            onError = { err ->
+                                Toast.makeText(context, err, Toast.LENGTH_SHORT).show()
+                            }
+                        )
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = ModernViolet),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text("Cancel Order", color = CleanWhite)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCancellationReasonDialog = false }) {
+                    Text("Cancel", color = TextSecondary)
+                }
+            },
+            containerColor = SurfaceLight
         )
     }
 }
