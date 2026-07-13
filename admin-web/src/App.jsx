@@ -9,7 +9,7 @@ import Telecallers from './components/Telecallers';
 import CallHistory from './components/CallHistory';
 import Products from './components/Products';
 import Reports from './components/Reports';
-
+import DispatchCenter from './components/DispatchCenter';
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -45,6 +45,7 @@ function App() {
           <Route path="/history" element={<CallHistory />} />
           <Route path="/products" element={<Products />} />
           <Route path="/reports" element={<Reports />} />
+          <Route path="/dispatch" element={<DispatchCenter />} />
         </Route>
 
         <Route 
