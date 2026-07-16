@@ -13,6 +13,7 @@ import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 import com.nexaleads.app.data.models.Product
 import com.nexaleads.app.data.models.ComboItem
+import com.nexaleads.app.data.models.Category
 
 class LeadRepository @Inject constructor(
     private val db: FirebaseFirestore
@@ -66,6 +67,30 @@ class LeadRepository @Inject constructor(
         awaitClose { listener.remove() }
     }
 
+    fun getCategories(): Flow<List<Category>> = callbackFlow {
+        val listener = db.collection("categories")
+            .whereEqualTo("isActive", true)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    trySend(emptyList())
+                    return@addSnapshotListener
+                }
+                if (snapshot != null) {
+                    val categories = snapshot.documents.mapNotNull { doc ->
+                        Category(
+                            id = doc.id,
+                            name = doc.getString("name") ?: "",
+                            color = doc.getString("color") ?: "#ffffff",
+                            icon = doc.getString("icon") ?: "📦",
+                            isActive = doc.getBoolean("isActive") ?: true
+                        )
+                    }
+                    trySend(categories.sortedBy { it.name })
+                }
+            }
+        awaitClose { listener.remove() }
+    }
+
     fun getProducts(): Flow<List<Product>> = callbackFlow {
         val listener = db.collection("products")
             .whereEqualTo("isActive", true)
@@ -84,7 +109,9 @@ class LeadRepository @Inject constructor(
                             description = doc.getString("description") ?: "",
                             emojiIcon = doc.getString("emojiIcon") ?: "📦",
                             sortOrder = doc.getLong("sortOrder")?.toInt() ?: 1,
-                            isActive = doc.getBoolean("isActive") ?: true
+                            isActive = doc.getBoolean("isActive") ?: true,
+                            isCombo = doc.getBoolean("isCombo") ?: false,
+                            categoryIds = doc.get("categoryIds") as? List<String> ?: emptyList()
                         )
                     }
                     trySend(products.sortedBy { it.sortOrder })

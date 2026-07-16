@@ -394,174 +394,124 @@ export default function Products() {
         {loading ? (
           <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading products...</div>
         ) : (
-          <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid var(--surface-border)' }}>
-                <th style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>Sort</th>
-                <th style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>Product</th>
-                <th style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>Price (₹)</th>
-                <th style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>Status</th>
-                <th style={{ padding: '10px 12px', color: 'var(--text-muted)', textAlign: 'right' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {products.filter(p => selectedCategoryFilter === 'all' || (p.categoryIds && p.categoryIds.includes(selectedCategoryFilter)) || p.categoryId === selectedCategoryFilter).map(p => {
-                const isCombo = p.type === 'combo';
-                
-                const bundledNames = isCombo && p.bundledProducts
-                  ? p.bundledProducts.map(item => {
-                      const pr = products.find(prod => prod.id === item.productId);
-                      return pr ? `${item.quantity} x ${pr.emojiIcon} ${pr.name}` : null;
-                    }).filter(Boolean).join(" + ")
-                  : null;
+          <div className="product-bento-grid">
+            {products.filter(p => selectedCategoryFilter === 'all' || (p.categoryIds && p.categoryIds.includes(selectedCategoryFilter)) || p.categoryId === selectedCategoryFilter).map(p => {
+              const isCombo = p.type === 'combo';
+              
+              const originalTotal = isCombo && p.bundledProducts
+                ? p.bundledProducts.reduce((sum, item) => {
+                    const pr = products.find(prod => prod.id === item.productId);
+                    return sum + (pr ? pr.price * item.quantity : 0);
+                  }, 0)
+                : 0;
 
-                const originalTotal = isCombo && p.bundledProducts
-                  ? p.bundledProducts.reduce((sum, item) => {
-                      const pr = products.find(prod => prod.id === item.productId);
-                      return sum + (pr ? pr.price * item.quantity : 0);
-                    }, 0)
-                  : 0;
+              // Check if any component product in combo is deactivated
+              const hasDeactivatedComponent = isCombo && p.bundledProducts
+                ? p.bundledProducts.some(item => {
+                    const pr = products.find(prod => prod.id === item.productId);
+                    return pr && !pr.isActive;
+                  })
+                : false;
 
-                // Check if any component product in combo is deactivated
-                const hasDeactivatedComponent = isCombo && p.bundledProducts
-                  ? p.bundledProducts.some(item => {
-                      const pr = products.find(prod => prod.id === item.productId);
-                      return pr && !pr.isActive;
-                    })
-                  : false;
-
-                return (
-                  <tr key={p.id} style={{ borderBottom: '1px solid var(--surface-border)', opacity: p.isActive ? 1 : 0.5 }}>
-                    <td style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>#{p.sortOrder || '-'}</td>
-                    <td style={{ padding: '10px 12px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <div style={{ fontSize: '20px' }}>{p.emojiIcon || '📦'}</div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                            <span style={{ fontWeight: 500, fontSize: '13px' }}>{p.name}</span>
-                            
-                            {/* Render Multi-Category Badges */}
-                            {p.categoryIds && p.categoryIds.map(catId => {
-                              const c = categories.find(cat => cat.id === catId);
-                              if (!c) return null;
-                              return (
-                                <span 
-                                  key={c.id}
-                                  className="badge" 
-                                  style={{ 
-                                    background: `${c.color}20`, 
-                                    color: c.color, 
-                                    border: `1px solid ${c.color}40`, 
-                                    padding: '2px 6px', fontSize: '9px' 
-                                  }}
-                                >
-                                  {c.icon} {c.name}
-                                </span>
-                              );
-                            })}
-                            
-                            {/* Fallback for legacy data */}
-                            {!p.categoryIds && p.categoryId && categories.find(c => c.id === p.categoryId) && (
-                              <span 
-                                className="badge" 
-                                style={{ 
-                                  background: `${categories.find(c => c.id === p.categoryId).color}20`, 
-                                  color: categories.find(c => c.id === p.categoryId).color, 
-                                  border: `1px solid ${categories.find(c => c.id === p.categoryId).color}40`, 
-                                  padding: '2px 6px', fontSize: '9px' 
-                                }}
-                              >
-                                {categories.find(c => c.id === p.categoryId).icon} {categories.find(c => c.id === p.categoryId).name}
-                              </span>
-                            )}
-
-                            {isCombo && (
-                              <span className="badge" style={{ background: 'rgba(129, 140, 248, 0.15)', color: '#818cf8', border: '1px solid rgba(129, 140, 248, 0.25)', padding: '2px 6px', fontSize: '9px' }}>
-                                Combo
-                              </span>
-                            )}
-                            {hasDeactivatedComponent && (
-                              <span className="badge badge-danger" style={{ padding: '1px 4px', fontSize: '9px' }}>
-                                ⚠️ Deactivated Item
-                              </span>
-                            )}
-                          </div>
-                          
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: 'var(--text-muted)' }}>
-                            {p.format && p.format !== 'Other' && <span>Format: {p.format}</span>}
-                            {p.sizeUnit && <span>Size: {p.sizeUnit}</span>}
-                          </div>
-                          
-                          {p.description && <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{p.description}</div>}
-                          
-                          {isCombo && bundledNames && (
-                            <div style={{ fontSize: '10px', color: 'var(--primary)', fontWeight: 500, marginTop: '2px' }}>
-                              🎁 Contains: {bundledNames}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td style={{ padding: '10px 12px', fontWeight: 500 }}>
-                      {isCombo ? (
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          <span>₹{p.price}</span>
-                          {originalTotal > 0 && originalTotal !== p.price && (
-                            <span style={{ textDecoration: 'line-through', fontSize: '10px', color: 'var(--text-muted)' }}>
-                              ₹{originalTotal}
-                            </span>
-                          )}
-                        </div>
-                      ) : (
-                        `₹${p.price}`
-                      )}
-                    </td>
-                    <td style={{ padding: '10px 12px' }}>
-                      {p.isActive ? (
-                        <span className="badge badge-success">Active</span>
-                      ) : (
-                        <span className="badge badge-danger">Disabled</span>
-                      )}
-                    </td>
-                    <td style={{ padding: '10px 12px', textAlign: 'right' }}>
-                      <button 
-                        style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', marginRight: '8px' }} 
-                        onClick={() => openEdit(p)}
-                      >
-                        <Edit2 size={13} />
+              return (
+                <div key={p.id} className={`bento-card fade-in ${p.isActive ? '' : 'disabled'}`}>
+                  <div className="bento-card-header">
+                    <div className="bento-emoji">{p.emojiIcon || '📦'}</div>
+                    <div className="bento-actions">
+                      <button className="action-fab" onClick={() => openEdit(p)} title="Edit">
+                        <Edit2 size={14} />
                       </button>
-                      <button 
-                        style={{ background: 'transparent', border: 'none', color: p.isActive ? 'var(--danger)' : 'var(--secondary)', cursor: 'pointer' }} 
-                        onClick={() => toggleStatus(p)}
-                      >
-                        {p.isActive ? <Archive size={13} /> : <ArchiveRestore size={13} />}
+                      <button className={`action-fab ${p.isActive ? 'danger' : ''}`} onClick={() => toggleStatus(p)} title={p.isActive ? "Disable" : "Enable"}>
+                        {p.isActive ? <Archive size={14} /> : <ArchiveRestore size={14} />}
                       </button>
-                    </td>
-                  </tr>
-                );
-              })}
-              {products.length === 0 && (
-                <tr>
-                  <td colSpan="5" style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                    <div style={{ marginBottom: '10px' }}>No products found.</div>
-                    <button 
-                      className="btn-secondary" 
-                      style={{ margin: '0 auto', fontSize: '12px' }} 
-                      onClick={seedProducts}
-                    >
-                      Seed 5 Default Products
-                    </button>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                    </div>
+                  </div>
+
+                  <div className="bento-title">
+                    {p.name}
+                    {hasDeactivatedComponent && (
+                      <span className="badge badge-danger" style={{ padding: '2px 6px', fontSize: '9px', marginLeft: '6px', verticalAlign: 'middle' }}>
+                        ⚠️ Has Deactivated Item
+                      </span>
+                    )}
+                  </div>
+                  
+                  <div className="bento-meta">
+                    {p.format && p.format !== 'Other' && <span>{p.format}</span>}
+                    {p.format && p.format !== 'Other' && p.sizeUnit && <span>•</span>}
+                    {p.sizeUnit && <span>{p.sizeUnit}</span>}
+                  </div>
+
+                  <div className="cyber-pills">
+                    {p.categoryIds && p.categoryIds.map(catId => {
+                      const c = categories.find(cat => cat.id === catId);
+                      if (!c) return null;
+                      return (
+                        <span key={c.id} className="cyber-pill" style={{ background: `${c.color}15`, color: c.color, border: `1px solid ${c.color}30` }}>
+                          {c.icon} {c.name}
+                        </span>
+                      );
+                    })}
+                    {/* Fallback for legacy data */}
+                    {!p.categoryIds && p.categoryId && categories.find(c => c.id === p.categoryId) && (
+                      <span className="cyber-pill" style={{ background: `${categories.find(c => c.id === p.categoryId).color}15`, color: categories.find(c => c.id === p.categoryId).color, border: `1px solid ${categories.find(c => c.id === p.categoryId).color}30` }}>
+                        {categories.find(c => c.id === p.categoryId).icon} {categories.find(c => c.id === p.categoryId).name}
+                      </span>
+                    )}
+                    {isCombo && (
+                      <span className="cyber-pill" style={{ background: 'rgba(129, 140, 248, 0.15)', color: '#818cf8', border: '1px solid rgba(129, 140, 248, 0.25)' }}>
+                        🎁 Combo Bundle
+                      </span>
+                    )}
+                  </div>
+
+                  {p.description && <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '16px', lineHeight: 1.4 }}>{p.description}</div>}
+
+                  {isCombo && p.bundledProducts && p.bundledProducts.length > 0 && (
+                    <div className="combo-list">
+                      {p.bundledProducts.map((item, idx) => {
+                        const pr = products.find(prod => prod.id === item.productId);
+                        if (!pr) return null;
+                        return (
+                          <div key={idx} className="combo-item">
+                            <span>{item.quantity}x {pr.emojiIcon} {pr.name}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  <div className="bento-price-section">
+                    <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600, letterSpacing: '0.5px' }}>
+                      {p.isActive ? 'ACTIVE SKU' : 'DISABLED'} • #{p.sortOrder || '-'}
+                    </div>
+                    <div className="bento-price">
+                      {originalTotal > 0 && originalTotal !== p.price && (
+                        <span className="bento-price-old">₹{originalTotal}</span>
+                      )}
+                      <span>₹{p.price}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            
+            {products.length === 0 && (
+              <div style={{ gridColumn: '1 / -1', padding: '40px 20px', textAlign: 'center', color: 'var(--text-muted)', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', border: '1px dashed var(--surface-border)' }}>
+                <div style={{ marginBottom: '16px', fontSize: '14px' }}>No products found in this category.</div>
+                <button className="btn-primary" style={{ fontSize: '13px' }} onClick={seedProducts}>
+                  Seed Default Catalog
+                </button>
+              </div>
+            )}
+          </div>
         )}
       </div>
 
       {showModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(3px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-          <div className="glass-panel" style={{ padding: '24px', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div className="cyber-modal fade-in" style={{ width: '100%', maxWidth: '500px', padding: '32px', maxHeight: '90vh', overflowY: 'auto' }}>
+
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <h2 style={{ fontSize: '18px', fontWeight: 600, letterSpacing: '-0.3px', color: '#fff' }}>{editingId ? 'Edit Product' : 'Add New Product'}</h2>
               <button 
@@ -839,7 +789,7 @@ export default function Products() {
                 />
               </div>
               
-              <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
+              <div style={{ display: 'flex', gap: '12px', marginTop: '24px', paddingBottom: '16px' }}>
                 <button 
                   type="button" 
                   onClick={() => setShowModal(false)} 

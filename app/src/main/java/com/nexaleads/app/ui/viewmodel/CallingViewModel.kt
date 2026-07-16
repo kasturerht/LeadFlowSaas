@@ -8,6 +8,7 @@ import com.nexaleads.app.data.model.Interaction
 import com.nexaleads.app.data.model.Lead
 import com.nexaleads.app.data.model.getPrimaryCategory
 import com.nexaleads.app.data.models.Product
+import com.nexaleads.app.data.models.Category
 import com.nexaleads.app.data.repository.LeadRepository
 import com.nexaleads.app.utils.PhoneUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -171,6 +172,9 @@ class CallingViewModel @Inject constructor(
     private val _products = MutableStateFlow<List<Product>>(emptyList())
     val products: StateFlow<List<Product>> = _products
 
+    private val _categories = MutableStateFlow<List<Category>>(emptyList())
+    val categories: StateFlow<List<Category>> = _categories
+
     private val prefs: SharedPreferences = context.getSharedPreferences("leadflow_prefs", Context.MODE_PRIVATE)
 
     private val _pendingCallLeadId = MutableStateFlow<String?>(prefs.getString("pending_call_lead_id", null))
@@ -204,6 +208,12 @@ class CallingViewModel @Inject constructor(
             repository.seedProductsIfEmpty()
             repository.getProducts().collect { fetchedProducts ->
                 _products.value = fetchedProducts
+            }
+        }
+        
+        viewModelScope.launch {
+            repository.getCategories().collect { fetchedCategories ->
+                _categories.value = fetchedCategories
             }
         }
     }

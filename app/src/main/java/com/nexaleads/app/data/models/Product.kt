@@ -14,5 +14,6 @@ data class Product(
     val sortOrder: Int = 1,
     val isActive: Boolean = true,
     val isCombo: Boolean = false,
-    val comboItems: List<ComboItem> = emptyList()
+    val comboItems: List<ComboItem> = emptyList(),
+    val categoryIds: List<String> = emptyList()
 )

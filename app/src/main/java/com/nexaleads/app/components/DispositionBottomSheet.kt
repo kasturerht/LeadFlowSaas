@@ -847,6 +847,7 @@ fun DispositionBottomSheet(
     if (showProductPopup) {
         PremiumProductSelector(
             productsList = productsList,
+            categoriesList = viewModel.categories.collectAsState().value,
             selectedOption = selectedProduct,
             onSelect = {
                 selectedProduct = it

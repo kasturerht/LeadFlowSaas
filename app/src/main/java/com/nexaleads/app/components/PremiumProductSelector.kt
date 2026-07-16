@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.nexaleads.app.data.models.Product
+import com.nexaleads.app.data.models.Category
 import android.view.HapticFeedbackConstants
 import kotlinx.coroutines.launch
 
@@ -38,6 +39,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun PremiumProductSelector(
     productsList: List<Product>,
+    categoriesList: List<Category>,
     selectedOption: String,
     onSelect: (String) -> Unit,
     onDismiss: () -> Unit
@@ -50,37 +52,18 @@ fun PremiumProductSelector(
         mutableStateOf(parseProductQuantities(selectedOption).toMutableMap())
     }
 
-    val categories = listOf("All", "🔥 Combos", "💊 Supplements", "🧴 Cosmetics", "🌿 Powders", "🍪 Edibles")
-    var selectedCategory by remember { mutableStateOf("All") }
+    val displayCategories = remember(categoriesList) {
+        listOf(Category(id = "all", name = "All", color = "#1E293B")) + categoriesList
+    }
+    var selectedCategoryId by remember { mutableStateOf("all") }
 
-    val filteredProducts = remember(productsList, searchQuery, selectedCategory) {
+    val filteredProducts = remember(productsList, searchQuery, selectedCategoryId) {
         var list = productsList
         if (searchQuery.isNotBlank()) {
             list = list.filter { it.name.contains(searchQuery, ignoreCase = true) || it.description.contains(searchQuery, ignoreCase = true) }
         }
-        if (selectedCategory != "All") {
-            val filterTerm = when(selectedCategory) {
-                "🔥 Combos" -> "combo"
-                "💊 Supplements" -> "Health Supplements"
-                "🧴 Cosmetics" -> "Personal Care"
-                "🌿 Powders" -> "Powders & Extracts"
-                "🍪 Edibles" -> "Edibles"
-                else -> ""
-            }
-            list = if (selectedCategory == "🔥 Combos") {
-                list.filter { it.isCombo || it.name.contains("combo", ignoreCase = true) }
-            } else {
-                list.filter { 
-                    it.description.contains(filterTerm, ignoreCase = true) ||
-                    when (selectedCategory) {
-                        "💊 Supplements" -> it.name.contains("spirulina", true) && !it.name.contains("facepack", true) && !it.name.contains("cream", true) && !it.name.contains("cookies", true) || it.name.contains("seabuckthorn", true)
-                        "🧴 Cosmetics" -> it.name.contains("oil", true) || it.name.contains("shampoo", true) || it.name.contains("facewash", true) || it.name.contains("soap", true) || it.name.contains("cream", true) || it.name.contains("facepack", true)
-                        "🌿 Powders" -> it.name.contains("powder", true) || it.name.contains("extract", true)
-                        "🍪 Edibles" -> it.name.contains("cookies", true)
-                        else -> false
-                    }
-                }
-            }
+        if (selectedCategoryId != "all") {
+            list = list.filter { it.categoryIds.contains(selectedCategoryId) }
         }
         list.sortedBy { it.sortOrder }
     }
@@ -159,18 +142,23 @@ fun PremiumProductSelector(
                             .horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        categories.forEach { cat ->
-                            val isSelected = cat == selectedCategory
+                        displayCategories.forEach { cat ->
+                            val isSelected = cat.id == selectedCategoryId
+                            val hexColor = try { android.graphics.Color.parseColor(cat.color) } catch (e: Exception) { android.graphics.Color.DKGRAY }
+                            val catColor = Color(hexColor)
+                            val bg = if (isSelected) catColor else catColor.copy(alpha = 0.1f)
+                            val textColor = if (isSelected) Color.White else catColor
+                            
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(20.dp))
-                                    .background(if (isSelected) Color(0xFF1E293B) else Color(0xFFE2E8F0))
-                                    .clickable { selectedCategory = cat }
+                                    .background(bg)
+                                    .clickable { selectedCategoryId = cat.id }
                                     .padding(horizontal = 16.dp, vertical = 8.dp)
                             ) {
                                 Text(
-                                    text = cat,
-                                    color = if (isSelected) Color.White else Color(0xFF475569),
+                                    text = if (cat.id == "all") cat.name else "${cat.icon} ${cat.name}",
+                                    color = textColor,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 14.sp
                                 )
