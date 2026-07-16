@@ -22,6 +22,7 @@ import com.nexaleads.app.utils.WhatsAppSender
 fun WhatsAppTemplateBottomSheet(
     lead: Lead,
     sheetState: SheetState,
+    onLogAction: (String, String) -> Unit = { _, _ -> },
     onDismiss: () -> Unit
 ) {
     var sendText by remember { mutableStateOf(false) }
@@ -95,6 +96,12 @@ fun WhatsAppTemplateBottomSheet(
                     isSending = true
                     haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
                     
+                    val items = mutableListOf<String>()
+                    if (sendText) items.add("Welcome Text")
+                    if (sendImage) items.add("Visiting Card")
+                    if (sendPdf) items.add("Brochure")
+                    onLogAction("WhatsApp Initiated", "Telecaller initiated sending: ${items.joinToString(", ")}")
+
                     WhatsAppSender.sendTemplates(context, lead, sendText, sendImage, sendPdf)
                     onDismiss()
                 }

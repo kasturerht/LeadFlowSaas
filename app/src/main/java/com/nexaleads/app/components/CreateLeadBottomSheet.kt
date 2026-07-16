@@ -108,7 +108,10 @@ fun CreateLeadBottomSheet(
         leadToEdit?.status?.equals("Order Cancelled", ignoreCase = true) == true || 
         leadToEdit?.status?.equals(Constants.STATUS_ORDER_CANCELLED, ignoreCase = true) == true
     }
-    val isLocked = isDispatched || isCancelled
+    val isRto = remember(leadToEdit?.status) {
+        Constants.normalizeStatus(leadToEdit?.status) == Constants.STATUS_RTO
+    }
+    val isLocked = (isDispatched && !isRto) || isCancelled
 
     val calculatedTotal = remember(selectedProduct, pricesMap) { calculateTotalAmount(selectedProduct, pricesMap) }
 
@@ -220,14 +223,21 @@ fun CreateLeadBottomSheet(
         val isFollowUpRelevant = selectedStatus in listOf(Constants.STATUS_FOLLOW_UP, "Follow-up")
         val isOrderRelevant = selectedStatus in listOf(Constants.STATUS_ORDER_PLACED, "Order Placed")
         val isSubStatusRelevant = selectedStatus in listOf(Constants.STATUS_CALL_NOT_ANSWERED, "No Answer", "Busy")
-
+        
         if (!isProductRelevant) {
             selectedProduct = ""
+        } else if (leadToEdit != null && selectedProduct.isEmpty()) {
+            selectedProduct = leadToEdit.product ?: ""
         }
+        
         if (!isFollowUpRelevant) {
             followUpDate = ""
             selectedTimeSlot = ""
+        } else if (leadToEdit != null) {
+            if (followUpDate.isEmpty()) followUpDate = leadToEdit.followUpDate ?: ""
+            if (selectedTimeSlot.isEmpty()) selectedTimeSlot = leadToEdit.followUpTimeSlot ?: ""
         }
+        
         if (!isOrderRelevant) {
             shippingAddress = ""
             shippingCity = ""
@@ -238,9 +248,22 @@ fun CreateLeadBottomSheet(
             originalTotalValue = ""
             discountAmount = ""
             selectedPaymentStatus = ""
+        } else if (leadToEdit != null) {
+            if (shippingAddress.isEmpty()) shippingAddress = leadToEdit.address ?: ""
+            if (shippingCity.isEmpty()) shippingCity = leadToEdit.city ?: ""
+            if (shippingState.isEmpty()) shippingState = leadToEdit.state ?: ""
+            if (shippingPincode.isEmpty()) shippingPincode = leadToEdit.pincode ?: ""
+            if (paymentMethod.isEmpty()) paymentMethod = leadToEdit.paymentMethod ?: ""
+            if (orderAmount.isEmpty()) orderAmount = leadToEdit.orderAmount ?: ""
+            if (originalTotalValue.isEmpty()) originalTotalValue = leadToEdit.originalTotalValue ?: ""
+            if (discountAmount.isEmpty()) discountAmount = leadToEdit.discountAmount ?: ""
+            if (selectedPaymentStatus.isEmpty()) selectedPaymentStatus = leadToEdit.paymentStatus ?: ""
         }
+        
         if (!isSubStatusRelevant) {
             selectedSubStatus = ""
+        } else if (leadToEdit != null && selectedSubStatus.isEmpty()) {
+            selectedSubStatus = leadToEdit.subStatus ?: ""
         }
     }
 
@@ -445,7 +468,33 @@ fun CreateLeadBottomSheet(
                     }
                 }
 
-                if (isCancelled) {
+                if (isRto) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color(0xFFFEF2F2))
+                                .border(2.dp, Color(0xFFEF4444), RoundedCornerShape(12.dp))
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                val isPrepaid = leadToEdit?.paymentMethod?.equals("Prepaid", ignoreCase = true) == true
+                                val titleText = if (isPrepaid) "⚠️ PREPAID RTO - HIGH PRIORITY" else "⚠️ RTO LEAD"
+                                Text(titleText, color = Color(0xFFEF4444), fontWeight = FontWeight.Black, fontSize = 13.sp, letterSpacing = 1.2.sp)
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "This order was returned. Reason: ${leadToEdit?.cancellationReason.orEmpty().ifEmpty { "Not specified" }}",
+                                    color = Color(0xFF991B1B),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+                    }
+                } else if (isCancelled) {
                     item {
                         Box(
                             modifier = Modifier
@@ -1180,16 +1229,11 @@ fun CreateLeadBottomSheet(
     }
     
     if (showProductPopup) {
-        SmartGridPopup(
-            title = "Select Products",
-            options = (productsList.map { it.name } + parseProductQuantities(selectedProduct).keys).distinct(),
-            icons = productIcons,
-            emojis = productsList.associate { it.name to it.emojiIcon },
-            prices = pricesMap,
+        PremiumProductSelector(
+            productsList = productsList,
             selectedOption = selectedProduct,
-            isMultiSelect = true,
-            onSelect = { 
-                selectedProduct = it 
+            onSelect = {
+                selectedProduct = it
                 userModifiedProducts = true
             },
             onDismiss = { showProductPopup = false }

@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { db, auth } from '../firebase';
 import { collection, query, where, orderBy, limit, startAfter, onSnapshot, runTransaction, doc, updateDoc, arrayUnion } from 'firebase/firestore';
-import { Package, Truck, CheckCircle, XCircle, Search, AlertOctagon, Lock, Unlock, ChevronRight, ChevronLeft, QrCode } from 'lucide-react';
+import { Package, Truck, CheckCircle, XCircle, Search, AlertOctagon, Lock, Unlock, ChevronRight, ChevronLeft, QrCode, Settings, RotateCcw } from 'lucide-react';
 
 const TABS = [
   { id: 'pending', label: 'Pending Pack', icon: Package, statusQuery: ['Order Placed'] },
   { id: 'dispatched', label: 'Dispatched', icon: Truck, statusQuery: ['Dispatched'] },
   { id: 'delivered', label: 'Delivered', icon: CheckCircle, statusQuery: ['Delivered'] },
-  { id: 'returned', label: 'RTO / Returned', icon: XCircle, statusQuery: ['Cancelled'] }, // Using Cancelled as base, can refine later
+  { id: 'returned', label: 'RTO / Returned', icon: XCircle, statusQuery: ['RTO'] },
 ];
 
 const COURIERS = [
@@ -28,6 +28,9 @@ export default function DispatchCenter() {
 
   // Modal State
   const [selectedLead, setSelectedLead] = useState(null);
+  const [selectedManageLead, setSelectedManageLead] = useState(null);
+  const [manageAction, setManageAction] = useState(null); // 'delivered' | 'rto' | 'undo'
+  const [rtoReason, setRtoReason] = useState('');
   const [courier, setCourier] = useState(COURIERS[0].name);
   const [awb, setAwb] = useState('');
   const [awbError, setAwbError] = useState('');
@@ -187,6 +190,95 @@ export default function DispatchCenter() {
     }
   };
 
+  const handleUpdateFinalStatus = async () => {
+    if (!selectedManageLead || !manageAction) return;
+    if (manageAction === 'rto' && !rtoReason) return alert("Please select an RTO Reason.");
+    
+    // Double confirmation for safety
+    if (manageAction === 'delivered') {
+      const confirm = window.confirm("Are you sure this order is safely DELIVERED? This action is final.");
+      if (!confirm) return;
+    }
+    if (manageAction === 'rto') {
+      const confirm = window.confirm("Are you sure you want to mark this as RTO? This action is final.");
+      if (!confirm) return;
+    }
+
+    const leadRef = doc(db, 'leads', selectedManageLead.id);
+    
+    try {
+      setIsProcessingAction(true);
+
+      if (manageAction === 'undo') {
+        const previousAwb = selectedManageLead.trackingNumber || 'Unknown';
+        const previousCourier = selectedManageLead.courierPartner || 'Unknown';
+
+        await updateDoc(leadRef, {
+          status: 'Order Placed',
+          dispatchStatus: 'Pending',
+          courierPartner: null,
+          trackingNumber: null,
+          dispatchedAt: null,
+          packedBy: null,
+          dispatchHistory: arrayUnion({
+            action: 'Reverted Dispatch to Pending',
+            previousAwb: previousAwb,
+            previousCourier: previousCourier,
+            by: auth.currentUser?.uid,
+            timestamp: new Date().toISOString()
+          })
+        });
+      } else {
+        // Use Transaction for Delivered/RTO to prevent concurrency bugs
+        await runTransaction(db, async (transaction) => {
+          const leadDoc = await transaction.get(leadRef);
+          if (!leadDoc.exists()) throw "Document does not exist!";
+          const data = leadDoc.data();
+          
+          if (data.status === 'Delivered' || data.status === 'RTO') {
+            throw `Order is already marked as ${data.status} by another admin.`;
+          }
+
+          if (manageAction === 'delivered') {
+            transaction.update(leadRef, {
+              status: 'Delivered',
+              dispatchStatus: 'Delivered',
+              deliveredAt: new Date().toISOString(),
+              dispatchHistory: arrayUnion({
+                action: 'Marked Delivered',
+                by: auth.currentUser?.uid,
+                timestamp: new Date().toISOString()
+              })
+            });
+          } else if (manageAction === 'rto') {
+            transaction.update(leadRef, {
+              status: 'RTO',
+              dispatchStatus: 'Returned',
+              rtoReason: rtoReason,
+              returnedAt: new Date().toISOString(),
+              dispatchHistory: arrayUnion({
+                action: 'Marked RTO',
+                reason: rtoReason,
+                by: auth.currentUser?.uid,
+                timestamp: new Date().toISOString()
+              })
+            });
+          }
+        });
+      }
+
+      // Reset Modal State
+      setSelectedManageLead(null);
+      setManageAction(null);
+      setRtoReason('');
+    } catch (error) {
+      console.error("Error updating final status:", error);
+      alert(`Failed to update: ${error}`);
+    } finally {
+      setIsProcessingAction(false);
+    }
+  };
+
   return (
     <div className="reports-container fade-in">
       <div className="reports-header" style={{ marginBottom: '20px' }}>
@@ -334,9 +426,33 @@ export default function DispatchCenter() {
                           </>
                         )}
                         {activeTab === 'dispatched' && (
-                          <button className="btn-secondary" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={() => alert("Tracking API Hook triggered")}>
-                            Track
-                          </button>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <button className="btn-secondary" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={() => alert("Tracking API Hook triggered")}>
+                              Track
+                            </button>
+                            <button 
+                              className="btn-secondary" 
+                              style={{ padding: '6px 12px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }} 
+                              onClick={() => {
+                                setSelectedManageLead(lead);
+                                setManageAction(null);
+                                setRtoReason('');
+                              }}
+                            >
+                              <Settings size={14} /> Manage
+                            </button>
+                          </div>
+                        )}
+                        {activeTab === 'delivered' && (
+                          <div style={{ color: '#10b981', fontSize: '12px', fontWeight: 600 }}>
+                            Delivered
+                          </div>
+                        )}
+                        {activeTab === 'returned' && (
+                          <div style={{ fontSize: '12px' }}>
+                            <strong style={{ color: '#ef4444' }}>RTO</strong>
+                            <div style={{ color: 'var(--text-muted)', marginTop: '2px' }}>Reason: {lead.rtoReason || 'N/A'}</div>
+                          </div>
                         )}
                       </td>
                     </tr>
@@ -405,6 +521,126 @@ export default function DispatchCenter() {
                 {isProcessingAction ? 'Processing...' : 'Confirm Dispatch'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cyber-Minimalist Manage Shipment Modal (Delivered / RTO / Undo) */}
+      {selectedManageLead && (
+        <div className="modal-overlay fade-in" style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)',
+          display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000
+        }}>
+          <div className="cyber-modal fade-in" style={{ width: '420px', padding: '32px' }}>
+            
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+              <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: '#ffffff' }}>
+                Manage Shipment
+              </h2>
+              {/* Top Right Undo Link (Clean placement) */}
+              {(() => {
+                const dispatchedTime = selectedManageLead.dispatchedAt ? new Date(selectedManageLead.dispatchedAt).getTime() : 0;
+                const now = new Date().getTime();
+                const canUndo = (now - dispatchedTime) < (24 * 60 * 60 * 1000);
+                if (canUndo && manageAction !== 'undo') {
+                  return (
+                    <button 
+                      className="link-destructive"
+                      onClick={() => { setManageAction('undo'); setRtoReason(''); }}
+                    >
+                      <RotateCcw size={14} /> Undo Dispatch
+                    </button>
+                  );
+                }
+                return null;
+              })()}
+            </div>
+            
+            {/* Inset Details Block */}
+            <div className="inset-details" style={{ marginBottom: '24px' }}>
+              <div className="inset-row">
+                <span className="inset-label">Client</span>
+                <span className="inset-value" style={{ fontFamily: 'Inter, sans-serif' }}>{selectedManageLead.name}</span>
+              </div>
+              <div className="inset-row">
+                <span className="inset-label">Courier</span>
+                <span className="inset-value" style={{ color: '#a3a3a3' }}>{selectedManageLead.courierPartner}</span>
+              </div>
+              <div className="inset-row">
+                <span className="inset-label">Tracking AWB</span>
+                <span className="inset-value" style={{ color: '#ffffff' }}>{selectedManageLead.trackingNumber}</span>
+              </div>
+            </div>
+
+            {/* Status Selection (Segmented Control) */}
+            <div style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
+              <button 
+                className={`segment-btn ${manageAction === 'delivered' ? 'active-success' : ''}`}
+                onClick={() => setManageAction('delivered')}
+              >
+                <CheckCircle size={16} className="icon" /> Delivered
+              </button>
+              <button 
+                className={`segment-btn ${manageAction === 'rto' ? 'active-danger' : ''}`}
+                onClick={() => setManageAction('rto')}
+              >
+                <XCircle size={16} className="icon" /> RTO
+              </button>
+            </div>
+
+            {/* RTO Reason Dropdown */}
+            {manageAction === 'rto' && (
+              <div className="fade-in" style={{ marginBottom: '24px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, marginBottom: '8px', color: '#a3a3a3' }}>Reason for RTO</label>
+                <select 
+                  className={`cyber-select ${!rtoReason ? 'invalid' : ''}`}
+                  value={rtoReason}
+                  onChange={(e) => setRtoReason(e.target.value)}
+                >
+                  <option value="" disabled>Select reason...</option>
+                  <option value="Customer Refused">Customer Refused Delivery</option>
+                  <option value="Address Not Found">Address Not Found / Incorrect</option>
+                  <option value="Contact Unreachable">Contact Unreachable / Switched Off</option>
+                  <option value="Fake Order">Fake Order (Customer Denied Ordering)</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+            )}
+
+            {/* Undo Warning Area */}
+            {manageAction === 'undo' && (
+              <div className="fade-in" style={{ background: 'rgba(239, 68, 68, 0.05)', padding: '16px', borderRadius: '8px', marginBottom: '24px', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#ef4444', fontWeight: 600, marginBottom: '8px', fontSize: '13px' }}>
+                  <AlertOctagon size={16} /> Destructive Action
+                </div>
+                <div style={{ fontSize: '13px', color: '#a3a3a3', lineHeight: '1.5' }}>
+                  Deleting tracking <strong style={{ color: '#ededed' }}>{selectedManageLead.trackingNumber || 'N/A'}</strong>. The order will be moved back to Pending.
+                </div>
+              </div>
+            )}
+
+            {/* Action Footer */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '12px' }}>
+              <button 
+                className="btn-secondary" 
+                style={{ border: 'none', background: 'transparent' }} 
+                onClick={() => { setSelectedManageLead(null); setManageAction(null); }} 
+                disabled={isProcessingAction}
+              >
+                Cancel
+              </button>
+              
+              <button 
+                className={manageAction === 'undo' || manageAction === 'rto' ? "btn-solid-danger" : "btn-high-contrast"}
+                onClick={handleUpdateFinalStatus} 
+                disabled={isProcessingAction || !manageAction || (manageAction === 'rto' && !rtoReason)}
+              >
+                {isProcessingAction ? 'Processing...' : (manageAction === 'undo' ? 'Confirm Delete' : 'Save Status')}
+              </button>
+            </div>
+
           </div>
         </div>
       )}

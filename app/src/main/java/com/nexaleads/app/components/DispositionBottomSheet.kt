@@ -204,6 +204,7 @@ fun DispositionBottomSheet(
             followUpTimeSlot = finalTimeSlot,
             paymentStatus = finalPaymentStatus,
             isSuspiciousShortCall = (durationSeconds < 5 && isHighIntent),
+            baseProductsBreakdown = com.nexaleads.app.utils.ProductUtils.calculateBaseProductsBreakdown(finalProduct, productsList),
             onSuccess = { interactionId, updatedLead ->
                 coroutineScope.launch { sheetState.hide() }.invokeOnCompletion {
                     if ((selectedStatus == "Order Placed" || selectedStatus == Constants.STATUS_ORDER_PLACED) && autoLaunchWhatsApp) {
@@ -844,17 +845,11 @@ fun DispositionBottomSheet(
     }
     
     if (showProductPopup) {
-        val productNames = productsList.map { it.name }.ifEmpty { Constants.PRODUCTS }
-        SmartGridPopup(
-            title = "Select Product",
-            options = productNames,
-            icons = productIcons,
-            emojis = productsList.associate { it.name to it.emojiIcon },
-            prices = pricesMap,
+        PremiumProductSelector(
+            productsList = productsList,
             selectedOption = selectedProduct,
-            isMultiSelect = true,
-            onSelect = { 
-                selectedProduct = it 
+            onSelect = {
+                selectedProduct = it
                 userModifiedProducts = true
             },
             onDismiss = { showProductPopup = false }

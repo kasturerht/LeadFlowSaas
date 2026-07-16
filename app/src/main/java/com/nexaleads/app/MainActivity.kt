@@ -59,6 +59,9 @@ class MainActivity : ComponentActivity() {
                         com.nexaleads.app.components.InvoiceDialog(
                             lead = lead,
                             supportNumber = telecallerContact,
+                            onLogAction = { action, notes ->
+                                callingViewModel.logAction(lead.id, action, notes)
+                            },
                             onDismiss = {
                                 callingViewModel.clearPendingInvoice()
                             }

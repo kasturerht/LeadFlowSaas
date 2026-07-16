@@ -31,3 +31,10 @@ val StatusBusyBg = Color(0xFFEDE9FE)
 
 val StatusNeutral = Color(0xFF64748B) // Slate 500
 val StatusNeutralBg = Color(0xFFF1F5F9)
+
+// Luxury 2026 Additions
+val LuxuryGradientStart = Color(0xFF0F172A) // Deep Slate 900
+val LuxuryGradientEnd = Color(0xFF312E81) // Deep Indigo 900
+val LuxuryAccent = Color(0xFF818CF8) // Indigo 400
+val GlassBackground = Color(0x0C000000) // Extremely soft 5% black for glass pills
+val SoftShadowColor = Color(0xFF6366F1).copy(alpha = 0.04f) // Diffuse Indigo Shadow

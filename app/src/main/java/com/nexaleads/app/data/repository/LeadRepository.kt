@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 import com.nexaleads.app.data.models.Product
+import com.nexaleads.app.data.models.ComboItem
 
 class LeadRepository @Inject constructor(
     private val db: FirebaseFirestore
@@ -92,23 +93,57 @@ class LeadRepository @Inject constructor(
         awaitClose { listener.remove() }
     }
 
+    
+    suspend fun forceSeedProducts() {
+        try {
+            val batch = db.batch()
+            val newProducts = listOf(
+                // 1. Health Supplements & Combos
+                Product(id = "prod_1", name = "Spirulina capsule 60 1 nos", price = 550.0, description = "Health Supplements", emojiIcon = "💊", sortOrder = 1),
+                Product(id = "prod_2", name = "Spirulina tablets 120 1 nos", price = 699.0, description = "Health Supplements", emojiIcon = "💊", sortOrder = 2),
+                Product(id = "prod_3", name = "Spirulina tablets 3 nos combo", price = 1800.0, description = "Health Supplements", emojiIcon = "💊", sortOrder = 3, isCombo = true, comboItems = listOf(ComboItem("prod_2", 3))),
+                Product(id = "prod_4", name = "Spirulina capsule 3 nos combo", price = 1600.0, description = "Health Supplements", emojiIcon = "💊", sortOrder = 4, isCombo = true, comboItems = listOf(ComboItem("prod_1", 3))),
+                Product(id = "prod_5", name = "Seabuckthorn 1 nos prepaid", price = 600.0, description = "Health Supplements", emojiIcon = "💊", sortOrder = 5),
+                Product(id = "prod_6", name = "seabuckthorn 2 nos combo", price = 1200.0, description = "Health Supplements", emojiIcon = "💊", sortOrder = 6, isCombo = true, comboItems = listOf(ComboItem("prod_5", 2))),
+                Product(id = "prod_7", name = "3 months combo spirulina seabuckthorn", price = 3600.0, description = "Health Supplements", emojiIcon = "💊", sortOrder = 7, isCombo = true, comboItems = listOf(ComboItem("prod_2", 3), ComboItem("prod_5", 3))),
+                
+                // 2. Cosmetics & Personal Care
+                Product(id = "prod_8", name = "Hair oil 100 ml", price = 200.0, description = "Personal Care", emojiIcon = "🧴", sortOrder = 8),
+                Product(id = "prod_9", name = "shampoo 100 ml", price = 200.0, description = "Personal Care", emojiIcon = "🧴", sortOrder = 9),
+                Product(id = "prod_10", name = "facewash 100 ml", price = 200.0, description = "Personal Care", emojiIcon = "🧴", sortOrder = 10),
+                Product(id = "prod_11", name = "soap", price = 60.0, description = "Personal Care", emojiIcon = "🧴", sortOrder = 11),
+                Product(id = "prod_12", name = "spirulina facepack 50 gram", price = 150.0, description = "Personal Care", emojiIcon = "🧴", sortOrder = 12),
+                Product(id = "prod_13", name = "spirulina korean cream 25 gram", price = 999.0, description = "Personal Care", emojiIcon = "🧴", sortOrder = 13),
+                Product(id = "prod_14", name = "spirulina bride cream 25 gram", price = 1199.0, description = "Personal Care", emojiIcon = "🧴", sortOrder = 14),
+                
+                // 3. Powders & Extract Tablets
+                Product(id = "prod_15", name = "moringa powder 100 gram", price = 200.0, description = "Powders & Extracts", emojiIcon = "🌿", sortOrder = 15),
+                Product(id = "prod_16", name = "beet root powder 100 gram", price = 200.0, description = "Powders & Extracts", emojiIcon = "🌿", sortOrder = 16),
+                Product(id = "prod_17", name = "Amla powder 100 gram", price = 200.0, description = "Powders & Extracts", emojiIcon = "🌿", sortOrder = 17),
+                Product(id = "prod_18", name = "ashwagandha 100 gram powder", price = 200.0, description = "Powders & Extracts", emojiIcon = "🌿", sortOrder = 18),
+                Product(id = "prod_19", name = "ashwagandha extract tablets 60", price = 350.0, description = "Powders & Extracts", emojiIcon = "🌿", sortOrder = 19),
+                Product(id = "prod_20", name = "Moringa extract 60 tab", price = 350.0, description = "Powders & Extracts", emojiIcon = "🌿", sortOrder = 20),
+                
+                // 4. Edibles
+                Product(id = "prod_21", name = "spirulina cookies 200 gram", price = 200.0, description = "Edibles", emojiIcon = "🍪", sortOrder = 21)
+            )
+            for (product in newProducts) {
+                val docRef = db.collection("products").document(product.id)
+                batch.set(docRef, product)
+            }
+            batch.commit().await()
+            android.util.Log.d("LeadRepository", "Successfully synced 21 products to Firestore!")
+        } catch (e: Exception) {
+            e.printStackTrace()
+            android.util.Log.e("LeadRepository", "Failed to sync products: ${e.message}")
+        }
+    }
+
     suspend fun seedProductsIfEmpty() {
         try {
             val snapshot = db.collection("products").limit(1).get().await()
             if (snapshot.isEmpty) {
-                val batch = db.batch()
-                val defaultProducts = listOf(
-                    Product(id = "prod_1", name = "Spirulina", price = 999.0, description = "Premium Organic Spirulina", emojiIcon = "🌿", sortOrder = 1),
-                    Product(id = "prod_2", name = "Sea Buckthorn", price = 1299.0, description = "Himalayan Sea Buckthorn Juice", emojiIcon = "🥃", sortOrder = 2),
-                    Product(id = "prod_3", name = "Spirulina Face Pack", price = 499.0, description = "Rejuvenating Face Pack", emojiIcon = "🧴", sortOrder = 3),
-                    Product(id = "prod_4", name = "Spirulina Cookies", price = 299.0, description = "Healthy Snack Cookies", emojiIcon = "🍪", sortOrder = 4),
-                    Product(id = "prod_5", name = "Multiple / Combos", price = 0.0, description = "Custom combo package", emojiIcon = "📦", sortOrder = 5)
-                )
-                for (product in defaultProducts) {
-                    val docRef = db.collection("products").document(product.id)
-                    batch.set(docRef, product)
-                }
-                batch.commit().await()
+                forceSeedProducts()
             }
         } catch (e: Exception) {
             e.printStackTrace()

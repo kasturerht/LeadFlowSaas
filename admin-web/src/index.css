@@ -316,3 +316,170 @@ tr:hover td {
   padding: 12px;
   border-top: 1px solid var(--surface-border);
 }
+
+/* -------------------------------------- */
+/* Phase 5: Cyber-Minimalist Redesign     */
+/* Linear / Vercel Aesthetic              */
+/* -------------------------------------- */
+
+/* The Cyber Modal Container */
+.cyber-modal {
+  background: #0A0A0A; /* True deep gray/black */
+  border: 1px solid #262626;
+  border-radius: 12px;
+  box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  font-family: 'Inter', sans-serif;
+  color: #ededed;
+}
+
+/* Inset Details Block (Replaces Ticket) */
+.inset-details {
+  background: #121212;
+  border: 1px solid #262626;
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.inset-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+}
+
+.inset-label {
+  color: #888888;
+  font-weight: 500;
+}
+
+.inset-value {
+  color: #ededed;
+  font-weight: 500;
+  font-family: monospace;
+  font-size: 14px;
+}
+
+/* Sleek Segmented Buttons */
+.segment-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  background: transparent;
+  border: 1px solid #262626;
+  border-radius: 6px;
+  color: #888888;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.segment-btn:hover {
+  background: #171717;
+  color: #ededed;
+}
+
+.segment-btn.active-success {
+  background: rgba(16, 185, 129, 0.05);
+  border-color: rgba(16, 185, 129, 0.3);
+  color: #10b981;
+}
+.segment-btn.active-success .icon {
+  color: #10b981;
+}
+
+.segment-btn.active-danger {
+  background: rgba(239, 68, 68, 0.05);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+}
+.segment-btn.active-danger .icon {
+  color: #ef4444;
+}
+
+/* Cyber Select Dropdown */
+.cyber-select {
+  width: 100%;
+  padding: 12px;
+  border-radius: 6px;
+  border: 1px solid #262626;
+  background: #0A0A0A;
+  color: #ededed;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s;
+  appearance: none;
+}
+.cyber-select:focus {
+  border-color: #ef4444;
+}
+.cyber-select option {
+  background: #171717;
+  color: #ededed;
+  padding: 8px;
+}
+.cyber-select.invalid {
+  border-color: rgba(239, 68, 68, 0.5);
+  background: rgba(239, 68, 68, 0.05);
+}
+
+/* High Contrast Primary Button */
+.btn-high-contrast {
+  background: #ededed;
+  color: #0A0A0A;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.1s ease, opacity 0.2s ease;
+}
+.btn-high-contrast:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+.btn-high-contrast:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-solid-danger {
+  background: #ef4444;
+  color: #ffffff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+.btn-solid-danger:hover:not(:disabled) {
+  background: #dc2626;
+}
+.btn-solid-danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Destructive Link */
+.link-destructive {
+  color: #ef4444;
+  background: transparent;
+  border: none;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.link-destructive:hover {
+  text-decoration: underline;
+}

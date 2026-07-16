@@ -4,6 +4,9 @@ import android.content.Intent
 import android.net.Uri
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.material.icons.filled.Phone
+import androidx.compose.ui.draw.shadow
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -108,50 +111,72 @@ fun DashboardScreen(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         containerColor = BackgroundLight,
         bottomBar = {
-            // TRUE SILICON VALLEY FLAT CTA
+            // SILICON VALLEY 2026 FLOATING ACTION DOCK
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(
                         brush = androidx.compose.ui.graphics.Brush.verticalGradient(
-                            colors = listOf(Color.Transparent, BackgroundLight, BackgroundLight)
+                            colors = listOf(Color.Transparent, BackgroundLight.copy(alpha = 0.9f), BackgroundLight)
                         )
-                    ) // Seamless fade out at the bottom
+                    )
                     .navigationBarsPadding()
-                    .padding(horizontal = 24.dp, vertical = 16.dp)
+                    .padding(horizontal = 24.dp, vertical = 20.dp)
             ) {
-                Button(
+                Surface(
                     onClick = { 
                         haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
                         showCreateLeadSheet = true 
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(56.dp), // Premium standard height
-                    shape = RoundedCornerShape(16.dp), // Modern curve, not generic pill
-                    colors = ButtonDefaults.buttonColors(containerColor = ModernViolet),
-                    elevation = null, // ZERO SHADOW. Flat is premium.
-                    contentPadding = PaddingValues(0.dp)
+                        .height(60.dp)
+                        .shadow(
+                            elevation = 16.dp,
+                            shape = RoundedCornerShape(20.dp),
+                            spotColor = ModernViolet.copy(alpha = 0.4f)
+                        ),
+                    shape = RoundedCornerShape(20.dp),
+                    color = Color.Transparent
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                brush = androidx.compose.ui.graphics.Brush.linearGradient(
+                                    colors = listOf(ModernViolet, ModernVioletDark)
+                                )
+                            ),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Add,
-                            contentDescription = "Add Lead",
-                            tint = CleanWhite,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Add New Lead",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = CleanWhite,
-                            letterSpacing = 0.5.sp
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            // Smart Pulsing Icon Container
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(CleanWhite.copy(alpha = 0.15f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Add,
+                                    contentDescription = null,
+                                    tint = CleanWhite,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(14.dp))
+                            Text(
+                                text = "Create New Lead",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Black,
+                                color = CleanWhite,
+                                letterSpacing = 0.5.sp
+                            )
+                        }
                     }
                 }
             }
@@ -175,87 +200,97 @@ fun DashboardScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // LEFT SIDE: Organization Branding (Reference Screenshot Style)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    // Organization Logo
-                    Box(
-                        modifier = Modifier
-                            .size(46.dp)
-                            .clip(CircleShape)
-                            .background(
-                                brush = androidx.compose.ui.graphics.Brush.linearGradient(
-                                    colors = listOf(Color(0xFF4ADE80), Color(0xFF16A34A)) 
-                                )
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("S", color = CleanWhite, fontSize = 24.sp, fontWeight = FontWeight.Black)
-                    }
-                    
-                    Spacer(modifier = Modifier.width(10.dp))
-                    
-                    Column {
+                // LEFT SIDE: Organization Branding
+                Column {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(10.dp)
+                                .clip(CircleShape)
+                                .background(ModernViolet)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "SUJATA",
-                            fontSize = 20.sp,
-                            color = Color(0xFF1E40AF), // Deep Blue like the reference
+                            fontSize = 18.sp,
+                            color = TextPrimary,
                             fontWeight = FontWeight.Black,
-                            letterSpacing = 1.sp
-                        )
-                        Text(
-                            text = "Health & Wellness",
-                            fontSize = 12.sp,
-                            color = TextSecondary,
-                            fontWeight = FontWeight.SemiBold
+                            letterSpacing = 2.sp
                         )
                     }
+                    Text(
+                        text = "HEALTH & WELLNESS",
+                        fontSize = 9.sp,
+                        color = TextSecondary,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp,
+                        modifier = Modifier.padding(start = 18.dp)
+                    )
                 }
                 
-                // RIGHT SIDE: User Profile (Reference Screenshot Style)
+                // RIGHT SIDE: User Profile (Premium "Smart" Glass Pill)
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.clickable { showLogoutDialog = true } // Make the whole block clickable for logout
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(20.dp))
+                        .clickable { showLogoutDialog = true }
+                        .background(Color.White)
+                        .border(
+                            width = 1.dp,
+                            color = BorderSubtle.copy(alpha = 0.4f),
+                            shape = RoundedCornerShape(20.dp)
+                        )
+                        .padding(start = 12.dp, end = 6.dp, top = 6.dp, bottom = 6.dp)
                 ) {
-                    Column(horizontalAlignment = Alignment.End) {
+                    Column(
+                        horizontalAlignment = Alignment.End,
+                        modifier = Modifier.padding(end = 4.dp)
+                    ) {
                         Text(
-                            text = "Hi, $firstName",
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = TextPrimary
+                            text = firstName,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Black,
+                            color = TextPrimary,
+                            letterSpacing = 0.2.sp
                         )
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(
                                 modifier = Modifier
-                                    .size(8.dp)
+                                    .size(6.dp)
                                     .clip(CircleShape)
                                     .background(StatusSuccess)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = "Online",
-                                fontSize = 12.sp,
-                                color = TextSecondary,
-                                fontWeight = FontWeight.Medium
+                                text = "ACTIVE",
+                                fontSize = 9.sp,
+                                color = StatusSuccess,
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = 0.5.sp
                             )
                         }
                     }
                     
-                    Spacer(modifier = Modifier.width(12.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
                     
-                    // User Avatar
-                    Surface(
-                        shape = CircleShape,
-                        color = ModernViolet,
-                        modifier = Modifier.size(46.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                            Text(
-                                text = firstName.take(1).uppercase(),
-                                color = CleanWhite,
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.Bold
+                    // Avatar with Gradient & Subtle Inner Border
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(
+                                brush = androidx.compose.ui.graphics.Brush.linearGradient(
+                                    colors = listOf(ModernViolet, ModernVioletDark)
+                                )
                             )
-                        }
+                    ) {
+                        Text(
+                            text = firstName.take(1).uppercase(),
+                            color = CleanWhite,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Black
+                        )
                     }
                 }
             }
@@ -290,10 +325,66 @@ fun DashboardScreen(
                 )
             }
             
+            // PRIMARY METRICS: SALES OVERVIEW (APPLE HEALTH STYLE)
+            val salesMetrics by viewModel.salesMetrics.collectAsState()
+            
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "PERFORMANCE OVERVIEW",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Black,
+                        color = TextSecondary,
+                        letterSpacing = 1.5.sp
+                    )
+                    Text(
+                        text = "Live Updates",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = StatusSuccess,
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(StatusSuccess.copy(alpha = 0.1f))
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    SalesMetricCard(
+                        modifier = Modifier.weight(1.2f),
+                        title = "Today's Revenue",
+                        value = "₹${salesMetrics.todayRevenue}",
+                        subtitle = "${salesMetrics.todayOrdersCount} Orders Today",
+                        icon = Icons.Rounded.Business,
+                        color = ModernViolet
+                    )
+                    SalesMetricCard(
+                        modifier = Modifier.weight(1f),
+                        title = "Weekly",
+                        value = "₹${if (salesMetrics.weeklyRevenue >= 1000) "${salesMetrics.weeklyRevenue / 1000}k" else salesMetrics.weeklyRevenue}",
+                        subtitle = "Last 7 Days",
+                        icon = Icons.Rounded.History,
+                        color = Color(0xFF10B981)
+                    )
+                }
+            }
+
             // TOP ZONE: Action Required
             Column(
                 modifier = Modifier
-                    .padding(horizontal = 24.dp, vertical = 8.dp),
+                    .padding(horizontal = 24.dp, vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Text(
@@ -304,37 +395,55 @@ fun DashboardScreen(
                     letterSpacing = 1.5.sp
                 )
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    PriorityWidget(
-                        modifier = Modifier.weight(1f), 
-                        title = "UPI Sent", 
-                        count = metrics.pendingPaymentsCount, 
-                        color = StatusDanger, 
-                        onClick = { onSelectCategory("PENDING_PAYMENTS") }
-                    )
-                    PriorityWidget(
-                        modifier = Modifier.weight(1f), 
-                        title = "Follow-ups", 
-                        count = metrics.dueFollowupsCount, 
-                        color = StatusWarning, 
-                        onClick = { onSelectCategory("FOLLOWUP") }
-                    )
-                    PriorityWidget(
-                        modifier = Modifier.weight(1f), 
-                        title = "Fresh", 
-                        count = metrics.freshLeadsCount, 
-                        color = ModernViolet, 
-                        onClick = { onSelectCategory("PENDING") }
-                    )
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        ActionCard(
+                            modifier = Modifier.weight(1f),
+                            title = "Fresh Leads",
+                            count = metrics.freshLeadsCount,
+                            color = ModernViolet,
+                            icon = "✨",
+                            onClick = { onSelectCategory("PENDING") }
+                        )
+                        ActionCard(
+                            modifier = Modifier.weight(1f),
+                            title = "Follow-ups",
+                            count = metrics.dueFollowupsCount,
+                            color = StatusWarning,
+                            icon = "⏳",
+                            onClick = { onSelectCategory("FOLLOWUP") }
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        ActionCard(
+                            modifier = Modifier.weight(1f),
+                            title = "In-Transit",
+                            count = metrics.dispatchedCount,
+                            color = Color(0xFF0EA5E9),
+                            icon = "🚚",
+                            onClick = { onSelectCategory("DISPATCHED") }
+                        )
+                        ActionCard(
+                            modifier = Modifier.weight(1f),
+                            title = "RTOs",
+                            count = metrics.rtoCount,
+                            color = StatusDanger,
+                            icon = "⚠️",
+                            onClick = { onSelectCategory("RTO") }
+                        )
+                    }
                 }
             }
             
             // SECONDARY ZONE: Pipeline Grid
             Column(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 24.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Text(
@@ -347,7 +456,11 @@ fun DashboardScreen(
                 
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        PipelineChip(modifier = Modifier.weight(1f), title = "Orders", count = metrics.confirmedOrdersCount, color = StatusSuccess, onClick = { onSelectCategory("CONVERTED") })
+                        PipelineChip(modifier = Modifier.weight(1f), title = "Total Orders", count = metrics.confirmedOrdersCount, color = StatusSuccess, onClick = { onSelectCategory("CONVERTED") })
+                        PipelineChip(modifier = Modifier.weight(1f), title = "Delivered", count = metrics.deliveredCount, color = Color(0xFF10B981), onClick = { onSelectCategory("DELIVERED") })
+                    }
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        PipelineChip(modifier = Modifier.weight(1f), title = "UPI Pending", count = metrics.pendingPaymentsCount, color = Color(0xFFF97316), onClick = { onSelectCategory("PENDING_PAYMENTS") })
                         PipelineChip(modifier = Modifier.weight(1f), title = "Inquiries", count = metrics.inquiriesCount, color = StatusBusy, onClick = { onSelectCategory("INQUIRY") })
                     }
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -405,7 +518,7 @@ fun DashboardScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
-                        text = "ACTIVE CALL",
+                        text = "LIVE SESSION",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Black,
                         color = StatusSuccess,
@@ -414,67 +527,62 @@ fun DashboardScreen(
 
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(24.dp),
+                        shape = RoundedCornerShape(28.dp),
                         color = Color.White,
-                        shadowElevation = 0.dp, // Flat design
-                        border = androidx.compose.foundation.BorderStroke(1.dp, StatusSuccess.copy(alpha = 0.3f)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, StatusSuccess.copy(alpha = 0.2f)),
                         onClick = { showDispositionSheet = true }
                     ) {
-                        Column(
+                        Row(
                             modifier = Modifier.padding(20.dp),
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
+                            Box(
+                                modifier = Modifier
+                                    .size(56.dp)
+                                    .clip(CircleShape)
+                                    .background(StatusSuccess.copy(alpha = 0.1f)),
+                                contentAlignment = Alignment.Center
                             ) {
-                                Column {
-                                    Text(
-                                        pendingCallLead!!.name.ifEmpty { "Unknown Name" }, 
-                                        fontSize = 20.sp, 
-                                        fontWeight = FontWeight.Black, 
-                                        color = TextPrimary
-                                    )
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(
-                                        pendingCallLead!!.phone, 
-                                        fontSize = 14.sp, 
-                                        color = TextSecondary, 
-                                        fontWeight = FontWeight.Medium
-                                    )
+                                Icon(
+                                    imageVector = Icons.Default.Phone,
+                                    contentDescription = null,
+                                    tint = StatusSuccess,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                // Pulsing animation dot
+                                Box(
+                                    modifier = Modifier
+                                        .size(12.dp)
+                                        .align(Alignment.TopEnd)
+                                        .background(Color.White, CircleShape)
+                                        .padding(2.dp)
+                                ) {
+                                    Box(modifier = Modifier.fillMaxSize().background(StatusSuccess, CircleShape))
                                 }
-                                
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(28.dp), 
-                                    color = StatusSuccess, 
-                                    strokeWidth = 3.dp
+                            }
+                            
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = pendingCallLead!!.name.ifEmpty { "Customer" },
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = TextPrimary
+                                )
+                                Text(
+                                    text = "In-call duration: Active",
+                                    fontSize = 13.sp,
+                                    color = TextSecondary,
+                                    fontWeight = FontWeight.Medium
                                 )
                             }
                             
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(StatusSuccess.copy(alpha = 0.1f))
-                                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                                horizontalArrangement = Arrangement.Center,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    "Tap to Update Disposition", 
-                                    color = StatusSuccess, 
-                                    fontWeight = FontWeight.Bold, 
-                                    fontSize = 14.sp
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Icon(
-                                    imageVector = Icons.Rounded.ChevronRight, 
-                                    contentDescription = null, 
-                                    tint = StatusSuccess, 
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
+                            Icon(
+                                imageVector = Icons.Rounded.ChevronRight,
+                                contentDescription = null,
+                                tint = TextSecondary,
+                                modifier = Modifier.size(24.dp)
+                            )
                         }
                     }
                 }
@@ -584,31 +692,108 @@ fun DashboardScreen(
 }
 
 @Composable
-fun PriorityWidget(modifier: Modifier = Modifier, title: String, count: Int, color: Color, onClick: () -> Unit) {
+fun SalesMetricCard(
+    modifier: Modifier = Modifier,
+    title: String,
+    value: String,
+    subtitle: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    color: Color
+) {
     Surface(
-        modifier = modifier.height(140.dp),
+        modifier = modifier.height(110.dp),
         shape = RoundedCornerShape(24.dp),
         color = Color.White,
-        shadowElevation = 0.dp, // FLAT DESIGN IS PREMIUM
-        border = androidx.compose.foundation.BorderStroke(1.dp, BorderSubtle),
+        border = androidx.compose.foundation.BorderStroke(1.dp, BorderSubtle.copy(alpha = 0.5f))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(color.copy(alpha = 0.1f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(imageVector = icon, contentDescription = null, tint = color, modifier = Modifier.size(18.dp))
+                }
+                Text(
+                    text = title.uppercase(),
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Black,
+                    color = TextSecondary,
+                    letterSpacing = 1.sp
+                )
+            }
+            
+            Column {
+                Text(
+                    text = value,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Black,
+                    color = TextPrimary
+                )
+                Text(
+                    text = subtitle,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = TextSecondary
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun ActionCard(
+    modifier: Modifier = Modifier,
+    title: String,
+    count: Int,
+    color: Color,
+    icon: String,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = modifier.height(100.dp),
+        shape = RoundedCornerShape(24.dp),
+        color = Color.White,
+        border = androidx.compose.foundation.BorderStroke(1.dp, BorderSubtle.copy(alpha = 0.5f)),
         onClick = onClick
     ) {
         Column(
-            modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(
-                text = count.toString(),
-                fontSize = 42.sp, // Reduced to fit 3 in a row
-                fontWeight = FontWeight.Black,
-                color = color,
-                letterSpacing = (-1.0).sp
-            )
-            Spacer(modifier = Modifier.height(2.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                Text(
+                    text = icon,
+                    fontSize = 20.sp
+                )
+                Text(
+                    text = count.toString(),
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Black,
+                    color = TextPrimary
+                )
+            }
             Text(
                 text = title,
-                fontSize = 13.sp, // Reduced to fit 3 in a row
+                fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 color = TextSecondary
             )
@@ -622,8 +807,8 @@ fun PipelineChip(modifier: Modifier = Modifier, title: String, count: Int, color
         modifier = modifier.height(56.dp),
         shape = RoundedCornerShape(16.dp),
         color = Color.White,
-        shadowElevation = 0.dp, // FLAT DESIGN IS PREMIUM
-        border = androidx.compose.foundation.BorderStroke(1.dp, BorderSubtle),
+        shadowElevation = 0.dp,
+        border = androidx.compose.foundation.BorderStroke(1.dp, BorderSubtle.copy(alpha = 0.5f)),
         onClick = onClick
     ) {
         Row(
@@ -634,11 +819,12 @@ fun PipelineChip(modifier: Modifier = Modifier, title: String, count: Int, color
             Text(title, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = TextSecondary)
             Box(
                 modifier = Modifier
-                    .size(28.dp)
-                    .background(color.copy(alpha = 0.12f), CircleShape),
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(color.copy(alpha = 0.1f))
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Text(count.toString(), fontSize = 13.sp, fontWeight = FontWeight.Black, color = color)
+                Text(text = count.toString(), fontSize = 13.sp, fontWeight = FontWeight.Black, color = color)
             }
         }
     }

@@ -64,7 +64,10 @@ data class DashboardMetrics(
     val confirmedOrdersCount: Int = 0,
     val inquiriesCount: Int = 0,
     val attemptedCount: Int = 0,
-    val rejectedCount: Int = 0
+    val rejectedCount: Int = 0,
+    val dispatchedCount: Int = 0,
+    val rtoCount: Int = 0,
+    val deliveredCount: Int = 0
 )
 
 @HiltViewModel
@@ -120,6 +123,9 @@ class CallingViewModel @Inject constructor(
         var inquiries = 0
         var attempted = 0
         var rejected = 0
+        var dispatched = 0
+        var rto = 0
+        var delivered = 0
 
         // Use Dispatchers.Default for heavy calculations automatically because flow runs map in the context it collects or we should flowOn(Dispatchers.Default)
         leadsList.forEach { lead ->
@@ -143,10 +149,13 @@ class CallingViewModel @Inject constructor(
                     "INQUIRY" -> inquiries++
                     "ATTEMPTED" -> attempted++
                     "REJECTED" -> rejected++
+                    "DISPATCHED" -> dispatched++
+                    "RTO" -> rto++
+                    "DELIVERED" -> delivered++
                 }
             }
         }
-        DashboardMetrics(pendingPayments, dueFollowups, freshLeads, confirmedOrders, inquiries, attempted, rejected)
+        DashboardMetrics(pendingPayments, dueFollowups, freshLeads, confirmedOrders, inquiries, attempted, rejected, dispatched, rto, delivered)
     }.stateIn(viewModelScope, SharingStarted.Eagerly, DashboardMetrics())
 
     private val _telecallerContact = MutableStateFlow<String>("+91 98347 83503")
@@ -339,6 +348,7 @@ class CallingViewModel @Inject constructor(
         followUpTimeSlot: String? = null,
         paymentStatus: String? = null,
         isSuspiciousShortCall: Boolean = false,
+        baseProductsBreakdown: String = "",
         onSuccess: (String, Lead) -> Unit,
         onError: (String) -> Unit
     ) {
@@ -366,7 +376,8 @@ class CallingViewModel @Inject constructor(
                     "subStatus" to subStatus,
                     "followUpTimeSlot" to followUpTimeSlot,
                     "paymentStatus" to paymentStatus,
-                    "isSuspiciousShortCall" to isSuspiciousShortCall
+                    "isSuspiciousShortCall" to isSuspiciousShortCall,
+                    "baseProductsBreakdown" to baseProductsBreakdown
                 )
 
                 repository.updateLead(lead.id, updateMap)
@@ -414,6 +425,35 @@ class CallingViewModel @Inject constructor(
     ) {
         viewModelScope.launch {
                 repository.recalculateLeadStateAndBatch(leadId, interactionId)
+        }
+    }
+
+    fun logAction(leadId: String, action: String, notes: String) {
+        viewModelScope.launch {
+            try {
+                val isoFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
+                    timeZone = TimeZone.getTimeZone("UTC")
+                }
+                val isoTimestamp = isoFormat.format(Date())
+                val logId = "act-" + UUID.randomUUID().toString().take(6)
+                
+                val interaction = Interaction(
+                    id = logId,
+                    leadId = leadId,
+                    callerId = _currentUserId.value ?: "",
+                    callerName = callerName,
+                    statusBefore = "",
+                    statusAfter = action,
+                    notes = notes,
+                    timestamp = isoTimestamp,
+                    duration = 0,
+                    followUpDate = null,
+                    isVisitLog = false
+                )
+                repository.addInteraction(interaction)
+            } catch (e: Exception) {
+                // ignore
+            }
         }
     }
 

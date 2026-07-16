@@ -25,6 +25,7 @@ import kotlinx.coroutines.launch
 fun InvoiceDialog(
     lead: Lead,
     supportNumber: String,
+    onLogAction: (String, String) -> Unit = { _, _ -> },
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
@@ -66,6 +67,7 @@ fun InvoiceDialog(
             Button(
                 onClick = {
                     isGenerating = true
+                    onLogAction("WhatsApp Initiated", "Telecaller generated and initiated sending Tax Invoice PDF")
                     // Launch in coroutine to avoid ANR during PDF creation
                     kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.Dispatchers.Main) {
                         try {

@@ -264,35 +264,6 @@ fun SmartTriggerChip(
     }
 }
 
-data class ParsedProduct(val mainName: String, val badge: String)
-
-fun parseProductNameAndBadge(fullName: String): ParsedProduct {
-    val regex = Regex("^(.*?)\\s*\\(([^)]+)\\)\$")
-    val match = regex.find(fullName)
-    return if (match != null && match.groupValues.size == 3) {
-        ParsedProduct(match.groupValues[1].trim(), match.groupValues[2].trim())
-    } else {
-        ParsedProduct(fullName.trim(), "")
-    }
-}
-
-fun extractProductFamily(fullName: String): String {
-    val regex = Regex("^(.*?)(?:\\s+\\d+)?(?:\\s*\\([^)]+\\))?$")
-    val match = regex.find(fullName)
-    return match?.groupValues?.get(1)?.trim() ?: fullName
-}
-
-fun getDynamicProductColor(productName: String, defaultTint: Color): Color {
-    val lower = productName.lowercase()
-    return when {
-        lower.contains("combo") -> Color(0xFFD97706) // Golden
-        lower.contains("tablet") -> Color(0xFF059669) // Emerald
-        lower.contains("capsule") -> Color(0xFF2563EB) // Blue
-        lower.contains("powder") -> Color(0xFF9333EA) // Purple
-        else -> defaultTint
-    }
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SmartGridPopup(
@@ -314,11 +285,6 @@ fun SmartGridPopup(
     val filteredOptions = remember(searchQuery, options) {
         if (searchQuery.isBlank()) options else options.filter { it.contains(searchQuery, ignoreCase = true) }
     }
-    
-    val familyMap = remember(filteredOptions) { 
-        filteredOptions.groupBy { extractProductFamily(it) } 
-    }
-    var expandedFamily by remember { mutableStateOf<String?>(null) }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -409,369 +375,184 @@ fun SmartGridPopup(
                     contentPadding = PaddingValues(bottom = 10.dp)
                 ) {
                     if (isMultiSelect) {
-                        val families = familyMap.keys.toList()
-                        items(families.size) { index ->
-                            val familyName = families[index]
-                            val familyVariants = familyMap[familyName] ?: emptyList()
-                            val totalFamilyQty = familyVariants.sumOf { qtyMap[it] ?: 0 }
-                            val isFamilyExpanded = expandedFamily == familyName
-                            
-                            val firstVariant = familyVariants.first()
-                            val baseColor = getDynamicProductColor(familyName, icons[firstVariant]?.tint ?: Color(0xFF8B5CF6))
+                        items(filteredOptions.size) { index ->
+                            val option = filteredOptions[index]
+                            val iconData = icons[option]
+                            val currentQty = qtyMap[option] ?: 0
+                            val isOptionSelected = currentQty > 0
+                            val baseColor = iconData?.tint ?: Color(0xFF8B5CF6)
                             
                             val animatedBgColor by animateColorAsState(
-                                targetValue = if (totalFamilyQty > 0 || isFamilyExpanded) baseColor.copy(alpha = 0.08f) else Color(0xFFF8FAFC),
+                                targetValue = if (isOptionSelected) baseColor.copy(alpha = 0.08f) else Color(0xFFF8FAFC),
                                 animationSpec = tween(300)
                             )
                             val animatedBorderColor by animateColorAsState(
-                                targetValue = if (totalFamilyQty > 0 || isFamilyExpanded) baseColor.copy(alpha = 0.5f) else Color(0xFFE2E8F0),
+                                targetValue = if (isOptionSelected) baseColor.copy(alpha = 0.5f) else Color(0xFFE2E8F0),
                                 animationSpec = tween(300)
                             )
-
-                            Column(
+                            
+                            Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(20.dp))
                                     .background(animatedBgColor)
                                     .border(
-                                        width = if (totalFamilyQty > 0 || isFamilyExpanded) 1.5.dp else 1.dp,
+                                        width = if (isOptionSelected) 1.5.dp else 1.dp,
                                         color = animatedBorderColor,
                                         shape = RoundedCornerShape(20.dp)
                                     )
+                                    .clickable { 
+                                        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                        val newMap = qtyMap.toMutableMap()
+                                        if (isOptionSelected) {
+                                            newMap[option] = currentQty + 1
+                                        } else {
+                                            newMap[option] = 1
+                                        }
+                                        onSelect(formatProductQuantities(newMap))
+                                    }
+                                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                // Family Header Row
                                 Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable { 
-                                            view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                                            if (familyVariants.size > 1) {
-                                                expandedFamily = if (isFamilyExpanded) null else familyName
-                                            } else {
-                                                val option = firstVariant
-                                                val currentQty = qtyMap[option] ?: 0
-                                                val newMap = qtyMap.toMutableMap()
-                                                if (currentQty > 0) {
-                                                    newMap.remove(option)
-                                                } else {
-                                                    newMap[option] = 1
-                                                }
-                                                onSelect(formatProductQuantities(newMap))
-                                            }
-                                        }
-                                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(14.dp),
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween
+                                    modifier = Modifier.weight(1f)
                                 ) {
-                                    Row(
-                                        horizontalArrangement = Arrangement.spacedBy(14.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        modifier = Modifier.weight(1f)
+                                    // Squircle Avatar
+                                    Box(
+                                        modifier = Modifier
+                                            .size(46.dp)
+                                            .clip(RoundedCornerShape(16.dp))
+                                            .background(Color.White)
+                                            .border(1.dp, Color(0xFFF1F5F9), RoundedCornerShape(16.dp)),
+                                        contentAlignment = Alignment.Center
                                     ) {
-                                        // Squircle Avatar
-                                        Box(
-                                            modifier = Modifier
-                                                .size(46.dp)
-                                                .clip(RoundedCornerShape(16.dp))
-                                                .background(baseColor.copy(alpha = 0.08f))
-                                                .border(1.dp, baseColor.copy(alpha = 0.15f), RoundedCornerShape(16.dp)),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            if (emojis != null && emojis[firstVariant] != null) {
-                                                Text(text = emojis[firstVariant]!!, fontSize = 24.sp)
-                                            } else if (icons != null && icons[firstVariant] != null) {
-                                                Icon(
-                                                    imageVector = icons[firstVariant]!!.icon,
-                                                    contentDescription = null,
-                                                    tint = baseColor,
-                                                    modifier = Modifier.size(24.dp)
-                                                )
-                                            }
-                                        }
-                                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                            Text(
-                                                text = familyName,
-                                                fontSize = 15.sp,
-                                                fontWeight = if (totalFamilyQty > 0) FontWeight.ExtraBold else FontWeight.Bold,
-                                                color = Color(0xFF0F172A),
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
+                                        if (emojis != null && emojis[option] != null) {
+                                            Text(text = emojis[option]!!, fontSize = 24.sp)
+                                        } else if (iconData != null) {
+                                            Icon(
+                                                imageVector = iconData.icon,
+                                                contentDescription = null,
+                                                tint = baseColor,
+                                                modifier = Modifier.size(24.dp)
                                             )
-                                            Row(
-                                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                if (familyVariants.size > 1) {
-                                                    Box(
-                                                        modifier = Modifier
-                                                            .clip(RoundedCornerShape(6.dp))
-                                                            .background(baseColor.copy(alpha = 0.12f))
-                                                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                                                    ) {
-                                                        Text(
-                                                            text = "Customisable",
-                                                            fontSize = 11.sp,
-                                                            fontWeight = FontWeight.Bold,
-                                                            color = baseColor
-                                                        )
-                                                    }
-                                                } else {
-                                                    if (prices != null && prices[firstVariant] != null) {
-                                                        Text(
-                                                            text = "₹${prices[firstVariant]?.toInt() ?: 0}",
-                                                            fontSize = 13.sp,
-                                                            fontWeight = FontWeight.SemiBold,
-                                                            color = Color(0xFF64748B)
-                                                        )
-                                                    }
-                                                }
-                                            }
                                         }
                                     }
-
-                                    Spacer(modifier = Modifier.width(12.dp))
-
-                                    // Right Side (Button or Total Qty)
-                                    if (familyVariants.size > 1) {
-                                        if (totalFamilyQty > 0) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(32.dp)
-                                                    .clip(CircleShape)
-                                                    .background(baseColor),
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                Text(
-                                                    text = "$totalFamilyQty",
-                                                    color = Color.White,
-                                                    fontWeight = FontWeight.Bold,
-                                                    fontSize = 14.sp
-                                                )
-                                            }
-                                        } else {
-                                            Icon(
-                                                imageVector = if (isFamilyExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                                                contentDescription = "Expand",
-                                                tint = Color(0xFF94A3B8)
+                                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                        Text(
+                                            text = option,
+                                            fontSize = 15.sp,
+                                            fontWeight = if (isOptionSelected) FontWeight.ExtraBold else FontWeight.Bold,
+                                            color = Color(0xFF0F172A),
+                                            maxLines = 2,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        if (prices != null && prices[option] != null) {
+                                            Text(
+                                                text = "₹${prices[option]?.toInt() ?: 0}",
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = Color(0xFF64748B)
                                             )
-                                        }
-                                    } else {
-                                        // It's a single variant, show the Add/Quantity pill directly
-                                        val currentQty = qtyMap[firstVariant] ?: 0
-                                        val isOptionSelected = currentQty > 0
-                                        AnimatedContent(
-                                            targetState = isOptionSelected,
-                                            transitionSpec = {
-                                                fadeIn(animationSpec = tween(220, delayMillis = 90)) + scaleIn(initialScale = 0.92f) togetherWith
-                                                fadeOut(animationSpec = tween(90)) + scaleOut(targetScale = 0.92f)
-                                            }, label = "qty_selector"
-                                        ) { selected ->
-                                            if (selected) {
-                                                Row(
-                                                    modifier = Modifier
-                                                        .clip(RoundedCornerShape(24.dp))
-                                                        .background(Color.White)
-                                                        .border(1.dp, baseColor.copy(alpha = 0.15f), RoundedCornerShape(24.dp))
-                                                        .padding(horizontal = 4.dp, vertical = 4.dp),
-                                                    verticalAlignment = Alignment.CenterVertically,
-                                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                                ) {
-                                                    Box(
-                                                        modifier = Modifier
-                                                            .size(32.dp)
-                                                            .clip(CircleShape)
-                                                            .background(if (currentQty <= 1) Color(0xFFFEF2F2) else Color(0xFFF8FAFC))
-                                                            .clickable {
-                                                                view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                                                                val newMap = qtyMap.toMutableMap()
-                                                                if (currentQty <= 1) {
-                                                                    newMap.remove(firstVariant)
-                                                                } else {
-                                                                    newMap[firstVariant] = currentQty - 1
-                                                                }
-                                                                onSelect(formatProductQuantities(newMap))
-                                                            },
-                                                        contentAlignment = Alignment.Center
-                                                    ) {
-                                                        Icon(
-                                                            imageVector = if (currentQty <= 1) Icons.Default.DeleteOutline else Icons.Default.Remove,
-                                                            contentDescription = "Decrease",
-                                                            tint = if (currentQty <= 1) Color(0xFFEF4444) else Color(0xFF334155),
-                                                            modifier = Modifier.size(16.dp)
-                                                        )
-                                                    }
-                                                    Text(
-                                                        text = "$currentQty",
-                                                        fontSize = 15.sp,
-                                                        fontWeight = FontWeight.Black,
-                                                        color = baseColor,
-                                                        modifier = Modifier.widthIn(min = 16.dp),
-                                                        textAlign = TextAlign.Center
-                                                    )
-                                                    Box(
-                                                        modifier = Modifier
-                                                            .size(32.dp)
-                                                            .clip(CircleShape)
-                                                            .background(baseColor.copy(alpha = 0.1f))
-                                                            .clickable {
-                                                                view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                                                                val newMap = qtyMap.toMutableMap()
-                                                                newMap[firstVariant] = currentQty + 1
-                                                                onSelect(formatProductQuantities(newMap))
-                                                            },
-                                                        contentAlignment = Alignment.Center
-                                                    ) {
-                                                        Icon(
-                                                            imageVector = Icons.Default.Add,
-                                                            contentDescription = "Increase",
-                                                            tint = baseColor,
-                                                            modifier = Modifier.size(16.dp)
-                                                        )
-                                                    }
-                                                }
-                                            } else {
-                                                Box(
-                                                    modifier = Modifier
-                                                        .clip(RoundedCornerShape(20.dp))
-                                                        .background(Color(0xFFF8FAFC))
-                                                        .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(20.dp))
-                                                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                                                    contentAlignment = Alignment.Center
-                                                ) {
-                                                    Text("Add", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF64748B))
-                                                }
-                                            }
                                         }
                                     }
                                 }
 
-                                // Expanded Variants List
-                                AnimatedVisibility(
-                                    visible = isFamilyExpanded && familyVariants.size > 1,
-                                    enter = expandVertically() + fadeIn(),
-                                    exit = shrinkVertically() + fadeOut()
-                                ) {
-                                    Column(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .background(Color.White)
-                                            .padding(horizontal = 16.dp, vertical = 8.dp)
-                                    ) {
-                                        familyVariants.forEachIndexed { vIndex, variant ->
-                                            val parsed = parseProductNameAndBadge(variant)
-                                            val variantQty = qtyMap[variant] ?: 0
-                                            
-                                            Row(
+                                Spacer(modifier = Modifier.width(12.dp))
+
+                                // Fluid Quantity Selector
+                                AnimatedContent(
+                                    targetState = isOptionSelected,
+                                    transitionSpec = {
+                                        fadeIn(animationSpec = tween(220, delayMillis = 90)) + scaleIn(initialScale = 0.92f) togetherWith
+                                        fadeOut(animationSpec = tween(90)) + scaleOut(targetScale = 0.92f)
+                                    }, label = "qty_selector"
+                                ) { selected ->
+                                    if (selected) {
+                                        Row(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(24.dp))
+                                                .background(Color.White)
+                                                .border(1.dp, baseColor.copy(alpha = 0.15f), RoundedCornerShape(24.dp))
+                                                .padding(horizontal = 4.dp, vertical = 4.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            // Minus/Trash Button
+                                            Box(
                                                 modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .padding(vertical = 12.dp),
-                                                horizontalArrangement = Arrangement.SpaceBetween,
-                                                verticalAlignment = Alignment.CenterVertically
+                                                    .size(32.dp)
+                                                    .clip(CircleShape)
+                                                    .background(if (currentQty <= 1) Color(0xFFFEF2F2) else Color(0xFFF8FAFC))
+                                                    .clickable {
+                                                        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                                        val newMap = qtyMap.toMutableMap()
+                                                        if (currentQty <= 1) {
+                                                            newMap.remove(option)
+                                                        } else {
+                                                            newMap[option] = currentQty - 1
+                                                        }
+                                                        onSelect(formatProductQuantities(newMap))
+                                                    },
+                                                contentAlignment = Alignment.Center
                                             ) {
-                                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                                    Text(
-                                                        text = if (parsed.badge.isNotEmpty()) parsed.badge else "1 Box",
-                                                        fontSize = 14.sp,
-                                                        fontWeight = FontWeight.Bold,
-                                                        color = Color(0xFF334155)
-                                                    )
-                                                    if (prices != null && prices[variant] != null) {
-                                                        Text(
-                                                            text = "₹${prices[variant]?.toInt() ?: 0}",
-                                                            fontSize = 13.sp,
-                                                            fontWeight = FontWeight.Medium,
-                                                            color = Color(0xFF64748B)
-                                                        )
-                                                    }
-                                                }
-                                                
-                                                // Variant Quantity Pill
-                                                if (variantQty > 0) {
-                                                    Row(
-                                                        modifier = Modifier
-                                                            .clip(RoundedCornerShape(24.dp))
-                                                            .background(Color.White)
-                                                            .border(1.dp, baseColor.copy(alpha = 0.15f), RoundedCornerShape(24.dp))
-                                                            .padding(horizontal = 4.dp, vertical = 4.dp),
-                                                        verticalAlignment = Alignment.CenterVertically,
-                                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                                    ) {
-                                                        Box(
-                                                            modifier = Modifier
-                                                                .size(32.dp)
-                                                                .clip(CircleShape)
-                                                                .background(if (variantQty <= 1) Color(0xFFFEF2F2) else Color(0xFFF8FAFC))
-                                                                .clickable {
-                                                                    view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                                                                    val newMap = qtyMap.toMutableMap()
-                                                                    if (variantQty <= 1) {
-                                                                        newMap.remove(variant)
-                                                                    } else {
-                                                                        newMap[variant] = variantQty - 1
-                                                                    }
-                                                                    onSelect(formatProductQuantities(newMap))
-                                                                },
-                                                            contentAlignment = Alignment.Center
-                                                        ) {
-                                                            Icon(
-                                                                imageVector = if (variantQty <= 1) Icons.Default.DeleteOutline else Icons.Default.Remove,
-                                                                contentDescription = "Decrease",
-                                                                tint = if (variantQty <= 1) Color(0xFFEF4444) else Color(0xFF334155),
-                                                                modifier = Modifier.size(16.dp)
-                                                            )
-                                                        }
-                                                        Text(
-                                                            text = "$variantQty",
-                                                            fontSize = 15.sp,
-                                                            fontWeight = FontWeight.Black,
-                                                            color = baseColor,
-                                                            modifier = Modifier.widthIn(min = 16.dp),
-                                                            textAlign = TextAlign.Center
-                                                        )
-                                                        Box(
-                                                            modifier = Modifier
-                                                                .size(32.dp)
-                                                                .clip(CircleShape)
-                                                                .background(baseColor.copy(alpha = 0.1f))
-                                                                .clickable {
-                                                                    view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                                                                    val newMap = qtyMap.toMutableMap()
-                                                                    newMap[variant] = variantQty + 1
-                                                                    onSelect(formatProductQuantities(newMap))
-                                                                },
-                                                            contentAlignment = Alignment.Center
-                                                        ) {
-                                                            Icon(
-                                                                imageVector = Icons.Default.Add,
-                                                                contentDescription = "Increase",
-                                                                tint = baseColor,
-                                                                modifier = Modifier.size(16.dp)
-                                                            )
-                                                        }
-                                                    }
-                                                } else {
-                                                    Box(
-                                                        modifier = Modifier
-                                                            .clip(RoundedCornerShape(20.dp))
-                                                            .background(Color.White)
-                                                            .border(1.dp, baseColor.copy(alpha = 0.3f), RoundedCornerShape(20.dp))
-                                                            .clickable {
-                                                                view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                                                                val newMap = qtyMap.toMutableMap()
-                                                                newMap[variant] = 1
-                                                                onSelect(formatProductQuantities(newMap))
-                                                            }
-                                                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                                                        contentAlignment = Alignment.Center
-                                                    ) {
-                                                        Text("Add", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = baseColor)
-                                                    }
-                                                }
+                                                Icon(
+                                                    imageVector = if (currentQty <= 1) Icons.Default.DeleteOutline else Icons.Default.Remove,
+                                                    contentDescription = "Decrease",
+                                                    tint = if (currentQty <= 1) Color(0xFFEF4444) else Color(0xFF334155),
+                                                    modifier = Modifier.size(16.dp)
+                                                )
                                             }
-                                            
-                                            if (vIndex < familyVariants.size - 1) {
-                                                Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color(0xFFF1F5F9)))
+
+                                            // Count Number
+                                            Text(
+                                                text = "$currentQty",
+                                                fontSize = 15.sp,
+                                                fontWeight = FontWeight.Black,
+                                                color = baseColor,
+                                                modifier = Modifier.widthIn(min = 16.dp),
+                                                textAlign = TextAlign.Center
+                                            )
+
+                                            // Plus Button
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(32.dp)
+                                                    .clip(CircleShape)
+                                                    .background(baseColor.copy(alpha = 0.1f))
+                                                    .clickable {
+                                                        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                                        val newMap = qtyMap.toMutableMap()
+                                                        newMap[option] = currentQty + 1
+                                                        onSelect(formatProductQuantities(newMap))
+                                                    },
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Add,
+                                                    contentDescription = "Increase",
+                                                    tint = baseColor,
+                                                    modifier = Modifier.size(16.dp)
+                                                )
                                             }
+                                        }
+                                    } else {
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(20.dp))
+                                                .background(Color(0xFFF8FAFC))
+                                                .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(20.dp))
+                                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                text = "Add",
+                                                fontSize = 14.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color(0xFF64748B)
+                                            )
                                         }
                                     }
                                 }
@@ -789,7 +570,7 @@ fun SmartGridPopup(
                                 rowItems.forEach { option ->
                                     val iconData = icons[option]
                                     val isOptionSelected = option.equals(selectedOption, ignoreCase = true)
-                                    val baseColor = getDynamicProductColor(option, iconData?.tint ?: Color(0xFF8B5CF6))
+                                    val baseColor = iconData?.tint ?: Color(0xFF8B5CF6)
                                     
                                     val animatedBgColor by animateColorAsState(
                                         targetValue = if (isOptionSelected) baseColor.copy(alpha = 0.08f) else Color(0xFFF8FAFC),
@@ -836,9 +617,8 @@ fun SmartGridPopup(
                                                     modifier = Modifier.size(32.dp)
                                                 )
                                             }
-                                            val parsed = parseProductNameAndBadge(option)
                                             Text(
-                                                text = parsed.mainName,
+                                                text = option,
                                                 fontSize = 14.sp,
                                                 lineHeight = 18.sp,
                                                 fontWeight = if (isOptionSelected) FontWeight.ExtraBold else FontWeight.Bold,
@@ -847,21 +627,6 @@ fun SmartGridPopup(
                                                 maxLines = 2,
                                                 overflow = TextOverflow.Ellipsis
                                             )
-                                            if (parsed.badge.isNotEmpty()) {
-                                                Box(
-                                                    modifier = Modifier
-                                                        .clip(RoundedCornerShape(6.dp))
-                                                        .background(baseColor.copy(alpha = 0.12f))
-                                                        .padding(horizontal = 6.dp, vertical = 2.dp)
-                                                ) {
-                                                    Text(
-                                                        text = parsed.badge,
-                                                        fontSize = 11.sp,
-                                                        fontWeight = FontWeight.Bold,
-                                                        color = baseColor
-                                                    )
-                                                }
-                                            }
                                         }
                                     }
                                 }

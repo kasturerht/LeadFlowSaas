@@ -8,6 +8,10 @@ object Constants {
     const val STATUS_NOT_INTERESTED = "Not Interested"
     const val STATUS_INVALID = "Invalid"
     const val STATUS_ORDER_CANCELLED = "Order Cancelled"
+    const val STATUS_DISPATCHED = "Dispatched"
+    const val STATUS_DELIVERED = "Delivered"
+    const val STATUS_RTO = "RTO"
+    const val STATUS_RETURNED = "Returned"
 
     val PROCESSED_STATUSES = listOf(
         STATUS_CALL_NOT_ANSWERED,
@@ -29,33 +33,18 @@ object Constants {
     fun normalizeStatus(raw: String?): String {
         if (raw == null || raw.trim().isEmpty()) return "Pending"
         val trimmed = raw.trim()
-        return when {
-            trimmed.equals("No Answer", ignoreCase = true) ||
-            trimmed.equals("Busy", ignoreCase = true) ||
-            trimmed.equals("Busy / Cut", ignoreCase = true) ||
-            trimmed.equals(STATUS_CALL_NOT_ANSWERED, ignoreCase = true) -> STATUS_CALL_NOT_ANSWERED
-
-            trimmed.equals("Warm Lead", ignoreCase = true) ||
-            trimmed.equals("Warm / On Hold", ignoreCase = true) ||
-            trimmed.equals(STATUS_INQUIRY, ignoreCase = true) -> STATUS_INQUIRY
-
-            trimmed.equals("Follow-up", ignoreCase = true) ||
-            trimmed.equals("Visit Scheduled", ignoreCase = true) -> STATUS_FOLLOW_UP
-
-            trimmed.equals("Converted", ignoreCase = true) ||
-            trimmed.equals("Visited", ignoreCase = true) ||
-            trimmed.equals("Visited (Actual)", ignoreCase = true) ||
-            trimmed.equals(STATUS_ORDER_PLACED, ignoreCase = true) -> STATUS_ORDER_PLACED
-
-            trimmed.equals(STATUS_NOT_INTERESTED, ignoreCase = true) -> STATUS_NOT_INTERESTED
-
-            trimmed.equals("Invalid No.", ignoreCase = true) ||
-            trimmed.equals("Invalid/Wrong Number", ignoreCase = true) ||
-            trimmed.equals(STATUS_INVALID, ignoreCase = true) -> STATUS_INVALID
-            
-            trimmed.equals("Order Cancelled", ignoreCase = true) ||
-            trimmed.equals("Cancelled", ignoreCase = true) -> STATUS_ORDER_CANCELLED
-
+        val lower = trimmed.lowercase(java.util.Locale.ROOT)
+        return when (lower) {
+            "no answer", "busy", "busy / cut", STATUS_CALL_NOT_ANSWERED.lowercase(java.util.Locale.ROOT) -> STATUS_CALL_NOT_ANSWERED
+            "warm lead", "warm / on hold", STATUS_INQUIRY.lowercase(java.util.Locale.ROOT) -> STATUS_INQUIRY
+            "follow-up", "visit scheduled" -> STATUS_FOLLOW_UP
+            "converted", "visited", "visited (actual)", STATUS_ORDER_PLACED.lowercase(java.util.Locale.ROOT) -> STATUS_ORDER_PLACED
+            STATUS_NOT_INTERESTED.lowercase(java.util.Locale.ROOT) -> STATUS_NOT_INTERESTED
+            "invalid no.", "invalid/wrong number", STATUS_INVALID.lowercase(java.util.Locale.ROOT) -> STATUS_INVALID
+            "order cancelled", "cancelled" -> STATUS_ORDER_CANCELLED
+            STATUS_DISPATCHED.lowercase(java.util.Locale.ROOT) -> STATUS_DISPATCHED
+            STATUS_DELIVERED.lowercase(java.util.Locale.ROOT) -> STATUS_DELIVERED
+            STATUS_RTO.lowercase(java.util.Locale.ROOT), "return", "returned" -> STATUS_RTO
             else -> trimmed
         }
     }

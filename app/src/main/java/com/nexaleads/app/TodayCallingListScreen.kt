@@ -13,6 +13,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import com.nexaleads.app.ui.viewmodel.SalesMetrics
+import com.nexaleads.app.components.DeliveryVerificationSheet
 
 
 import android.Manifest
@@ -46,6 +47,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Call
@@ -56,6 +58,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
@@ -251,12 +254,12 @@ fun TodayCallingListScreen(
                     Text("Cancel", color = TextSecondary)
                 }
             },
-            colors = DatePickerDefaults.colors(containerColor = SurfaceLight)
+            colors = DatePickerDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.White)
         ) {
             DatePicker(
                 state = datePickerState, 
                 colors = DatePickerDefaults.colors(
-                    containerColor = SurfaceLight,
+                    containerColor = androidx.compose.ui.graphics.Color.White,
                     titleContentColor = ModernViolet,
                     headlineContentColor = TextPrimary,
                     weekdayContentColor = TextSecondary,
@@ -300,11 +303,16 @@ fun TodayCallingListScreen(
             "PENDING_PAYMENTS" -> nonArchived.filter { it.getPrimaryCategory() == "CONVERTED" && it.paymentMethod.equals("Prepaid", ignoreCase = true) && it.paymentStatus?.contains("UPI Link Sent", ignoreCase = true) == true }
             "REJECTED" -> nonArchived.filter { it.getPrimaryCategory() == "REJECTED" }
             "INQUIRY" -> nonArchived.filter { it.getPrimaryCategory() == "INQUIRY" }
-            else -> nonArchived
+            "RTO" -> nonArchived.filter { it.getPrimaryCategory() == "RTO" }
+            "DISPATCHED" -> nonArchived.filter { it.getPrimaryCategory() == "DISPATCHED" }.sortedBy { it.followUpDate }
+            "DELIVERED" -> nonArchived.filter { it.getPrimaryCategory() == "DELIVERED" }
+            "ALL" -> nonArchived
+            else -> emptyList()
         }
     }
 
     var selectedOrderIdForDetails by remember { mutableStateOf<String?>(null) }
+    var selectedDeliveryVerifyLead by remember { mutableStateOf<com.nexaleads.app.data.model.Lead?>(null) }
     var selectedLabelFilter by remember { mutableStateOf("ALL") }
 
     val uniqueLabels = remember(leads) {
@@ -325,7 +333,11 @@ fun TodayCallingListScreen(
         "PENDING_PAYMENTS" -> "Pending Payments (UPI Sent)"
         "REJECTED" -> "Rejected Leads"
         "INQUIRY" -> "Inquiries"
-        else -> "All Leads"
+        "RTO" -> "RTOs & Returned Leads"
+        "DISPATCHED" -> "In-Transit (Verify)"
+        "DELIVERED" -> "Delivered Orders"
+        "ALL" -> "Recent History"
+        else -> "Leads"
     }
 
     Scaffold(
@@ -382,7 +394,7 @@ fun TodayCallingListScreen(
                             modifier = Modifier
                                 .shadow(if (isSelected) 4.dp else 0.dp, RoundedCornerShape(20.dp), spotColor = ModernViolet.copy(alpha = 0.3f))
                                 .clip(RoundedCornerShape(20.dp))
-                                .background(if (isSelected) ModernViolet else SurfaceLight)
+                                .background(if (isSelected) ModernViolet else androidx.compose.ui.graphics.Color.White)
                                 .clickable { selectedLabelFilter = labelName }
                                 .border(1.dp, if (isSelected) Color.Transparent else BorderSubtle.copy(alpha = 0.5f), RoundedCornerShape(20.dp))
                                 .padding(horizontal = 16.dp, vertical = 8.dp)
@@ -466,375 +478,99 @@ fun TodayCallingListScreen(
                                     )
                                 }
                                 items(groupLeads!!, key = { it.id }) { item ->
-                        val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .combinedClickable(
-                                    onClick = { selectedOrderIdForDetails = item.id },
-                                    onLongClick = {
-                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                                        leadForQuickActions = item
-                                    }
-                                )
-                                .shadow(elevation = 12.dp, shape = RoundedCornerShape(16.dp), spotColor = ModernViolet.copy(alpha = 0.08f), ambientColor = Color.Transparent)
-                                .animateContentSize(animationSpec = tween(300)),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(containerColor = SurfaceLight),
-                            border = androidx.compose.foundation.BorderStroke(0.5.dp, BorderSubtle.copy(alpha=0.3f))
-                        ) {
-                            Column(modifier = Modifier.padding(14.dp)) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                        val rawName = getDisplayLeadName(item)
-                                        val displayName = rawName.split(" ").joinToString(" ") { it.replaceFirstChar { char -> if (char.isLowerCase()) char.titlecase(Locale.ROOT) else char.toString() } }
-                                        Text(displayName, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = TextPrimary, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-                                        if (item.isSuspiciousShortCall) {
-                                            Text("⚠️", fontSize = 13.sp)
-                                        }
-                                    }
-                                    val statusColor = statusColors[item.status] ?: ModernViolet
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                        modifier = Modifier.clip(RoundedCornerShape(20.dp)).background(statusColor.copy(alpha = 0.1f)).padding(horizontal = 8.dp, vertical = 4.dp)
-                                    ) {
-                                        Box(modifier = Modifier.size(6.dp).background(statusColor, CircleShape))
-                                        val statusLabel = indianStatusLabels[item.status] ?: item.status
-                                        val fullStatusLabel = if (!item.subStatus.isNullOrEmpty()) "$statusLabel • ${item.subStatus}" else statusLabel
-                                        Text(fullStatusLabel, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = statusColor)
-                                    }
-                                }
-                                Spacer(modifier = Modifier.height(6.dp))
+                        PremiumLeadCard(
+                            item = item,
+                            statusColors = statusColors,
+                            indianStatusLabels = indianStatusLabels,
+                            onClick = { selectedOrderIdForDetails = item.id },
+                            onLongClick = {
                                 
-                                // Dynamic Meta Row
-                                val metaParts = mutableListOf<String>()
-                                if (item.product.isNotEmpty()) {
-                                    val products = item.product.split(",").map { it.trim() }
-                                    if (products.size > 1) {
-                                        metaParts.add("📦 ${products.first()} (+${products.size - 1})")
-                                    } else {
-                                        metaParts.add("📦 ${products.first()}")
-                                    }
-                                }
-                                if (item.orderAmount.isNotEmpty()) metaParts.add("₹${item.orderAmount}")
-                                if (item.city.isNotEmpty()) metaParts.add("📍 ${item.city}")
-                                if (item.source.isNotEmpty()) metaParts.add(item.source.uppercase(Locale.ROOT))
-                                val labelText = if (item.label.isEmpty()) "General" else item.label
-                                metaParts.add(labelText.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString() })
-                                
-                                if (!item.followUpDate.isNullOrEmpty()) {
-                                    val formattedDate = try {
-                                        val inputFormat = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
-                                        val outputFormat = java.text.SimpleDateFormat("dd MMM", java.util.Locale.US)
-                                        val date = inputFormat.parse(item.followUpDate)
-                                        if (date != null) "📅 ${outputFormat.format(date)}" else "📅 ${item.followUpDate}"
-                                    } catch (e: Exception) {
-                                        "📅 ${item.followUpDate}"
-                                    }
-                                    val dateWithSlot = if (!item.followUpTimeSlot.isNullOrEmpty()) "$formattedDate (${item.followUpTimeSlot})" else formattedDate
-                                    metaParts.add(dateWithSlot)
-                                }
-                                
-                                if (metaParts.isNotEmpty()) {
-                                    Text(
-                                        text = metaParts.joinToString(" • "),
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        color = TextSecondary,
-                                        maxLines = 1,
-                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                                    )
-                                }
-
-                                val displayNotes = if (item.notes.contains("\n\n📞 ")) item.notes.substringAfterLast("\n\n📞 ") else { if (item.status == "New" || item.status == "Pending" || item.status.isEmpty()) "" else item.notes }
-                                if (displayNotes.trim().isNotEmpty()) {
-                                    Spacer(modifier = Modifier.height(6.dp))
-                                    Text(displayNotes.trim(), fontSize = 13.sp, color = TextSecondary.copy(alpha = 0.9f), maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-                                }
-                                
-                                Spacer(modifier = Modifier.height(14.dp))
-
-                                val maskedPhone = getMaskedLeadPhone(item)
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    // Subtle Phone Text on Left
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                    ) {
-                                        androidx.compose.material3.Icon(
-                                            imageVector = Icons.Default.Phone,
-                                            contentDescription = "Phone",
-                                            modifier = Modifier.size(14.dp),
-                                            tint = TextSecondary
-                                        )
-                                        Text(maskedPhone, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = TextSecondary)
-                                    }
-                                    
-                                    // Quick Actions on Right
-                                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                        // Call Action
-                                        IconButton(
-                                            onClick = {
-                                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                                                val cleanNum = getCleanLeadPhone(item)
-                                                if (cleanNum.isNotEmpty()) {
-                                                    val dialNum = getFormattedLeadPhone(item)
-                                                    clipboardManager.setText(AnnotatedString(cleanNum))
-                                                    Toast.makeText(context, "Number Copied to Dialer.", Toast.LENGTH_SHORT).show()
-                                                    selectedLead = item
-                                                    viewModel.setPendingCall(item.id)
-                                                    try {
-                                                        val intent = Intent(Intent.ACTION_DIAL).apply { data = Uri.parse("tel:$dialNum") }
-                                                        context.startActivity(intent)
-                                                    } catch (e: Exception) {}
-                                                    showBottomSheet = true
-                                                }
-                                            },
-                                            modifier = Modifier.size(42.dp).background(ModernViolet, CircleShape)
-                                        ) {
-                                            androidx.compose.material3.Icon(
-                                                imageVector = Icons.Default.Call,
-                                                contentDescription = "Call",
-                                                modifier = Modifier.size(20.dp),
-                                                tint = Color.White
-                                            )
-                                        }
-                                        
-                                        // WhatsApp Quick Action
-                                        IconButton(
-                                            onClick = {
-                                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                                                selectedLead = item
-                                                showWhatsAppSheet = true
-                                            },
-                                            modifier = Modifier.size(42.dp).background(Color(0xFF25D366).copy(alpha = 0.15f), CircleShape)
-                                        ) {
-                                            androidx.compose.material3.Icon(
-                                                painter = androidx.compose.ui.res.painterResource(id = com.nexaleads.app.R.drawable.ic_whatsapp),
-                                                contentDescription = "WhatsApp",
-                                                modifier = Modifier.size(24.dp),
-                                                tint = androidx.compose.ui.graphics.Color.Unspecified
-                                            )
-                                        }
-                                        
-                                        // Edit Action
-                                        IconButton(
-                                            onClick = {
-                                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
-                                                selectedOrderIdForDetails = item.id
-                                            },
-                                            modifier = Modifier.size(42.dp).background(SurfaceLight, CircleShape).border(1.dp, BorderSubtle, CircleShape)
-                                        ) {
-                                            androidx.compose.material3.Icon(
-                                                imageVector = Icons.Default.Edit,
-                                                contentDescription = "Edit",
-                                                modifier = Modifier.size(18.dp),
-                                                tint = TextSecondary
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                                leadForQuickActions = item
+                            },
+                            onCallClick = { cleanNum, dialNum ->
+                                clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(cleanNum))
+                                android.widget.Toast.makeText(context, "Number Copied to Dialer.", android.widget.Toast.LENGTH_SHORT).show()
+                                selectedLead = item
+                                viewModel.setPendingCall(item.id)
+                                try {
+                                    val intent = android.content.Intent(android.content.Intent.ACTION_DIAL).apply { data = android.net.Uri.parse("tel:$dialNum") }
+                                    context.startActivity(intent)
+                                } catch (e: Exception) {}
+                                showBottomSheet = true
+                            },
+                            onWhatsAppClick = {
+                                selectedLead = item
+                                showWhatsAppSheet = true
+                            },
+                            onEditClick = {
+                                selectedOrderIdForDetails = item.id
+                            },
+                            onVerifyDeliveryClick = if (item.getPrimaryCategory() == "DISPATCHED") { { selectedDeliveryVerifyLead = item } } else null
+                        )
                                 }
                             }
                         }
                     } else {
                         items(filteredLeads, key = { it.id }) { item ->
-                        val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .combinedClickable(
-                                    onClick = { selectedOrderIdForDetails = item.id },
-                                    onLongClick = {
-                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                                        leadForQuickActions = item
-                                    }
-                                )
-                                .shadow(elevation = 12.dp, shape = RoundedCornerShape(16.dp), spotColor = ModernViolet.copy(alpha = 0.08f), ambientColor = Color.Transparent)
-                                .animateContentSize(animationSpec = tween(300)),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(containerColor = SurfaceLight),
-                            border = androidx.compose.foundation.BorderStroke(0.5.dp, BorderSubtle.copy(alpha=0.3f))
-                        ) {
-                            Column(modifier = Modifier.padding(14.dp)) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                        val rawName = getDisplayLeadName(item)
-                                        val displayName = rawName.split(" ").joinToString(" ") { it.replaceFirstChar { char -> if (char.isLowerCase()) char.titlecase(Locale.ROOT) else char.toString() } }
-                                        Text(displayName, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = TextPrimary, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-                                        if (item.isSuspiciousShortCall) {
-                                            Text("⚠️", fontSize = 13.sp)
-                                        }
-                                    }
-                                    val statusColor = statusColors[item.status] ?: ModernViolet
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                        modifier = Modifier.clip(RoundedCornerShape(20.dp)).background(statusColor.copy(alpha = 0.1f)).padding(horizontal = 8.dp, vertical = 4.dp)
-                                    ) {
-                                        Box(modifier = Modifier.size(6.dp).background(statusColor, CircleShape))
-                                        val statusLabel = indianStatusLabels[item.status] ?: item.status
-                                        val fullStatusLabel = if (!item.subStatus.isNullOrEmpty()) "$statusLabel • ${item.subStatus}" else statusLabel
-                                        Text(fullStatusLabel, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = statusColor)
-                                    }
-                                }
-                                Spacer(modifier = Modifier.height(6.dp))
+                        PremiumLeadCard(
+                            item = item,
+                            statusColors = statusColors,
+                            indianStatusLabels = indianStatusLabels,
+                            onClick = { selectedOrderIdForDetails = item.id },
+                            onLongClick = {
                                 
-                                // Dynamic Meta Row
-                                val metaParts = mutableListOf<String>()
-                                if (item.product.isNotEmpty()) {
-                                    val products = item.product.split(",").map { it.trim() }
-                                    if (products.size > 1) {
-                                        metaParts.add("📦 ${products.first()} (+${products.size - 1})")
-                                    } else {
-                                        metaParts.add("📦 ${products.first()}")
-                                    }
-                                }
-                                if (item.orderAmount.isNotEmpty()) metaParts.add("₹${item.orderAmount}")
-                                if (item.city.isNotEmpty()) metaParts.add("📍 ${item.city}")
-                                if (item.source.isNotEmpty()) metaParts.add(item.source.uppercase(Locale.ROOT))
-                                val labelText = if (item.label.isEmpty()) "General" else item.label
-                                metaParts.add(labelText.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString() })
-                                
-                                if (!item.followUpDate.isNullOrEmpty()) {
-                                    val formattedDate = try {
-                                        val inputFormat = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
-                                        val outputFormat = java.text.SimpleDateFormat("dd MMM", java.util.Locale.US)
-                                        val date = inputFormat.parse(item.followUpDate)
-                                        if (date != null) "📅 ${outputFormat.format(date)}" else "📅 ${item.followUpDate}"
-                                    } catch (e: Exception) {
-                                        "📅 ${item.followUpDate}"
-                                    }
-                                    val dateWithSlot = if (!item.followUpTimeSlot.isNullOrEmpty()) "$formattedDate (${item.followUpTimeSlot})" else formattedDate
-                                    metaParts.add(dateWithSlot)
-                                }
-                                
-                                if (metaParts.isNotEmpty()) {
-                                    Text(
-                                        text = metaParts.joinToString(" • "),
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        color = TextSecondary,
-                                        maxLines = 1,
-                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                                    )
-                                }
-
-                                val displayNotes = if (item.notes.contains("\n\n📞 ")) item.notes.substringAfterLast("\n\n📞 ") else { if (item.status == "New" || item.status == "Pending" || item.status.isEmpty()) "" else item.notes }
-                                if (displayNotes.trim().isNotEmpty()) {
-                                    Spacer(modifier = Modifier.height(6.dp))
-                                    Text(displayNotes.trim(), fontSize = 13.sp, color = TextSecondary.copy(alpha = 0.9f), maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-                                }
-                                
-                                Spacer(modifier = Modifier.height(14.dp))
-
-                                val maskedPhone = getMaskedLeadPhone(item)
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    // Subtle Phone Text on Left
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                    ) {
-                                        androidx.compose.material3.Icon(
-                                            imageVector = Icons.Default.Phone,
-                                            contentDescription = "Phone",
-                                            modifier = Modifier.size(14.dp),
-                                            tint = TextSecondary
-                                        )
-                                        Text(maskedPhone, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = TextSecondary)
-                                    }
-                                    
-                                    // Quick Actions on Right
-                                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                        // Call Action
-                                        IconButton(
-                                            onClick = {
-                                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                                                val cleanNum = getCleanLeadPhone(item)
-                                                if (cleanNum.isNotEmpty()) {
-                                                    val dialNum = getFormattedLeadPhone(item)
-                                                    clipboardManager.setText(AnnotatedString(cleanNum))
-                                                    Toast.makeText(context, "Number Copied to Dialer.", Toast.LENGTH_SHORT).show()
-                                                    selectedLead = item
-                                                    viewModel.setPendingCall(item.id)
-                                                    try {
-                                                        val intent = Intent(Intent.ACTION_DIAL).apply { data = Uri.parse("tel:$dialNum") }
-                                                        context.startActivity(intent)
-                                                    } catch (e: Exception) {}
-                                                    showBottomSheet = true
-                                                }
-                                            },
-                                            modifier = Modifier.size(42.dp).background(ModernViolet, CircleShape)
-                                        ) {
-                                            androidx.compose.material3.Icon(
-                                                imageVector = Icons.Default.Call,
-                                                contentDescription = "Call",
-                                                modifier = Modifier.size(20.dp),
-                                                tint = Color.White
-                                            )
-                                        }
-                                        
-                                        // WhatsApp Quick Action
-                                        IconButton(
-                                            onClick = {
-                                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                                                selectedLead = item
-                                                showWhatsAppSheet = true
-                                            },
-                                            modifier = Modifier.size(42.dp).background(Color(0xFF25D366).copy(alpha = 0.15f), CircleShape)
-                                        ) {
-                                            androidx.compose.material3.Icon(
-                                                painter = androidx.compose.ui.res.painterResource(id = com.nexaleads.app.R.drawable.ic_whatsapp),
-                                                contentDescription = "WhatsApp",
-                                                modifier = Modifier.size(24.dp),
-                                                tint = androidx.compose.ui.graphics.Color.Unspecified
-                                            )
-                                        }
-                                        
-                                        // Edit Action
-                                        IconButton(
-                                            onClick = {
-                                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
-                                                selectedOrderIdForDetails = item.id
-                                            },
-                                            modifier = Modifier.size(42.dp).background(SurfaceLight, CircleShape).border(1.dp, BorderSubtle, CircleShape)
-                                        ) {
-                                            androidx.compose.material3.Icon(
-                                                imageVector = Icons.Default.Edit,
-                                                contentDescription = "Edit",
-                                                modifier = Modifier.size(18.dp),
-                                                tint = TextSecondary
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                                leadForQuickActions = item
+                            },
+                            onCallClick = { cleanNum, dialNum ->
+                                clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(cleanNum))
+                                android.widget.Toast.makeText(context, "Number Copied to Dialer.", android.widget.Toast.LENGTH_SHORT).show()
+                                selectedLead = item
+                                viewModel.setPendingCall(item.id)
+                                try {
+                                    val intent = android.content.Intent(android.content.Intent.ACTION_DIAL).apply { data = android.net.Uri.parse("tel:$dialNum") }
+                                    context.startActivity(intent)
+                                } catch (e: Exception) {}
+                                showBottomSheet = true
+                            },
+                            onWhatsAppClick = {
+                                selectedLead = item
+                                showWhatsAppSheet = true
+                            },
+                            onEditClick = {
+                                selectedOrderIdForDetails = item.id
+                            },
+                            onVerifyDeliveryClick = if (item.getPrimaryCategory() == "DISPATCHED") { { selectedDeliveryVerifyLead = item } } else null
+                        )
                         }
                     }
                 }
             }
         }
 
+        if (selectedDeliveryVerifyLead != null) {
+            DeliveryVerificationSheet(
+                lead = selectedDeliveryVerifyLead!!,
+                onDismiss = { selectedDeliveryVerifyLead = null },
+                onVerifyOptionSelected = { status, reasonOrDate ->
+                    var updatedLead = selectedDeliveryVerifyLead!!.copy(status = status)
+                    if (status == Constants.STATUS_FOLLOW_UP && reasonOrDate != null) {
+                        updatedLead = updatedLead.copy(
+                            followUpDate = reasonOrDate,
+                            status = Constants.STATUS_DISPATCHED
+                        )
+                    }
+                    
+                    if (status == Constants.STATUS_DELIVERED) {
+                         val isoFormat = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US).apply { timeZone = java.util.TimeZone.getTimeZone("Asia/Kolkata") }
+                         updatedLead = updatedLead.copy(convertedAt = isoFormat.format(java.util.Date()))
+                    }
+                    
+                    viewModel.updateLead(updatedLead)
+                    selectedDeliveryVerifyLead = null
+                }
+            )
+        }
+        
         if (showMediaPromptForLead != null) {
             AlertDialog(
                 onDismissRequest = { showMediaPromptForLead = null },
@@ -970,7 +706,7 @@ fun TodayCallingListScreen(
         ModalBottomSheet(
             onDismissRequest = { leadForQuickActions = null },
             sheetState = quickActionsSheetState,
-            containerColor = SurfaceLight,
+            containerColor = androidx.compose.ui.graphics.Color.White,
             dragHandle = { BottomSheetDefaults.DragHandle(color = BorderSubtle) }
         ) {
             Column(
@@ -1123,7 +859,7 @@ fun TodayCallingListScreen(
                                 Box(
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(12.dp))
-                                        .background(if (isSel) ModernViolet.copy(alpha = 0.1f) else SurfaceLight)
+                                        .background(if (isSel) ModernViolet.copy(alpha = 0.1f) else androidx.compose.ui.graphics.Color.White)
                                         .border(1.dp, if (isSel) ModernViolet else BorderSubtle, RoundedCornerShape(12.dp))
                                         .clickable { selectedReason = r }
                                         .padding(horizontal = 14.dp, vertical = 10.dp)
@@ -1274,7 +1010,7 @@ fun TodayCallingListScreen(
                     singleLine = true
                 )
             },
-            containerColor = SurfaceLight,
+            containerColor = androidx.compose.ui.graphics.Color.White,
             confirmButton = {
                 Button(
                     onClick = {
@@ -1420,7 +1156,7 @@ private fun QuickActionRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(SurfaceLight)
+            .background(androidx.compose.ui.graphics.Color.White)
             .border(0.5.dp, BorderSubtle.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
             .clickable(onClick = onClick)
             .padding(14.dp),
@@ -1466,3 +1202,253 @@ private fun QuickActionRow(
         )
     }
 }
+
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@Composable
+fun PremiumLeadCard(
+    item: com.nexaleads.app.data.model.Lead,
+    statusColors: Map<String, Color>,
+    indianStatusLabels: Map<String, String>,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    onCallClick: (String, String) -> Unit,
+    onWhatsAppClick: () -> Unit,
+    onEditClick: () -> Unit,
+    onVerifyDeliveryClick: (() -> Unit)? = null
+) {
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            )
+            .shadow(elevation = 16.dp, shape = RoundedCornerShape(24.dp), spotColor = ModernViolet.copy(alpha = 0.15f), ambientColor = Color.Transparent)
+            .animateContentSize(animationSpec = tween(300)),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = androidx.compose.ui.graphics.Color.White),
+        border = androidx.compose.foundation.BorderStroke(0.5.dp, BorderSubtle.copy(alpha=0.3f))
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            // Header Row: Name + Status Badge
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    val rawName = getDisplayLeadName(item)
+                    val displayName = rawName.split(" ").joinToString(" ") { it.replaceFirstChar { char -> if (char.isLowerCase()) char.titlecase(Locale.ROOT) else char.toString() } }
+                    Text(displayName, fontWeight = FontWeight.Bold, fontSize = 17.sp, color = TextPrimary, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                    if (item.isSuspiciousShortCall) {
+                        Text("⚠️", fontSize = 13.sp)
+                    }
+                    if (item.rtoCount > 0) {
+                        Box(modifier = Modifier.clip(RoundedCornerShape(4.dp)).background(Color(0xFFFEF2F2)).border(0.5.dp, Color(0xFFFCA5A5), RoundedCornerShape(4.dp)).padding(horizontal = 6.dp, vertical = 2.dp)) {
+                            Text("⚠️ RTO Attempt: ${item.rtoCount}", fontSize = 9.sp, color = Color(0xFFEF4444), fontWeight = FontWeight.Black)
+                        }
+                    }
+                }
+                val statusColor = statusColors[item.status] ?: ModernViolet
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(statusColor.copy(alpha = 0.08f)).border(0.5.dp, statusColor.copy(alpha = 0.2f), RoundedCornerShape(8.dp)).padding(horizontal = 8.dp, vertical = 6.dp)
+                ) {
+                    Box(modifier = Modifier.size(6.dp).background(statusColor, CircleShape))
+                    val statusLabel = indianStatusLabels[item.status] ?: item.status
+                    val fullStatusLabel = if (!item.subStatus.isNullOrEmpty()) "$statusLabel • ${item.subStatus}" else statusLabel
+                    Text(fullStatusLabel.uppercase(Locale.ROOT), fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 0.5.sp, color = statusColor)
+                }
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            // Dynamic Meta Row - Pill styled
+            val metaParts = mutableListOf<String>()
+            if (item.product.isNotEmpty()) {
+                val products = item.product.split(",").map { it.trim() }
+                if (products.size > 1) {
+                    metaParts.add("📦 ${products.first()} (+${products.size - 1})")
+                } else {
+                    metaParts.add("📦 ${products.first()}")
+                }
+            }
+            if (item.orderAmount.isNotEmpty()) metaParts.add("₹${item.orderAmount}")
+            if (item.city.isNotEmpty()) metaParts.add("📍 ${item.city}")
+            if (item.source.isNotEmpty()) metaParts.add(item.source.uppercase(Locale.ROOT))
+            val labelText = if (item.label.isEmpty()) "General" else item.label
+            metaParts.add(labelText.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString() })
+            
+            if (!item.followUpDate.isNullOrEmpty()) {
+                val formattedDate = try {
+                    val inputFormat = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+                    val outputFormat = java.text.SimpleDateFormat("dd MMM", java.util.Locale.US)
+                    val date = inputFormat.parse(item.followUpDate)
+                    if (date != null) "📅 ${outputFormat.format(date)}" else "📅 ${item.followUpDate}"
+                } catch (e: Exception) {
+                    "📅 ${item.followUpDate}"
+                }
+                val dateWithSlot = if (!item.followUpTimeSlot.isNullOrEmpty()) "$formattedDate (${item.followUpTimeSlot})" else formattedDate
+                metaParts.add(dateWithSlot)
+            }
+            
+            if (metaParts.isNotEmpty()) {
+                androidx.compose.foundation.layout.FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    metaParts.forEach { part ->
+                        Box(modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.05f)).padding(horizontal = 6.dp, vertical = 4.dp)) {
+                            Text(text = part, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = TextSecondary)
+                        }
+                    }
+                }
+            }
+
+            val displayNotes = if (item.notes.contains("\n\n📞 ")) item.notes.substringAfterLast("\n\n📞 ") else { if (item.status == "New" || item.status == "Pending" || item.status.isEmpty()) "" else item.notes }
+            if (displayNotes.trim().isNotEmpty()) {
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(displayNotes.trim(), fontSize = 13.sp, color = TextSecondary.copy(alpha = 0.9f), maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+
+            val maskedPhone = getMaskedLeadPhone(item)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Phone
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    androidx.compose.material3.Icon(
+                        imageVector = Icons.Default.Phone,
+                        contentDescription = "Phone",
+                        modifier = Modifier.size(16.dp),
+                        tint = TextSecondary
+                    )
+                    Text(maskedPhone, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = TextSecondary, letterSpacing = 0.5.sp)
+                }
+                
+                // Quick Actions (July 2026 - Floating "Smart" Actions)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (onVerifyDeliveryClick == null) {
+                        // Edit Action (Glass Surface)
+                        Box(
+                            modifier = Modifier
+                                .size(42.dp)
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.04f))
+                                .clickable {
+                                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                    onEditClick()
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            androidx.compose.material3.Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Edit",
+                                modifier = Modifier.size(18.dp),
+                                tint = TextSecondary
+                            )
+                        }
+                    } else {
+                        // Verify Action (Luxury Success Gradient)
+                        Surface(
+                            onClick = {
+                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                onVerifyDeliveryClick()
+                            },
+                            shape = RoundedCornerShape(14.dp),
+                            color = Color.Transparent,
+                            modifier = Modifier
+                                .height(42.dp)
+                                .background(
+                                    brush = androidx.compose.ui.graphics.Brush.linearGradient(
+                                        colors = listOf(Color(0xFF10B981), Color(0xFF059669))
+                                    ),
+                                    shape = RoundedCornerShape(14.dp)
+                                )
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.padding(horizontal = 16.dp)
+                            ) {
+                                androidx.compose.material3.Icon(
+                                    imageVector = Icons.Default.Verified,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                    tint = CleanWhite
+                                )
+                                Text("VERIFY", color = CleanWhite, fontWeight = FontWeight.Black, fontSize = 12.sp, letterSpacing = 1.sp)
+                            }
+                        }
+                    }
+
+                    // WhatsApp Action (Premium Logo with Glow)
+                    Box(
+                        modifier = Modifier
+                            .size(42.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(Color(0xFF25D366).copy(alpha = 0.08f))
+                            .clickable {
+                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                onWhatsAppClick()
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        androidx.compose.material3.Icon(
+                            painter = androidx.compose.ui.res.painterResource(id = com.nexaleads.app.R.drawable.ic_whatsapp),
+                            contentDescription = "WhatsApp",
+                            modifier = Modifier.size(22.dp),
+                            tint = androidx.compose.ui.graphics.Color.Unspecified
+                        )
+                    }
+
+                    // Call Action (Silicon Valley "Primary" Action)
+                    Box(
+                        modifier = Modifier
+                            .size(46.dp)
+                            .shadow(
+                                elevation = 12.dp,
+                                shape = RoundedCornerShape(16.dp),
+                                spotColor = ModernViolet.copy(alpha = 0.3f)
+                            )
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(
+                                brush = androidx.compose.ui.graphics.Brush.linearGradient(
+                                    colors = listOf(ModernViolet, ModernVioletDark)
+                                )
+                            )
+                            .clickable {
+                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                val cleanNum = getCleanLeadPhone(item)
+                                if (cleanNum.isNotEmpty()) {
+                                    val dialNum = getFormattedLeadPhone(item)
+                                    onCallClick(cleanNum, dialNum)
+                                }
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        androidx.compose.material3.Icon(
+                            imageVector = Icons.Default.Call,
+                            contentDescription = "Call",
+                            modifier = Modifier.size(22.dp),
+                            tint = Color.White
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
