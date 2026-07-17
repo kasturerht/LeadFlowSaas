@@ -12,6 +12,11 @@ export default function Products() {
   const [editingId, setEditingId] = useState(null);
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
+  const [mrp, setMrp] = useState('');
+  const [offerPrice, setOfferPrice] = useState('');
+  const [bottomPrice, setBottomPrice] = useState('');
+  const [shippingFee, setShippingFee] = useState(50);
+  const [consumptionDays, setConsumptionDays] = useState(30);
   const [description, setDescription] = useState('');
   const [emojiIcon, setEmojiIcon] = useState('📦');
   const [sortOrder, setSortOrder] = useState('');
@@ -91,6 +96,11 @@ export default function Products() {
     setEditingId(null);
     setName('');
     setPrice('');
+    setMrp('');
+    setOfferPrice('');
+    setBottomPrice('');
+    setShippingFee(50);
+    setConsumptionDays(30);
     setCategoryIds([]);
     setFormat('Other');
     setSizeUnit('');
@@ -105,7 +115,11 @@ export default function Products() {
   const openEdit = (p) => {
     setEditingId(p.id);
     setName(p.name);
-    setPrice(p.price);
+    setMrp(p.mrp || p.price || '');
+    setOfferPrice(p.offerPrice || p.price || '');
+    setBottomPrice(p.bottomPrice || p.price || '');
+    setShippingFee(p.shippingFee ?? 50);
+    setConsumptionDays(p.consumptionDays ?? 30);
     setCategoryIds(p.categoryIds || (p.categoryId ? [p.categoryId] : []));
     setFormat(p.format || 'Other');
     setSizeUnit(p.sizeUnit || '');
@@ -119,7 +133,11 @@ export default function Products() {
 
   const handleSave = async (e) => {
     e.preventDefault();
-    if (!name || price === '') return;
+    if (!name || offerPrice === '' || bottomPrice === '') return;
+    if (Number(bottomPrice) > Number(offerPrice)) {
+      alert("Bottom Price cannot be greater than Offer Price.");
+      return;
+    }
     if (categoryIds.length === 0) {
       alert("Please select at least one category.");
       return;
@@ -142,7 +160,12 @@ export default function Products() {
     
     const prodData = {
       name,
-      price: Number(price),
+      price: Number(offerPrice), // Legacy fallback
+      mrp: Number(mrp || offerPrice),
+      offerPrice: Number(offerPrice),
+      bottomPrice: Number(bottomPrice),
+      shippingFee: Number(shippingFee),
+      consumptionDays: Number(consumptionDays) || 30,
       categoryIds,
       format,
       sizeUnit,
@@ -414,82 +437,116 @@ export default function Products() {
                 : false;
 
               return (
-                <div key={p.id} className={`bento-card fade-in ${p.isActive ? '' : 'disabled'}`}>
-                  <div className="bento-card-header">
-                    <div className="bento-emoji">{p.emojiIcon || '📦'}</div>
-                    <div className="bento-actions">
-                      <button className="action-fab" onClick={() => openEdit(p)} title="Edit">
-                        <Edit2 size={14} />
-                      </button>
-                      <button className={`action-fab ${p.isActive ? 'danger' : ''}`} onClick={() => toggleStatus(p)} title={p.isActive ? "Disable" : "Enable"}>
-                        {p.isActive ? <Archive size={14} /> : <ArchiveRestore size={14} />}
-                      </button>
+                <div key={p.id} className={`bento-card fade-in ${p.isActive ? '' : 'disabled'}`} style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '20px' }}>
+                  
+                  {/* TOP ROW: Emoji + Title + Badges + Actions inline */}
+                  <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start', marginBottom: '16px' }}>
+                    <div className="bento-emoji" style={{ height: '56px', width: '56px', fontSize: '28px', flexShrink: 0, borderRadius: '14px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {p.emojiIcon || '📦'}
+                    </div>
+                    
+                    <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div style={{ fontSize: '17px', fontWeight: 700, color: '#f8fafc', letterSpacing: '-0.3px', lineHeight: 1.2 }}>
+                          {p.name}
+                        </div>
+                        <div className="bento-actions" style={{ display: 'flex', gap: '6px', marginLeft: '8px' }}>
+                          <button className="action-fab" onClick={() => openEdit(p)} title="Edit"><Edit2 size={13} /></button>
+                          <button className={`action-fab ${p.isActive ? 'danger' : ''}`} onClick={() => toggleStatus(p)}>
+                            {p.isActive ? <Archive size={13} /> : <ArchiveRestore size={13} />}
+                          </button>
+                        </div>
+                      </div>
+                      
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '11px', color: p.isActive ? '#10b981' : '#ef4444', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: p.isActive ? '#10b981' : '#ef4444' }}></span>
+                          {p.isActive ? 'Active' : 'Disabled'}
+                        </span>
+                        <span style={{ fontSize: '11px', color: '#64748b' }}>•</span>
+                        <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 500 }}>SKU #{p.sortOrder || '-'}</span>
+                        {hasDeactivatedComponent && (
+                          <span style={{ padding: '2px 6px', background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', borderRadius: '4px', fontSize: '9px', fontWeight: 600 }}>⚠️ Issue</span>
+                        )}
+                      </div>
                     </div>
                   </div>
 
-                  <div className="bento-title">
-                    {p.name}
-                    {hasDeactivatedComponent && (
-                      <span className="badge badge-danger" style={{ padding: '2px 6px', fontSize: '9px', marginLeft: '6px', verticalAlign: 'middle' }}>
-                        ⚠️ Has Deactivated Item
-                      </span>
+                  {/* Category and Tags Row */}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '16px' }}>
+                    {p.format && p.format !== 'Other' && (
+                      <span style={{ fontSize: '10px', fontWeight: 600, color: '#cbd5e1', background: 'rgba(255,255,255,0.06)', padding: '4px 10px', borderRadius: '20px' }}>{p.format}</span>
                     )}
-                  </div>
-                  
-                  <div className="bento-meta">
-                    {p.format && p.format !== 'Other' && <span>{p.format}</span>}
-                    {p.format && p.format !== 'Other' && p.sizeUnit && <span>•</span>}
-                    {p.sizeUnit && <span>{p.sizeUnit}</span>}
-                  </div>
-
-                  <div className="cyber-pills">
+                    {p.sizeUnit && (
+                      <span style={{ fontSize: '10px', fontWeight: 600, color: '#cbd5e1', background: 'rgba(255,255,255,0.06)', padding: '4px 10px', borderRadius: '20px' }}>{p.sizeUnit}</span>
+                    )}
                     {p.categoryIds && p.categoryIds.map(catId => {
                       const c = categories.find(cat => cat.id === catId);
                       if (!c) return null;
                       return (
-                        <span key={c.id} className="cyber-pill" style={{ background: `${c.color}15`, color: c.color, border: `1px solid ${c.color}30` }}>
+                        <span key={c.id} style={{ fontSize: '10px', fontWeight: 600, background: `${c.color}15`, color: c.color, border: `1px solid ${c.color}30`, padding: '4px 10px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                           {c.icon} {c.name}
                         </span>
                       );
                     })}
-                    {/* Fallback for legacy data */}
                     {!p.categoryIds && p.categoryId && categories.find(c => c.id === p.categoryId) && (
-                      <span className="cyber-pill" style={{ background: `${categories.find(c => c.id === p.categoryId).color}15`, color: categories.find(c => c.id === p.categoryId).color, border: `1px solid ${categories.find(c => c.id === p.categoryId).color}30` }}>
+                      <span style={{ fontSize: '10px', fontWeight: 600, background: `${categories.find(c => c.id === p.categoryId).color}15`, color: categories.find(c => c.id === p.categoryId).color, border: `1px solid ${categories.find(c => c.id === p.categoryId).color}30`, padding: '4px 10px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                         {categories.find(c => c.id === p.categoryId).icon} {categories.find(c => c.id === p.categoryId).name}
                       </span>
                     )}
                     {isCombo && (
-                      <span className="cyber-pill" style={{ background: 'rgba(129, 140, 248, 0.15)', color: '#818cf8', border: '1px solid rgba(129, 140, 248, 0.25)' }}>
+                      <span style={{ fontSize: '10px', fontWeight: 600, background: 'rgba(129, 140, 248, 0.15)', color: '#818cf8', border: '1px solid rgba(129, 140, 248, 0.25)', padding: '4px 10px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                         🎁 Combo Bundle
                       </span>
                     )}
                   </div>
 
-                  {p.description && <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '16px', lineHeight: 1.4 }}>{p.description}</div>}
+                  {p.description && <div style={{ fontSize: '12px', color: '#94a3b8', lineHeight: 1.5, marginBottom: '16px' }}>{p.description}</div>}
 
                   {isCombo && p.bundledProducts && p.bundledProducts.length > 0 && (
-                    <div className="combo-list">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '16px', background: 'rgba(0,0,0,0.1)', padding: '8px 12px', borderRadius: '8px', border: '1px dashed rgba(255,255,255,0.1)' }}>
+                      <span style={{ fontSize: '10px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Includes</span>
                       {p.bundledProducts.map((item, idx) => {
                         const pr = products.find(prod => prod.id === item.productId);
                         if (!pr) return null;
                         return (
-                          <div key={idx} className="combo-item">
-                            <span>{item.quantity}x {pr.emojiIcon} {pr.name}</span>
+                          <div key={idx} style={{ fontSize: '12px', color: '#cbd5e1' }}>
+                            <span style={{ color: '#818cf8', fontWeight: 600, marginRight: '6px' }}>{item.quantity}x</span> {pr.emojiIcon} {pr.name}
                           </div>
                         );
                       })}
                     </div>
                   )}
 
-                  <div className="bento-price-section">
-                    <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600, letterSpacing: '0.5px' }}>
-                      {p.isActive ? 'ACTIVE SKU' : 'DISABLED'} • #{p.sortOrder || '-'}
+                  <div style={{ flexGrow: 1 }}></div>
+
+                  {/* Footer (Price & Metrics) */}
+                  <div style={{ background: 'rgba(0,0,0,0.25)', borderRadius: '14px', padding: '16px', border: '1px solid rgba(255,255,255,0.03)', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ fontSize: '10px', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Offer Price</span>
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                          <span style={{ fontSize: '22px', fontWeight: 800, color: '#fff', letterSpacing: '-0.5px' }}>₹{p.offerPrice || p.price}</span>
+                          <span style={{ fontSize: '13px', fontWeight: 500, color: '#64748b', textDecoration: 'line-through' }}>₹{p.mrp || Math.round(p.price * 1.2)}</span>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(245, 158, 11, 0.1)', padding: '6px 10px', borderRadius: '8px', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
+                        <span style={{ fontSize: '13px' }}>⏱️</span>
+                        <span style={{ fontSize: '11px', color: '#fcd34d', fontWeight: 700 }}>{p.consumptionDays || 30} Days</span>
+                      </div>
                     </div>
-                    <div className="bento-price">
-                      {originalTotal > 0 && originalTotal !== p.price && (
-                        <span className="bento-price-old">₹{originalTotal}</span>
-                      )}
-                      <span>₹{p.price}</span>
+                    
+                    <div style={{ height: '1px', background: 'rgba(255,255,255,0.06)' }}></div>
+                    
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 500 }}>Min Limit:</span>
+                        <span style={{ fontSize: '13px', color: '#f472b6', fontWeight: 700 }}>₹{p.bottomPrice || p.price}</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 500 }}>Shipping:</span>
+                        <span style={{ fontSize: '13px', color: '#34d399', fontWeight: 700 }}>{(p.shippingFee ?? 50) === 0 ? 'Free' : `+₹${p.shippingFee ?? 50}`}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -705,37 +762,39 @@ export default function Products() {
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <div style={{ flex: 1 }}>
-                  <label className="form-label" style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>Price (₹)</label>
-                  <input 
-                    type="number" 
-                    className="input-field" 
-                    style={{ padding: '10px 12px', fontSize: '13px', borderRadius: '6px' }}
-                    value={price} 
-                    onChange={e => setPrice(e.target.value)} 
-                    required 
-                  />
-                  {productType === 'combo' && totalComboValue > 0 && price !== '' && (
-                    <div style={{ fontSize: '11px', color: savingsAmount >= 0 ? 'var(--secondary)' : 'var(--danger)', marginTop: '4px', fontWeight: 500 }}>
-                      {savingsAmount >= 0 
-                        ? `🎉 Saves ₹${savingsAmount} (${savingsPercent}%)`
-                        : `⚠️ Higher by ₹${Math.abs(savingsAmount)}`
-                      }
-                    </div>
-                  )}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label className="form-label" style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>MRP (₹)</label>
+                  <input type="number" className="input-field" style={{ padding: '10px 12px', fontSize: '13px', borderRadius: '6px' }} value={mrp} onChange={e => setMrp(e.target.value)} />
                 </div>
-                <div style={{ flex: 1 }}>
-                  <label className="form-label" style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>Sort Order</label>
-                  <input 
-                    type="number" 
-                    className="input-field" 
-                    style={{ padding: '10px 12px', fontSize: '13px', borderRadius: '6px' }}
-                    value={sortOrder} 
-                    onChange={e => setSortOrder(e.target.value)} 
-                    required 
-                  />
+                <div>
+                  <label className="form-label" style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>Offer Price (₹)</label>
+                  <input type="number" className="input-field" style={{ padding: '10px 12px', fontSize: '13px', borderRadius: '6px' }} value={offerPrice} onChange={e => setOfferPrice(e.target.value)} required />
                 </div>
+                <div>
+                  <label className="form-label" style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>Bottom Price (₹)</label>
+                  <input type="number" className="input-field" style={{ padding: '10px 12px', fontSize: '13px', borderRadius: '6px' }} value={bottomPrice} onChange={e => setBottomPrice(e.target.value)} required />
+                </div>
+                <div>
+                  <label className="form-label" style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>Shipping Fee (₹)</label>
+                  <input type="number" className="input-field" style={{ padding: '10px 12px', fontSize: '13px', borderRadius: '6px' }} value={shippingFee} onChange={e => setShippingFee(e.target.value)} required />
+                </div>
+                <div>
+                  <label className="form-label" style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>Consumption Days</label>
+                  <input type="number" className="input-field" style={{ padding: '10px 12px', fontSize: '13px', borderRadius: '6px' }} value={consumptionDays} onChange={e => setConsumptionDays(e.target.value)} placeholder="e.g. 30" required />
+                </div>
+              </div>
+
+              <div>
+                <label className="form-label" style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>Sort Order</label>
+                <input 
+                  type="number" 
+                  className="input-field" 
+                  style={{ padding: '10px 12px', fontSize: '13px', borderRadius: '6px', width: '100%' }}
+                  value={sortOrder} 
+                  onChange={e => setSortOrder(e.target.value)} 
+                  required 
+                />
               </div>
 
               <div style={{ position: 'relative' }}>

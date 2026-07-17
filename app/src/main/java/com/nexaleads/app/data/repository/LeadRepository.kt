@@ -12,7 +12,6 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 import com.nexaleads.app.data.models.Product
-import com.nexaleads.app.data.models.ComboItem
 import com.nexaleads.app.data.models.Category
 
 class LeadRepository @Inject constructor(
@@ -57,7 +56,11 @@ class LeadRepository @Inject constructor(
                             dispatchStatus = doc.getString("dispatchStatus") ?: "",
                             cancellationReason = doc.getString("cancellationReason") ?: "",
                             cancellationNotes = doc.getString("cancellationNotes") ?: "",
-                            cancellationRequestedAt = doc.getString("cancellationRequestedAt") ?: ""
+                            cancellationRequestedAt = doc.getString("cancellationRequestedAt") ?: "",
+                            deliveredAt = doc.getString("deliveredAt"),
+                            exhaustionDate = doc.getString("exhaustionDate"),
+                            parentLeadId = doc.getString("parentLeadId"),
+                            isReorder = doc.getBoolean("isReorder") ?: false
                         )
                     }
                     trySend(leads)
@@ -102,15 +105,27 @@ class LeadRepository @Inject constructor(
                 }
                 if (snapshot != null) {
                     val products = snapshot.documents.mapNotNull { doc ->
+                        val bundledList = (doc.get("bundledProducts") as? List<Map<String, Any>>)?.mapNotNull { item ->
+                            val pId = item["productId"] as? String
+                            val qty = (item["quantity"] as? Number)?.toInt() ?: 1
+                            if (pId != null) com.nexaleads.app.data.models.BundledProduct(pId, qty) else null
+                        } ?: emptyList()
+
                         Product(
                             id = doc.id,
                             name = doc.getString("name") ?: "",
                             price = doc.getDouble("price") ?: 0.0,
+                            mrp = doc.getDouble("mrp") ?: 0.0,
+                            offerPrice = doc.getDouble("offerPrice") ?: 0.0,
+                            bottomPrice = doc.getDouble("bottomPrice") ?: 0.0,
+                            shippingFee = doc.getDouble("shippingFee") ?: 50.0,
                             description = doc.getString("description") ?: "",
                             emojiIcon = doc.getString("emojiIcon") ?: "📦",
                             sortOrder = doc.getLong("sortOrder")?.toInt() ?: 1,
                             isActive = doc.getBoolean("isActive") ?: true,
-                            isCombo = doc.getBoolean("isCombo") ?: false,
+                            type = doc.getString("type") ?: "single",
+                            bundledProducts = bundledList,
+                            consumptionDays = doc.getLong("consumptionDays")?.toInt() ?: 30,
                             categoryIds = doc.get("categoryIds") as? List<String> ?: emptyList()
                         )
                     }
@@ -128,11 +143,11 @@ class LeadRepository @Inject constructor(
                 // 1. Health Supplements & Combos
                 Product(id = "prod_1", name = "Spirulina capsule 60 1 nos", price = 550.0, description = "Health Supplements", emojiIcon = "💊", sortOrder = 1),
                 Product(id = "prod_2", name = "Spirulina tablets 120 1 nos", price = 699.0, description = "Health Supplements", emojiIcon = "💊", sortOrder = 2),
-                Product(id = "prod_3", name = "Spirulina tablets 3 nos combo", price = 1800.0, description = "Health Supplements", emojiIcon = "💊", sortOrder = 3, isCombo = true, comboItems = listOf(ComboItem("prod_2", 3))),
-                Product(id = "prod_4", name = "Spirulina capsule 3 nos combo", price = 1600.0, description = "Health Supplements", emojiIcon = "💊", sortOrder = 4, isCombo = true, comboItems = listOf(ComboItem("prod_1", 3))),
+                Product(id = "prod_3", name = "Spirulina tablets 3 nos combo", price = 1800.0, description = "Health Supplements", emojiIcon = "💊", sortOrder = 3, type = "combo", bundledProducts = listOf(com.nexaleads.app.data.models.BundledProduct("prod_2", 3))),
+                Product(id = "prod_4", name = "Spirulina capsule 3 nos combo", price = 1600.0, description = "Health Supplements", emojiIcon = "💊", sortOrder = 4, type = "combo", bundledProducts = listOf(com.nexaleads.app.data.models.BundledProduct("prod_1", 3))),
                 Product(id = "prod_5", name = "Seabuckthorn 1 nos prepaid", price = 600.0, description = "Health Supplements", emojiIcon = "💊", sortOrder = 5),
-                Product(id = "prod_6", name = "seabuckthorn 2 nos combo", price = 1200.0, description = "Health Supplements", emojiIcon = "💊", sortOrder = 6, isCombo = true, comboItems = listOf(ComboItem("prod_5", 2))),
-                Product(id = "prod_7", name = "3 months combo spirulina seabuckthorn", price = 3600.0, description = "Health Supplements", emojiIcon = "💊", sortOrder = 7, isCombo = true, comboItems = listOf(ComboItem("prod_2", 3), ComboItem("prod_5", 3))),
+                Product(id = "prod_6", name = "seabuckthorn 2 nos combo", price = 1200.0, description = "Health Supplements", emojiIcon = "💊", sortOrder = 6, type = "combo", bundledProducts = listOf(com.nexaleads.app.data.models.BundledProduct("prod_5", 2))),
+                Product(id = "prod_7", name = "3 months combo spirulina seabuckthorn", price = 3600.0, description = "Health Supplements", emojiIcon = "💊", sortOrder = 7, type = "combo", bundledProducts = listOf(com.nexaleads.app.data.models.BundledProduct("prod_2", 3), com.nexaleads.app.data.models.BundledProduct("prod_5", 3))),
                 
                 // 2. Cosmetics & Personal Care
                 Product(id = "prod_8", name = "Hair oil 100 ml", price = 200.0, description = "Personal Care", emojiIcon = "🧴", sortOrder = 8),

@@ -69,7 +69,7 @@ fun PremiumProductSelector(
     }
 
     val totalItems = qtyMap.values.sum()
-    val totalPrice = productsList.sumOf { (qtyMap[it.name] ?: 0) * it.price }
+    val totalPrice = productsList.sumOf { (qtyMap[it.name] ?: 0) * it.getEffectiveOfferPrice() }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -259,7 +259,7 @@ fun ProductCard(
     onIncrement: () -> Unit,
     onDecrement: () -> Unit
 ) {
-    val isCombo = product.isCombo
+    val isCombo = product.isComboProduct()
     
     val bgBrush = if (isCombo) {
         Brush.linearGradient(colors = listOf(Color(0xFFFFFBEB), Color(0xFFFEF3C7)))
@@ -308,17 +308,42 @@ fun ProductCard(
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF1E293B)
             )
-            Text(
-                text = "₹${product.price.toInt()}",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = if (isCombo) Color(0xFFD97706) else Color(0xFF3B82F6),
-                modifier = Modifier.padding(top = 2.dp)
-            )
+            val effOffer = product.getEffectiveOfferPrice()
+            val effMrp = product.getEffectiveMrp()
+            val effBottom = product.getEffectiveBottomPrice()
             
-            if (isCombo && product.comboItems.isNotEmpty()) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 2.dp)) {
+                if (effMrp > effOffer) {
+                    Text(
+                        text = "₹${effMrp.toInt()}",
+                        fontSize = 12.sp,
+                        color = Color(0xFF94A3B8),
+                        textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough,
+                        modifier = Modifier.padding(end = 6.dp)
+                    )
+                }
+                Text(
+                    text = "₹${effOffer.toInt()}",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = if (isCombo) Color(0xFFD97706) else Color(0xFF3B82F6)
+                )
+            }
+            
+            Row(modifier = Modifier.padding(top = 6.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                if (effOffer > effBottom) {
+                    Box(modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(Color(0xFFFEF3C7)).padding(horizontal = 6.dp, vertical = 2.dp)) {
+                        Text("Limit: ₹${effBottom.toInt()}", fontSize = 10.sp, color = Color(0xFFD97706), fontWeight = FontWeight.Bold)
+                    }
+                }
+                Box(modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(Color(0xFFD1FAE5)).padding(horizontal = 6.dp, vertical = 2.dp)) {
+                    Text(if (product.shippingFee <= 0.0) "🚚 Free Delivery" else "🚚 +₹${product.shippingFee.toInt()} Shipping", fontSize = 10.sp, color = Color(0xFF059669), fontWeight = FontWeight.Bold)
+                }
+            }
+            
+            if (isCombo && product.bundledProducts.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(6.dp))
-                val breakdownText = product.comboItems.joinToString(", ") { ci ->
+                val breakdownText = product.bundledProducts.joinToString(", ") { ci ->
                     val baseProd = masterProducts.find { it.id == ci.productId }
                     "${ci.quantity}x ${baseProd?.name ?: "Unknown"}"
                 }

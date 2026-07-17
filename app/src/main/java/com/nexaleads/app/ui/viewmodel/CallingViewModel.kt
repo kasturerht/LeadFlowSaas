@@ -68,7 +68,8 @@ data class DashboardMetrics(
     val rejectedCount: Int = 0,
     val dispatchedCount: Int = 0,
     val rtoCount: Int = 0,
-    val deliveredCount: Int = 0
+    val deliveredCount: Int = 0,
+    val retentionDueCount: Int = 0
 )
 
 @HiltViewModel
@@ -127,6 +128,7 @@ class CallingViewModel @Inject constructor(
         var dispatched = 0
         var rto = 0
         var delivered = 0
+        var retentionDue = 0
 
         // Use Dispatchers.Default for heavy calculations automatically because flow runs map in the context it collects or we should flowOn(Dispatchers.Default)
         leadsList.forEach { lead ->
@@ -141,7 +143,7 @@ class CallingViewModel @Inject constructor(
                         }
                     }
                     "CONVERTED" -> {
-                        if (lead.paymentMethod.equals("Prepaid", ignoreCase = true) && lead.paymentStatus?.contains("UPI Link Sent", ignoreCase = true) == true) {
+                        if (lead.paymentMethod.equals("Prepaid", ignoreCase = true) && lead.paymentStatus?.equals("Link Sent", ignoreCase = true) == true) {
                             pendingPayments++
                         } else {
                             confirmedOrders++
@@ -152,11 +154,23 @@ class CallingViewModel @Inject constructor(
                     "REJECTED" -> rejected++
                     "DISPATCHED" -> dispatched++
                     "RTO" -> rto++
-                    "DELIVERED" -> delivered++
+                    "DELIVERED" -> {
+                        delivered++
+                        if (!lead.exhaustionDate.isNullOrEmpty()) {
+                            // Check if exhaustionDate is within next 7 days or already passed
+                            val isoFull = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).apply { timeZone = TimeZone.getTimeZone("Asia/Kolkata") }
+                            val calTarget = java.util.Calendar.getInstance(TimeZone.getTimeZone("Asia/Kolkata"))
+                            calTarget.add(java.util.Calendar.DAY_OF_YEAR, 7)
+                            val targetDateStr = isoFull.format(calTarget.time)
+                            if (lead.exhaustionDate <= targetDateStr) {
+                                retentionDue++
+                            }
+                        }
+                    }
                 }
             }
         }
-        DashboardMetrics(pendingPayments, dueFollowups, freshLeads, confirmedOrders, inquiries, attempted, rejected, dispatched, rto, delivered)
+        DashboardMetrics(pendingPayments, dueFollowups, freshLeads, confirmedOrders, inquiries, attempted, rejected, dispatched, rto, delivered, retentionDue)
     }.stateIn(viewModelScope, SharingStarted.Eagerly, DashboardMetrics())
 
     private val _telecallerContact = MutableStateFlow<String>("+91 98347 83503")
@@ -420,6 +434,61 @@ class CallingViewModel @Inject constructor(
                 )
                 repository.addInteraction(interaction)
                 onSuccess(logId, lead)
+            } catch (e: Exception) {
+                onError(e.message ?: "Unknown error")
+            }
+        }
+    }
+
+    fun createReorder(
+        parentLead: Lead,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                val isoFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
+                    timeZone = TimeZone.getTimeZone("UTC")
+                }
+                val isoTimestamp = isoFormat.format(Date())
+
+                val newLeadId = "l-" + UUID.randomUUID().toString()
+
+                val newLead = Lead(
+                    id = newLeadId,
+                    name = parentLead.name,
+                    phone = parentLead.phone,
+                    source = parentLead.source,
+                    status = "Order Placed", // Typical for Reorder
+                    notes = "📞 Reorder created from ${parentLead.id}",
+                    assignedTo = parentLead.assignedTo,
+                    address = parentLead.address,
+                    city = parentLead.city,
+                    pincode = parentLead.pincode,
+                    parentLeadId = parentLead.id,
+                    isReorder = true
+                )
+
+                val logId = "i-" + UUID.randomUUID().toString().take(6)
+                val interaction = Interaction(
+                    id = logId,
+                    leadId = newLeadId,
+                    callerId = _currentUserId.value ?: "",
+                    callerName = callerName,
+                    statusBefore = "New",
+                    statusAfter = "Order Placed",
+                    notes = "Reorder created",
+                    timestamp = isoTimestamp,
+                    duration = 0,
+                    isVisitLog = false
+                )
+
+                val errorMsg = repository.createManualLeadBatch(newLead, interaction)
+                if (errorMsg == null) {
+                    onSuccess()
+                } else {
+                    onError(errorMsg)
+                }
             } catch (e: Exception) {
                 onError(e.message ?: "Unknown error")
             }

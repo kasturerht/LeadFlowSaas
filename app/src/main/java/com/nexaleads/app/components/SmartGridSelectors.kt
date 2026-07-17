@@ -948,6 +948,30 @@ fun calculateTotalAmount(selectedString: String, prices: Map<String, Double>): D
     return total
 }
 
+fun calculateTotalBottomPrice(selectedString: String, bottomPrices: Map<String, Double>): Double {
+    if (selectedString.isBlank()) return 0.0
+    val qtyMap = parseProductQuantities(selectedString)
+    var total = 0.0
+    for ((product, qty) in qtyMap) {
+        val price = bottomPrices[product] ?: 0.0
+        total += price * qty
+    }
+    return total
+}
+
+fun calculateTotalShippingFee(selectedString: String, shippingFees: Map<String, Double>): Double {
+    if (selectedString.isBlank()) return 0.0
+    val qtyMap = parseProductQuantities(selectedString)
+    var maxFee = 0.0
+    for ((product, _) in qtyMap) {
+        val fee = shippingFees[product] ?: 0.0
+        if (fee > maxFee) {
+            maxFee = fee
+        }
+    }
+    return maxFee
+}
+
 @Composable
 fun SmartGridInline(
     title: String? = null,

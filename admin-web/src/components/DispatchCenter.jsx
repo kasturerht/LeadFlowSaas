@@ -5,6 +5,7 @@ import { Package, Truck, CheckCircle, XCircle, Search, AlertOctagon, Lock, Unloc
 
 const TABS = [
   { id: 'pending', label: 'Pending Pack', icon: Package, statusQuery: ['Order Placed'] },
+  { id: 'awaiting_payment', label: 'Upcoming (Unpaid)', icon: AlertOctagon, statusQuery: ['Order Placed'] },
   { id: 'dispatched', label: 'Dispatched', icon: Truck, statusQuery: ['Dispatched'] },
   { id: 'delivered', label: 'Delivered', icon: CheckCircle, statusQuery: ['Delivered'] },
   { id: 'returned', label: 'RTO / Returned', icon: XCircle, statusQuery: ['RTO'] },
@@ -36,6 +37,16 @@ export default function DispatchCenter() {
   const [awb, setAwb] = useState('');
   const [awbError, setAwbError] = useState('');
   const [isProcessingAction, setIsProcessingAction] = useState(false);
+  const [products, setProducts] = useState([]);
+
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "products"), (snap) => {
+      const p = [];
+      snap.forEach(doc => p.push({ id: doc.id, ...doc.data() }));
+      setProducts(p);
+    });
+    return () => unsub();
+  }, []);
 
   useEffect(() => {
     setPageCursors([]);
@@ -271,14 +282,41 @@ export default function DispatchCenter() {
           }
 
           if (manageAction === 'delivered') {
+            // Retention Engine: Calculate exhaustion date
+            let shortestConsumptionDays = 30;
+            try {
+              if (data.baseProductsBreakdown) {
+                // E.g. "sku_1:2,sku_2:1"
+                const parts = data.baseProductsBreakdown.split(',').filter(Boolean);
+                let minDays = Infinity;
+                for (const part of parts) {
+                  const [sku, qty] = part.split(':');
+                  const prod = products.find(p => p.id === sku);
+                  const pDays = prod?.consumptionDays ? Number(prod.consumptionDays) : 30;
+                  const q = Number(qty) || 1;
+                  const totalDays = pDays * q;
+                  if (totalDays < minDays) minDays = totalDays;
+                }
+                if (minDays !== Infinity) shortestConsumptionDays = minDays;
+              }
+            } catch (e) {
+              console.error("Error calculating exhaustion date", e);
+            }
+
+            const today = new Date();
+            const deliveredIso = today.toISOString();
+            today.setDate(today.getDate() + shortestConsumptionDays);
+            const exhaustionIso = today.toISOString();
+
             transaction.update(leadRef, {
               status: 'Delivered',
               dispatchStatus: 'Delivered',
-              deliveredAt: new Date().toISOString(),
+              deliveredAt: deliveredIso,
+              exhaustionDate: exhaustionIso,
               dispatchHistory: arrayUnion({
                 action: 'Marked Delivered',
                 by: auth.currentUser?.uid,
-                timestamp: new Date().toISOString()
+                timestamp: deliveredIso
               })
             });
           } else if (manageAction === 'rto') {
@@ -379,7 +417,12 @@ export default function DispatchCenter() {
               </thead>
               <tbody>
                 {leads.filter(l => l.name?.toLowerCase().includes(searchQuery.toLowerCase()) || l.phone?.includes(searchQuery))
-                 .filter(l => !(activeTab === 'pending' && l.paymentMethod === 'Prepaid' && l.paymentStatus !== 'Paid' && l.paymentStatus !== 'Payment Received'))
+                 .filter(l => {
+                   const isPrepaidUnpaid = l.paymentMethod === 'Prepaid' && l.paymentStatus !== 'Paid' && l.paymentStatus !== 'Payment Received';
+                   if (activeTab === 'pending') return !isPrepaidUnpaid;
+                   if (activeTab === 'awaiting_payment') return isPrepaidUnpaid;
+                   return true;
+                 })
                  .map(lead => {
                   const isLocked = !!lead.lockedByUid;
                   const lockedByMe = lead.lockedByUid === auth.currentUser?.uid;
@@ -437,6 +480,9 @@ export default function DispatchCenter() {
                         {!isUrgentCancel && !isLocked && activeTab === 'pending' && (
                           <div style={{ color: 'var(--text-muted)', fontSize: '12px' }}>Waiting to be packed</div>
                         )}
+                        {!isUrgentCancel && !isLocked && activeTab === 'awaiting_payment' && (
+                          <div style={{ color: '#f59e0b', fontSize: '12px', fontWeight: 600 }}>Awaiting Payment Verification</div>
+                        )}
                         {activeTab === 'dispatched' && (
                           <div style={{ fontSize: '12px' }}>
                             <strong>{lead.courierPartner}</strong><br />
@@ -445,6 +491,15 @@ export default function DispatchCenter() {
                         )}
                       </td>
                       <td>
+                        {activeTab === 'awaiting_payment' && (
+                          <button 
+                            className="btn-secondary" 
+                            style={{ padding: '6px 12px', fontSize: '12px', opacity: 0.6, cursor: 'not-allowed' }}
+                            disabled={true}
+                          >
+                            Cannot Pack Yet
+                          </button>
+                        )}
                         {activeTab === 'pending' && (
                           <>
                             {!isLocked && (

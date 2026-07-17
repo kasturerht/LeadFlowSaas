@@ -65,7 +65,9 @@ fun CreateLeadBottomSheet(
 
     val draft by viewModel.leadDraft.collectAsState()
     val productsList by viewModel.products.collectAsState()
-    val pricesMap = remember(productsList) { productsList.associate { it.name to it.price } }
+    val pricesMap = remember(productsList) { productsList.associate { it.name to it.getEffectiveOfferPrice() } }
+    val bottomPricesMap = remember(productsList) { productsList.associate { it.name to it.getEffectiveBottomPrice() } }
+    val shippingFeesMap = remember(productsList) { productsList.associate { it.name to it.shippingFee } }
 
     var callLogs by remember { mutableStateOf<List<CallLogEntry>>(emptyList()) }
     var selectedNumber by remember { mutableStateOf(leadToEdit?.phone ?: draft.selectedNumber) }
@@ -114,6 +116,8 @@ fun CreateLeadBottomSheet(
     val isLocked = (isDispatched && !isRto) || isCancelled
 
     val calculatedTotal = remember(selectedProduct, pricesMap) { calculateTotalAmount(selectedProduct, pricesMap) }
+    val calculatedBottomTotal = remember(selectedProduct, bottomPricesMap) { calculateTotalBottomPrice(selectedProduct, bottomPricesMap) }
+    val calculatedShipping = remember(selectedProduct, shippingFeesMap) { calculateTotalShippingFee(selectedProduct, shippingFeesMap) }
 
     LaunchedEffect(calculatedTotal) {
         val newTotalStr = calculatedTotal.toInt().toString()
@@ -210,9 +214,9 @@ fun CreateLeadBottomSheet(
     var selectedLanguage by remember { mutableStateOf("English") }
 
     LaunchedEffect(paymentMethod, selectedPaymentStatus) {
-        if (selectedPaymentStatus == "⏳ UPI Link Sent" || selectedPaymentStatus.contains("Link", ignoreCase = true)) {
+        if (selectedPaymentStatus == "Link Sent" || selectedPaymentStatus.contains("Link", ignoreCase = true)) {
             includePaymentLink = true
-        } else if (paymentMethod.equals("COD", ignoreCase = true) || selectedPaymentStatus == "✅ Payment Verified") {
+        } else if (paymentMethod.equals("COD", ignoreCase = true) || selectedPaymentStatus == "Paid") {
             includePaymentLink = false
         }
     }
@@ -750,12 +754,21 @@ fun CreateLeadBottomSheet(
                             ) {
                                 if (calculatedTotal > 0) {
                                     Text(
-                                        text = "Total Order Value: ₹${calculatedTotal.toInt()}",
+                                        text = "Total Value: ₹${calculatedTotal.toInt()}",
                                         color = ModernViolet,
                                         fontSize = 14.sp,
                                         fontWeight = FontWeight.Black,
                                         modifier = Modifier.padding(start = 4.dp)
                                     )
+                                    if (calculatedBottomTotal > 0) {
+                                        Text(
+                                            text = "Min Limit: ₹${calculatedBottomTotal.toInt()}",
+                                            color = Color(0xFFD97706),
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.padding(start = 8.dp)
+                                        )
+                                    }
                                 }
                                 
                                 Spacer(modifier = Modifier.weight(1f))
@@ -843,6 +856,27 @@ fun CreateLeadBottomSheet(
                             
                             val originalAmt = originalTotalValue.toIntOrNull() ?: 0
                             val currentAmt = orderAmount.toIntOrNull() ?: 0
+                            
+                            // Shipping details UI
+                            if (calculatedShipping > 0) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(Color(0xFFEFF6FF)).padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("🚚 Shipping Fee (Total): ", fontSize = 12.sp, color = Color(0xFF1E3A8A), fontWeight = FontWeight.SemiBold)
+                                    Text("+₹${calculatedShipping.toInt()}", fontSize = 13.sp, color = Color(0xFF1D4ED8), fontWeight = FontWeight.Bold)
+                                    Spacer(modifier = Modifier.weight(1f))
+                                    Text("Add to final amount", fontSize = 10.sp, color = Color(0xFF3B82F6))
+                                }
+                            } else if (calculatedTotal > 0) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(Color(0xFFECFDF5)).padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("🚚 Free Shipping", fontSize = 13.sp, color = Color(0xFF059669), fontWeight = FontWeight.Bold)
+                                }
+                            }
+
                             if (originalAmt > 0 && currentAmt < originalAmt) {
                                 val saved = originalAmt - currentAmt
                                 val percent = (saved * 100) / originalAmt
@@ -864,8 +898,22 @@ fun CreateLeadBottomSheet(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text(
-                                        text = "⚠️ Amount is ₹$extra higher than product price.",
+                                        text = "⚠️ Amount is ₹$extra higher than standard offer.",
                                         color = StatusWarning,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 12.sp
+                                    )
+                                }
+                            }
+                            
+                            if (currentAmt > 0 && calculatedBottomTotal > 0 && currentAmt < calculatedBottomTotal) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(Color(0xFFFEF2F2)).border(1.dp, Color(0xFFFCA5A5), RoundedCornerShape(8.dp)).padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "🚫 ERROR: Final amount cannot be less than Bottom Price (₹${calculatedBottomTotal.toInt()})",
+                                        color = Color(0xFFDC2626),
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 12.sp
                                     )
@@ -883,7 +931,7 @@ fun CreateLeadBottomSheet(
                             if (paymentMethod.equals("Prepaid", ignoreCase = true)) {
                                 Text("PREPAID PAYMENT VERIFICATION", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = StatusSuccess, letterSpacing = 1.2.sp)
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    listOf("⏳ UPI Link Sent", "✅ Payment Verified").forEach { pStatus ->
+                                    listOf("Link Sent", "Paid").forEach { pStatus ->
                                         val isSelected = selectedPaymentStatus == pStatus
                                         Box(
                                             modifier = Modifier.weight(1f).clip(RoundedCornerShape(100.dp)).background(if (isSelected) StatusSuccess else AccentSurface).border(1.dp, if (isSelected) StatusSuccess else Color.Transparent, RoundedCornerShape(100.dp)).clickable(enabled = !isLocked) { selectedPaymentStatus = if (selectedPaymentStatus == pStatus) "" else pStatus }.padding(horizontal = 8.dp, vertical = 12.dp),
@@ -998,6 +1046,12 @@ fun CreateLeadBottomSheet(
                                 }
                                 if (shippingCity.isEmpty()) {
                                     Toast.makeText(context, "Please enter delivery city", Toast.LENGTH_SHORT).show()
+                                    return@Button
+                                }
+                                
+                                val enteredAmt = orderAmount.toIntOrNull() ?: 0
+                                if (calculatedBottomTotal > 0 && enteredAmt < calculatedBottomTotal) {
+                                    Toast.makeText(context, "Amount cannot be below limit (₹${calculatedBottomTotal.toInt()})", Toast.LENGTH_SHORT).show()
                                     return@Button
                                 }
                                 if (shippingPincode.length != 6 || shippingPincode.any { !it.isDigit() }) {

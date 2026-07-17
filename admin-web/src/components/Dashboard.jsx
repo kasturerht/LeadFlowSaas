@@ -312,6 +312,32 @@ export default function Dashboard() {
     );
   };
 
+  const handleFixOldPaymentStatuses = async () => {
+    if (!window.confirm("Are you sure you want to fix all old Payment Statuses (Emojis)?")) return;
+    try {
+      const leadsSnap = await getDocs(collection(db, 'leads'));
+      let updatedCount = 0;
+      const promises = [];
+      leadsSnap.forEach((docSnap) => {
+        const data = docSnap.data();
+        let newStatus = null;
+        if (data.paymentStatus === "✅ Payment Verified") newStatus = "Paid";
+        else if (data.paymentStatus === "⏳ UPI Link Sent") newStatus = "Link Sent";
+        
+        if (newStatus) {
+          promises.push(updateDoc(doc(db, 'leads', docSnap.id), { paymentStatus: newStatus }));
+          updatedCount++;
+        }
+      });
+      await Promise.all(promises);
+      alert(`Successfully fixed ${updatedCount} old leads!`);
+      fetchStats();
+    } catch (err) {
+      console.error("Error fixing old statuses:", err);
+      alert("Failed to fix old statuses.");
+    }
+  };
+
   return (
     <>
       <div className="page-header">
@@ -319,15 +345,24 @@ export default function Dashboard() {
           <h2 className="page-title">Welcome back, Admin</h2>
           <p className="page-subtitle">Here's what's happening with your leads today.</p>
         </div>
-        <button 
-          onClick={fetchStats} 
-          className="btn-secondary" 
-          disabled={statsLoading}
-          style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', padding: '5px 10px' }}
-        >
-          <RefreshCw size={12} style={{ animation: statsLoading ? 'spin 1s linear infinite' : 'none' }} />
-          {statsLoading ? "Refreshing..." : "Refresh Stats"}
-        </button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button 
+            onClick={handleFixOldPaymentStatuses} 
+            className="btn-secondary"
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', padding: '5px 10px', borderColor: '#ef4444', color: '#ef4444' }}
+          >
+            Fix Emoji Bug
+          </button>
+          <button 
+            onClick={fetchStats} 
+            className="btn-secondary" 
+            disabled={statsLoading}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', padding: '5px 10px' }}
+          >
+            <RefreshCw size={12} style={{ animation: statsLoading ? 'spin 1s linear infinite' : 'none' }} />
+            {statsLoading ? "Refreshing..." : "Refresh Stats"}
+          </button>
+        </div>
       </div>
 
       {/* Injecting CSS animation inline for spin */}

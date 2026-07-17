@@ -299,13 +299,24 @@ fun TodayCallingListScreen(
                 }
             }
             "VISITED" -> nonArchived.filter { it.getPrimaryCategory() == "VISITED" }
-            "CONVERTED" -> nonArchived.filter { it.getPrimaryCategory() == "CONVERTED" && !(it.paymentMethod.equals("Prepaid", ignoreCase = true) && it.paymentStatus?.contains("UPI Link Sent", ignoreCase = true) == true) }
-            "PENDING_PAYMENTS" -> nonArchived.filter { it.getPrimaryCategory() == "CONVERTED" && it.paymentMethod.equals("Prepaid", ignoreCase = true) && it.paymentStatus?.contains("UPI Link Sent", ignoreCase = true) == true }
+            "CONVERTED" -> nonArchived.filter { it.getPrimaryCategory() == "CONVERTED" && !(it.paymentMethod.equals("Prepaid", ignoreCase = true) && it.paymentStatus?.equals("Link Sent", ignoreCase = true) == true) }
+            "PENDING_PAYMENTS" -> nonArchived.filter { it.getPrimaryCategory() == "CONVERTED" && it.paymentMethod.equals("Prepaid", ignoreCase = true) && it.paymentStatus?.equals("Link Sent", ignoreCase = true) == true }
             "REJECTED" -> nonArchived.filter { it.getPrimaryCategory() == "REJECTED" }
             "INQUIRY" -> nonArchived.filter { it.getPrimaryCategory() == "INQUIRY" }
             "RTO" -> nonArchived.filter { it.getPrimaryCategory() == "RTO" }
             "DISPATCHED" -> nonArchived.filter { it.getPrimaryCategory() == "DISPATCHED" }.sortedBy { it.followUpDate }
             "DELIVERED" -> nonArchived.filter { it.getPrimaryCategory() == "DELIVERED" }
+            "RETENTION_DUE" -> {
+                val isoFull = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).apply { timeZone = java.util.TimeZone.getTimeZone("Asia/Kolkata") }
+                val calTarget = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("Asia/Kolkata"))
+                calTarget.add(java.util.Calendar.DAY_OF_YEAR, 7)
+                val targetDateStr = isoFull.format(calTarget.time)
+                nonArchived.filter { 
+                    it.getPrimaryCategory() == "DELIVERED" && 
+                    !it.exhaustionDate.isNullOrEmpty() && 
+                    it.exhaustionDate <= targetDateStr 
+                }
+            }
             "ALL" -> nonArchived
             else -> emptyList()
         }
@@ -336,6 +347,7 @@ fun TodayCallingListScreen(
         "RTO" -> "RTOs & Returned Leads"
         "DISPATCHED" -> "In-Transit (Verify)"
         "DELIVERED" -> "Delivered Orders"
+        "RETENTION_DUE" -> "Retention Due Leads"
         "ALL" -> "Recent History"
         else -> "Leads"
     }

@@ -35,7 +35,13 @@ data class Lead(
     val trackingNumber: String? = null,
     val rtoCount: Int = 0,
     val baseProductsBreakdown: String = "",
-    val events: List<LeadEvent> = emptyList()
+    val events: List<LeadEvent> = emptyList(),
+    
+    // Retention & Reorder Engine
+    val deliveredAt: String? = null,
+    val exhaustionDate: String? = null,
+    val parentLeadId: String? = null,
+    val isReorder: Boolean = false
 )
 
 data class LeadEvent(

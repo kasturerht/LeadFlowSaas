@@ -15,8 +15,8 @@ object ProductUtils {
             val product = masterProducts.find { it.name.equals(productName, ignoreCase = true) }
             
             if (product != null) {
-                if (product.isCombo && product.comboItems.isNotEmpty()) {
-                    for (comboItem in product.comboItems) {
+                if (product.isComboProduct() && product.bundledProducts.isNotEmpty()) {
+                    for (comboItem in product.bundledProducts) {
                         val baseProduct = masterProducts.find { it.id == comboItem.productId }
                         if (baseProduct != null) {
                             val totalQty = comboItem.quantity * selectedQty

@@ -51,7 +51,9 @@ fun DispositionBottomSheet(
     val coroutineScope = rememberCoroutineScope()
     val mainScope = rememberCoroutineScope()
     val productsList by viewModel.products.collectAsState()
-    val pricesMap = remember(productsList) { productsList.associate { it.name to it.price } }
+    val pricesMap = remember(productsList) { productsList.associate { it.name to it.getEffectiveOfferPrice() } }
+    val bottomPricesMap = remember(productsList) { productsList.associate { it.name to it.getEffectiveBottomPrice() } }
+    val shippingFeesMap = remember(productsList) { productsList.associate { it.name to it.shippingFee } }
 
     var selectedProduct by remember { mutableStateOf(lead.product) }
     var showProductPopup by remember { mutableStateOf(false) }
@@ -91,6 +93,8 @@ fun DispositionBottomSheet(
     var discountAmount by remember { mutableStateOf(lead.discountAmount ?: "") }
 
     val calculatedTotal = remember(selectedProduct, pricesMap) { calculateTotalAmount(selectedProduct, pricesMap) }
+    val calculatedBottomTotal = remember(selectedProduct, bottomPricesMap) { calculateTotalBottomPrice(selectedProduct, bottomPricesMap) }
+    val calculatedShipping = remember(selectedProduct, shippingFeesMap) { calculateTotalShippingFee(selectedProduct, shippingFeesMap) }
 
     val isConverted = remember(lead.status, lead.dispatchStatus) {
         lead.status.equals("Order Placed", ignoreCase = true) || 
@@ -105,7 +109,10 @@ fun DispositionBottomSheet(
         lead.status.equals("Order Cancelled", ignoreCase = true) || 
         lead.status.equals(Constants.STATUS_ORDER_CANCELLED, ignoreCase = true)
     }
-    val isLocked = isDispatched || isCancelled
+    val isDelivered = remember(lead.status) {
+        lead.status.equals("Delivered", ignoreCase = true)
+    }
+    val isLocked = isDispatched || isCancelled || isDelivered
 
     var showCancellationReasonDialog by remember { mutableStateOf(false) }
 
@@ -133,9 +140,9 @@ fun DispositionBottomSheet(
     }
 
     LaunchedEffect(paymentMethod, selectedPaymentStatus) {
-        if (selectedPaymentStatus == "⏳ UPI Link Sent" || selectedPaymentStatus.contains("Link", ignoreCase = true)) {
+        if (selectedPaymentStatus == "Link Sent" || selectedPaymentStatus.contains("Link", ignoreCase = true)) {
             includePaymentLink = true
-        } else if (paymentMethod.equals("COD", ignoreCase = true) || selectedPaymentStatus == "✅ Payment Verified") {
+        } else if (paymentMethod.equals("COD", ignoreCase = true) || selectedPaymentStatus == "Paid") {
             includePaymentLink = false
         }
     }
@@ -472,12 +479,21 @@ fun DispositionBottomSheet(
                     )
                     if (calculatedTotal > 0) {
                         Text(
-                            text = "Total Order Value: ₹${calculatedTotal.toInt()}",
+                            text = "Total Value: ₹${calculatedTotal.toInt()}",
                             color = ModernViolet,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(start = 4.dp, top = 8.dp)
                         )
+                        if (calculatedBottomTotal > 0) {
+                            Text(
+                                text = "Min Limit: ₹${calculatedBottomTotal.toInt()}",
+                                color = Color(0xFFD97706),
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.padding(start = 4.dp, top = 2.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -550,6 +566,26 @@ fun DispositionBottomSheet(
                                 readOnly = isLocked,
                                 keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
                             )
+                            // Shipping details UI
+                            if (calculatedShipping > 0) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(Color(0xFFEFF6FF)).padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("🚚 Shipping Fee (Total): ", fontSize = 12.sp, color = Color(0xFF1E3A8A), fontWeight = FontWeight.SemiBold)
+                                    Text("+₹${calculatedShipping.toInt()}", fontSize = 13.sp, color = Color(0xFF1D4ED8), fontWeight = FontWeight.Bold)
+                                    Spacer(modifier = Modifier.weight(1f))
+                                    Text("Add to final amount", fontSize = 10.sp, color = Color(0xFF3B82F6))
+                                }
+                            } else if (calculatedTotal > 0) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(Color(0xFFECFDF5)).padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("🚚 Free Shipping", fontSize = 13.sp, color = Color(0xFF059669), fontWeight = FontWeight.Bold)
+                                }
+                            }
+
                             if (diff > 0) {
                                 val discountPercent = if (origVal > 0) (diff * 100) / origVal else 0
                                 if (discountPercent > 50) {
@@ -559,6 +595,20 @@ fun DispositionBottomSheet(
                                 }
                             } else if (diff < 0) {
                                 Text("📈 Custom Upsell", color = Color(0xFF3B82F6), fontSize = 11.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 6.dp))
+                            }
+                            
+                            if (finalVal > 0 && calculatedBottomTotal > 0 && finalVal < calculatedBottomTotal) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(top = 6.dp).clip(RoundedCornerShape(8.dp)).background(Color(0xFFFEF2F2)).border(1.dp, Color(0xFFFCA5A5), RoundedCornerShape(8.dp)).padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "🚫 ERROR: Final amount cannot be less than Bottom Price (₹${calculatedBottomTotal.toInt()})",
+                                        color = Color(0xFFDC2626),
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 12.sp
+                                    )
+                                }
                             }
                         }
 
@@ -574,7 +624,7 @@ fun DispositionBottomSheet(
                         if (paymentMethod.equals("Prepaid", ignoreCase = true)) {
                             Text("PREPAID PAYMENT VERIFICATION", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = StatusSuccess, letterSpacing = 1.2.sp)
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                listOf("⏳ UPI Link Sent", "✅ Payment Verified").forEach { pStatus ->
+                                listOf("Link Sent", "Paid").forEach { pStatus ->
                                     val isSelected = selectedPaymentStatus == pStatus
                                     Box(
                                         modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(if (isSelected) StatusSuccess else SurfaceLight).border(1.dp, if (isSelected) StatusSuccess else BorderSubtle, RoundedCornerShape(12.dp)).clickable(enabled = !isLocked) { selectedPaymentStatus = if (selectedPaymentStatus == pStatus) "" else pStatus }.padding(horizontal = 8.dp, vertical = 12.dp),
@@ -708,6 +758,12 @@ fun DispositionBottomSheet(
                                 Toast.makeText(context, "Please fill all dispatch details", Toast.LENGTH_SHORT).show()
                                 return@Button
                             }
+                            
+                            val enteredAmt = orderAmount.toIntOrNull() ?: 0
+                            if (calculatedBottomTotal > 0 && enteredAmt < calculatedBottomTotal) {
+                                Toast.makeText(context, "Amount cannot be below limit (₹${calculatedBottomTotal.toInt()})", Toast.LENGTH_SHORT).show()
+                                return@Button
+                            }
                         }
 
                         if (remarkNotes.trim().isEmpty() && !attemptedSaveWithoutNotes) {
@@ -744,7 +800,33 @@ fun DispositionBottomSheet(
                 Spacer(modifier = Modifier.height(8.dp))
                 
                 if (isLocked) {
-                    // Do not show any cancellation or delete button, warning is already at the top
+                    if (isDelivered) {
+                        Button(
+                            onClick = {
+                                if (isSaving) return@Button
+                                isSaving = true
+                                viewModel.createReorder(
+                                    parentLead = lead,
+                                    onSuccess = {
+                                        isSaving = false
+                                        Toast.makeText(context, "Reorder Created successfully!", Toast.LENGTH_SHORT).show()
+                                        onDismiss()
+                                    },
+                                    onError = { err ->
+                                        isSaving = false
+                                        Toast.makeText(context, err, Toast.LENGTH_SHORT).show()
+                                    }
+                                )
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
+                            modifier = Modifier.fillMaxWidth().height(50.dp),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("🔄 Create Reorder", color = CleanWhite, fontWeight = FontWeight.Bold)
+                        }
+                    } else {
+                        // Do not show any cancellation or delete button, warning is already at the top
+                    }
                 } else if (isConverted) {
                     Button(
                         onClick = { showCancellationReasonDialog = true },

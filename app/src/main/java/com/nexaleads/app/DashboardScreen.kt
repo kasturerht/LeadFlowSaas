@@ -423,12 +423,25 @@ fun DashboardScreen(
                     ) {
                         ActionCard(
                             modifier = Modifier.weight(1f),
+                            title = "Retention Due",
+                            count = metrics.retentionDueCount,
+                            color = Color(0xFFF59E0B), // Amber color
+                            icon = "🔄",
+                            onClick = { onSelectCategory("RETENTION_DUE") }
+                        )
+                        ActionCard(
+                            modifier = Modifier.weight(1f),
                             title = "In-Transit",
                             count = metrics.dispatchedCount,
                             color = Color(0xFF0EA5E9),
                             icon = "🚚",
                             onClick = { onSelectCategory("DISPATCHED") }
                         )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
                         ActionCard(
                             modifier = Modifier.weight(1f),
                             title = "RTOs",
@@ -437,6 +450,8 @@ fun DashboardScreen(
                             icon = "⚠️",
                             onClick = { onSelectCategory("RTO") }
                         )
+                        // Empty spacer or another metric can go here
+                        Spacer(modifier = Modifier.weight(1f))
                     }
                 }
             }
