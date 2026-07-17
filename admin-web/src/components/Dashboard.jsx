@@ -11,7 +11,10 @@ import {
   getCountFromServer, 
   getAggregateFromServer, 
   sum, 
-  where 
+  where,
+  updateDoc,
+  doc,
+  arrayUnion
 } from 'firebase/firestore';
 import { RefreshCw, Search } from 'lucide-react';
 
@@ -23,6 +26,7 @@ export default function Dashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeSearch, setActiveSearch] = useState('');
   const [productsList, setProductsList] = useState([]);
+  const [pendingPayments, setPendingPayments] = useState([]);
 
   // Stats State
   const [stats, setStats] = useState({
@@ -95,7 +99,6 @@ export default function Dashboard() {
     setLoadingLeads(true);
     const q = query(
       collection(db, 'leads'),
-      orderBy('lastUpdated', 'desc'),
       limit(50)
     );
 
@@ -115,6 +118,23 @@ export default function Dashboard() {
 
     return () => unsubscribe();
   }, [activeSearch]);
+
+  // Real-time listener for Pending Payments
+  useEffect(() => {
+    const q = query(
+      collection(db, 'leads'),
+      where('status', '==', 'Pending Payment'),
+      orderBy('lastUpdated', 'desc')
+    );
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const pending = [];
+      snapshot.forEach((docSnap) => {
+        pending.push({ id: docSnap.id, ...docSnap.data() });
+      });
+      setPendingPayments(pending);
+    });
+    return () => unsubscribe();
+  }, []);
 
   // Load products catalog list for combo lookup mapping
   useEffect(() => {
@@ -212,7 +232,6 @@ export default function Dashboard() {
     } else {
       q = query(
         collection(db, 'leads'),
-        orderBy('lastUpdated', 'desc'),
         startAfter(lastDoc),
         limit(50)
       );
@@ -231,6 +250,25 @@ export default function Dashboard() {
       console.error("Failed to load more leads:", err);
     } finally {
       setLoadingLeads(false);
+    }
+  };
+
+  const handleVerifyPayment = async (lead) => {
+    const confirm = window.confirm(`Verify payment of ₹${lead.orderAmount || 0} for ${lead.name}?`);
+    if (!confirm) return;
+
+    try {
+      const leadRef = doc(db, 'leads', lead.id);
+      await updateDoc(leadRef, {
+        status: 'Order Placed',
+        paymentStatus: 'Paid',
+        lastUpdated: new Date().toISOString(),
+        paymentVerifiedAt: new Date().toISOString()
+      });
+      // The local snapshot listener for pendingPayments will automatically remove it
+    } catch (err) {
+      console.error("Error verifying payment:", err);
+      alert("Failed to verify payment.");
     }
   };
 
@@ -334,6 +372,58 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Pending Payments Section */}
+      {pendingPayments.length > 0 && (
+        <div className="glass-panel" style={{ padding: '16px', marginBottom: '20px', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+            <h3 className="section-title" style={{ margin: 0, color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              ⏳ Pending Payments ({pendingPayments.length})
+            </h3>
+            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Awaiting UPI Confirmation</span>
+          </div>
+          <div className="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Phone Number</th>
+                  <th>Amount</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pendingPayments.map(lead => {
+                  const isTelecallerVerified = lead.paymentStatus === 'Payment Verified' || lead.paymentStatus === 'Verified' || lead.paymentStatus === 'Paid' || lead.paymentStatus === 'Payment Received';
+                  return (
+                  <tr key={lead.id} style={{ background: isTelecallerVerified ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.05)' }}>
+                    <td style={{ fontWeight: 500 }}>{lead.name}</td>
+                    <td>{lead.phoneNumber || lead.phone}</td>
+                    <td>
+                      <div style={{ fontWeight: 600, color: isTelecallerVerified ? '#10b981' : '#f59e0b' }}>₹{lead.orderAmount || 0}</div>
+                      {isTelecallerVerified && (
+                        <div style={{ fontSize: '10px', color: '#10b981', fontWeight: 600, marginTop: '2px' }}>
+                          ✅ Telecaller Verified
+                        </div>
+                      )}
+                      <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{lead.product}</div>
+                    </td>
+                    <td>
+                      <button 
+                        className="btn-primary" 
+                        style={{ background: isTelecallerVerified ? '#3b82f6' : '#10b981', padding: '6px 12px', fontSize: '11px', border: 'none' }}
+                        onClick={() => handleVerifyPayment(lead)}
+                      >
+                        {isTelecallerVerified ? 'Approve & Push to Dispatch' : '✓ Verify & Push to Dispatch'}
+                      </button>
+                    </td>
+                  </tr>
+                )})}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       <div className="glass-panel" style={{ padding: '16px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '14px' }}>
           <h3 className="section-title" style={{ margin: 0 }}>
@@ -432,7 +522,16 @@ export default function Dashboard() {
                           <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
                             <div><strong>Amt:</strong> ₹{lead.orderAmount || 0} ({lead.paymentMethod || 'Unknown'})</div>
                             <div><strong>City:</strong> {lead.city || '-'}</div>
-                            {lead.paymentStatus && <div style={{ color: '#10b981', fontWeight: 600 }}><strong>Prepaid:</strong> {lead.paymentStatus}</div>}
+                            {lead.paymentStatus === 'Paid' || lead.paymentStatus === 'Payment Received' ? (
+                              <div style={{ color: '#10b981', fontWeight: 600 }}><strong>Prepaid:</strong> {lead.paymentStatus}</div>
+                            ) : lead.paymentMethod === 'Prepaid' ? (
+                              <button 
+                                onClick={() => handleVerifyPayment(lead)}
+                                style={{ marginTop: '4px', background: '#f59e0b', color: '#fff', border: 'none', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', cursor: 'pointer' }}
+                              >
+                                Verify Payment
+                              </button>
+                            ) : null}
                           </div>
                         ) : (
                           <span style={{ color: 'var(--text-muted)' }}>-</span>

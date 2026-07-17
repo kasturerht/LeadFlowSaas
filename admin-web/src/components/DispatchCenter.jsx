@@ -23,6 +23,7 @@ export default function DispatchCenter() {
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [lastVisible, setLastVisible] = useState(null);
+  const [pageCursors, setPageCursors] = useState([]);
   const [pageNumber, setPageNumber] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -37,6 +38,7 @@ export default function DispatchCenter() {
   const [isProcessingAction, setIsProcessingAction] = useState(false);
 
   useEffect(() => {
+    setPageCursors([]);
     fetchLeads(activeTab, null);
   }, [activeTab]);
 
@@ -47,6 +49,7 @@ export default function DispatchCenter() {
     let q = query(
       collection(db, 'leads'),
       where('status', 'in', tabConfig.statusQuery),
+      orderBy('status'),
       limit(50)
     );
 
@@ -73,15 +76,21 @@ export default function DispatchCenter() {
 
   const handleNextPage = () => {
     if (lastVisible) {
+      setPageCursors(prev => [...prev, lastVisible]);
       fetchLeads(activeTab, lastVisible);
       setPageNumber(prev => prev + 1);
     }
   };
 
   const handlePrevPage = () => {
-    // Basic back navigation (for production, maintain an array of cursors)
-    fetchLeads(activeTab, null);
-    setPageNumber(1);
+    if (pageCursors.length > 0) {
+      const newCursors = [...pageCursors];
+      newCursors.pop(); // remove current page cursor
+      const prevCursor = newCursors.length > 0 ? newCursors[newCursors.length - 1] : null;
+      setPageCursors(newCursors);
+      fetchLeads(activeTab, prevCursor);
+      setPageNumber(prev => prev - 1);
+    }
   };
 
   const handleLockOrder = async (lead) => {
@@ -120,15 +129,17 @@ export default function DispatchCenter() {
   };
 
   const handleUnlockOrder = async (lead) => {
-    if (lead.lockedByUid !== auth.currentUser?.uid) {
-      return alert("You can only unlock orders you locked.");
+    const isOwner = lead.lockedByUid === auth.currentUser?.uid;
+    if (!isOwner) {
+      const confirm = window.confirm("⚠️ This order is locked by another admin. Do you want to Force Unlock it?");
+      if (!confirm) return;
     }
     const leadRef = doc(db, 'leads', lead.id);
     await updateDoc(leadRef, {
       dispatchStatus: 'Pending',
       lockedByUid: null,
       dispatchHistory: arrayUnion({
-        action: 'Unlocked',
+        action: isOwner ? 'Unlocked' : 'Force Unlocked',
         by: auth.currentUser?.uid,
         timestamp: new Date().toISOString()
       })
@@ -146,9 +157,10 @@ export default function DispatchCenter() {
   };
 
   const validateAwb = (partnerName, number) => {
+    const cleanNumber = number.trim();
     const partner = COURIERS.find(c => c.name === partnerName);
     if (!partner) return true;
-    if (!partner.regex.test(number)) {
+    if (!partner.regex.test(cleanNumber)) {
       setAwbError(`Invalid format for ${partnerName}. Expected: ${partner.example}`);
       return false;
     }
@@ -157,34 +169,51 @@ export default function DispatchCenter() {
   };
 
   const handleConfirmDispatch = async () => {
-    if (!validateAwb(courier, awb)) return;
+    const cleanAwb = awb.trim();
+    if (!validateAwb(courier, cleanAwb)) return;
 
     try {
       setIsProcessingAction(true);
       const leadRef = doc(db, 'leads', selectedLead.id);
       
-      // Update the main status to 'Dispatched' so it leaves the pending queue
-      await updateDoc(leadRef, {
-        status: 'Dispatched',
-        dispatchStatus: 'Dispatched',
-        courierPartner: courier,
-        trackingNumber: awb,
-        dispatchedAt: new Date().toISOString(),
-        packedBy: auth.currentUser?.uid,
-        lockedByUid: null, // release lock
-        dispatchHistory: arrayUnion({
-          action: 'Dispatched',
-          courier: courier,
-          awb: awb,
-          by: auth.currentUser?.uid,
-          timestamp: new Date().toISOString()
-        })
+      await runTransaction(db, async (transaction) => {
+        const leadDoc = await transaction.get(leadRef);
+        if (!leadDoc.exists()) throw "Document does not exist!";
+        const data = leadDoc.data();
+
+        if (data.urgentCancelRequest) {
+          throw "Halt: Telecaller requested cancellation. Cannot dispatch.";
+        }
+
+        if (data.paymentMethod === 'Prepaid' && data.paymentStatus !== 'Paid' && data.paymentStatus !== 'Payment Received') {
+          throw "SECURITY HALT: Order is Prepaid but Payment is not verified! Cannot dispatch.";
+        }
+        
+        const preDispatchStatus = data.status || 'Order Placed';
+
+        transaction.update(leadRef, {
+          status: 'Dispatched',
+          dispatchStatus: 'Dispatched',
+          preDispatchStatus: preDispatchStatus,
+          courierPartner: courier,
+          trackingNumber: cleanAwb,
+          dispatchedAt: new Date().toISOString(),
+          packedBy: auth.currentUser?.uid,
+          lockedByUid: null, // release lock
+          dispatchHistory: arrayUnion({
+            action: 'Dispatched',
+            courier: courier,
+            awb: cleanAwb,
+            by: auth.currentUser?.uid,
+            timestamp: new Date().toISOString()
+          })
+        });
       });
       
       setSelectedLead(null);
     } catch (error) {
       console.error("Error dispatching:", error);
-      alert("Failed to dispatch order.");
+      alert(`Failed to dispatch order: ${error}`);
     } finally {
       setIsProcessingAction(false);
     }
@@ -212,9 +241,10 @@ export default function DispatchCenter() {
       if (manageAction === 'undo') {
         const previousAwb = selectedManageLead.trackingNumber || 'Unknown';
         const previousCourier = selectedManageLead.courierPartner || 'Unknown';
+        const restoreStatus = selectedManageLead.preDispatchStatus || 'Order Placed';
 
         await updateDoc(leadRef, {
-          status: 'Order Placed',
+          status: restoreStatus,
           dispatchStatus: 'Pending',
           courierPartner: null,
           trackingNumber: null,
@@ -224,6 +254,7 @@ export default function DispatchCenter() {
             action: 'Reverted Dispatch to Pending',
             previousAwb: previousAwb,
             previousCourier: previousCourier,
+            restoredStatus: restoreStatus,
             by: auth.currentUser?.uid,
             timestamp: new Date().toISOString()
           })
@@ -347,7 +378,9 @@ export default function DispatchCenter() {
                 </tr>
               </thead>
               <tbody>
-                {leads.filter(l => l.name?.toLowerCase().includes(searchQuery.toLowerCase()) || l.phone?.includes(searchQuery)).map(lead => {
+                {leads.filter(l => l.name?.toLowerCase().includes(searchQuery.toLowerCase()) || l.phone?.includes(searchQuery))
+                 .filter(l => !(activeTab === 'pending' && l.paymentMethod === 'Prepaid' && l.paymentStatus !== 'Paid' && l.paymentStatus !== 'Payment Received'))
+                 .map(lead => {
                   const isLocked = !!lead.lockedByUid;
                   const lockedByMe = lead.lockedByUid === auth.currentUser?.uid;
                   const isUrgentCancel = lead.urgentCancelRequest;
@@ -366,8 +399,28 @@ export default function DispatchCenter() {
                       </td>
                       <td>
                         <div style={{ fontSize: '13px' }}>{lead.address || 'No Address Provided'}</div>
-                        <div style={{ fontSize: '12px', fontWeight: 600, color: hasAddressIssue ? '#ef4444' : 'var(--text-muted)' }}>
+                        <div style={{ fontSize: '12px', fontWeight: 600, color: hasAddressIssue ? '#ef4444' : 'var(--text-muted)', marginBottom: '4px' }}>
                           {lead.pincode ? `PIN: ${lead.pincode}` : 'NO PINCODE'}
+                        </div>
+                        {/* Payment Gateway Visual Badges */}
+                        <div style={{ marginTop: '4px' }}>
+                          {lead.paymentMethod === 'Prepaid' ? (
+                            <span style={{ 
+                              background: (lead.paymentStatus === 'Paid' || lead.paymentStatus === 'Payment Received') ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)', 
+                              color: (lead.paymentStatus === 'Paid' || lead.paymentStatus === 'Payment Received') ? '#10b981' : '#ef4444', 
+                              padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 700 
+                            }}>
+                              PREPAID {(lead.paymentStatus === 'Paid' || lead.paymentStatus === 'Payment Received') ? '✓ PAID' : '❌ UNPAID'}
+                            </span>
+                          ) : (
+                            <span style={{ 
+                              background: 'rgba(245, 158, 11, 0.15)', 
+                              color: '#f59e0b', 
+                              padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 700 
+                            }}>
+                              COD • Collect ₹{lead.orderAmount || 0}
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td>
