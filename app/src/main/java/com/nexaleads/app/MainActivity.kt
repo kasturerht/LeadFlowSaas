@@ -96,7 +96,7 @@ class MainActivity : ComponentActivity() {
                             val authStateFlow = authState
                             if (authStateFlow is AuthState.Authenticated) {
                                 LaunchedEffect(authStateFlow.userId) {
-                                    callingViewModel.initialize(authStateFlow.userId, authStateFlow.userName, authStateFlow.contactNumber, authStateFlow.orgId)
+                                    callingViewModel.initialize(authStateFlow.userId, authStateFlow.userName, authStateFlow.contactNumber, authStateFlow.orgId, authStateFlow.orgName)
                                 }
                                 val leads by callingViewModel.leads.collectAsStateWithLifecycle()
                                 
@@ -125,7 +125,7 @@ class MainActivity : ComponentActivity() {
                             val authStateFlow = authState
                             if (authStateFlow is AuthState.Authenticated) {
                                 LaunchedEffect(authStateFlow.userId) {
-                                    callingViewModel.initialize(authStateFlow.userId, authStateFlow.userName, authStateFlow.contactNumber, authStateFlow.orgId)
+                                    callingViewModel.initialize(authStateFlow.userId, authStateFlow.userName, authStateFlow.contactNumber, authStateFlow.orgId, authStateFlow.orgName)
                                 }
                                 val leads by callingViewModel.leads.collectAsStateWithLifecycle()
                                 
@@ -150,7 +150,7 @@ class MainActivity : ComponentActivity() {
                             val authStateFlow = authState
                             if (authStateFlow is AuthState.Authenticated) {
                                 LaunchedEffect(authStateFlow.userId) {
-                                    callingViewModel.initialize(authStateFlow.userId, authStateFlow.userName, authStateFlow.contactNumber, authStateFlow.orgId)
+                                    callingViewModel.initialize(authStateFlow.userId, authStateFlow.userName, authStateFlow.contactNumber, authStateFlow.orgId, authStateFlow.orgName)
                                 }
                                 val leads by callingViewModel.leads.collectAsStateWithLifecycle()
                                 

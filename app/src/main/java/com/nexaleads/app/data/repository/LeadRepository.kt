@@ -32,6 +32,7 @@ class LeadRepository @Inject constructor(
         val listener = leadsCol()
             .whereEqualTo("assignedTo", userId)
             .whereEqualTo("archived", false)
+            .limit(limit)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     close(error)
@@ -167,43 +168,45 @@ class LeadRepository @Inject constructor(
     }
 
     suspend fun getSalesMetrics(userId: String): Map<String, Long> = kotlinx.coroutines.coroutineScope {
-        val isoFormat = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).apply { timeZone = java.util.TimeZone.getTimeZone("Asia/Kolkata") }
+        val isoFormat = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }
         val todayStr = isoFormat.format(java.util.Date())
         
-        val cal = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("Asia/Kolkata"))
+        val cal = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC"))
         cal.add(java.util.Calendar.DAY_OF_YEAR, -7)
         val lastWeekStr = isoFormat.format(cal.time)
 
         val baseQuery = leadsCol()
             .whereEqualTo("assignedTo", userId)
             .whereEqualTo("archived", false)
-            .whereEqualTo("status", "Order Placed")
+            .whereIn("status", listOf("Order Placed", "Dispatched", "Delivered"))
 
-        val totalActive = baseQuery.count().get(com.google.firebase.firestore.AggregateSource.SERVER).await().count
+        val totalActive = try {
+            baseQuery.count().get(com.google.firebase.firestore.AggregateSource.SERVER).await().count
+        } catch (e: Exception) { 0L }
         
-        // Summing values server-side requires Firestore sum() aggregations
-        // But orderAmount is a String in the database! We can't sum() strings on the server.
-        // For a true 100k scale, orderAmount should be a Number. 
-        // As a fallback for Phase 4, we query the recent confirmed leads and sum locally.
-        
-        val recentLeads = baseQuery.whereGreaterThanOrEqualTo("convertedAt", lastWeekStr).get().await()
-        
+        val todayQuery = leadsCol()
+            .whereEqualTo("assignedTo", userId)
+            .whereGreaterThanOrEqualTo("convertedAt", todayStr)
+            
+        val weekQuery = leadsCol()
+            .whereEqualTo("assignedTo", userId)
+            .whereGreaterThanOrEqualTo("convertedAt", lastWeekStr)
+
         var todayCount = 0L
         var todayRev = 0L
         var weekRev = 0L
 
-        recentLeads.documents.forEach { doc ->
-            val cAt = doc.getString("convertedAt") ?: ""
-            val amountStr = doc.getString("orderAmount") ?: "0"
-            val amount = amountStr.toLongOrNull() ?: 0L
-            
-            if (cAt >= lastWeekStr) {
-                weekRev += amount
-            }
-            if (cAt.startsWith(todayStr)) {
-                todayCount++
-                todayRev += amount
-            }
+        try {
+            todayCount = todayQuery.count().get(com.google.firebase.firestore.AggregateSource.SERVER).await().count
+            todayRev = (todayQuery.aggregate(com.google.firebase.firestore.AggregateField.sum("orderAmountNum"))
+                .get(com.google.firebase.firestore.AggregateSource.SERVER).await()
+                .get(com.google.firebase.firestore.AggregateField.sum("orderAmountNum")) as? Number)?.toLong() ?: 0L
+                
+            weekRev = (weekQuery.aggregate(com.google.firebase.firestore.AggregateField.sum("orderAmountNum"))
+                .get(com.google.firebase.firestore.AggregateSource.SERVER).await()
+                .get(com.google.firebase.firestore.AggregateField.sum("orderAmountNum")) as? Number)?.toLong() ?: 0L
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
         
         mapOf(
@@ -345,7 +348,8 @@ class LeadRepository @Inject constructor(
                     city = doc.getString("city"),
                     pincode = doc.getString("pincode"),
                     paymentMethod = doc.getString("paymentMethod"),
-                    orderAmount = doc.getString("orderAmount")
+                    orderAmount = doc.getString("orderAmount"),
+                    orderAmountNum = doc.getLong("orderAmountNum") ?: 0L
                 )
             }
             
@@ -439,7 +443,8 @@ class LeadRepository @Inject constructor(
                     city = doc.getString("city"),
                     pincode = doc.getString("pincode"),
                     paymentMethod = doc.getString("paymentMethod"),
-                    orderAmount = doc.getString("orderAmount")
+                    orderAmount = doc.getString("orderAmount"),
+                    orderAmountNum = doc.getLong("orderAmountNum") ?: 0L
                 )
             }
             .sortedBy { it.timestamp }
@@ -482,6 +487,12 @@ class LeadRepository @Inject constructor(
             updateMap["pincode"] = latestOrderInteraction.pincode ?: ""
             updateMap["paymentMethod"] = latestOrderInteraction.paymentMethod ?: ""
             updateMap["orderAmount"] = latestOrderInteraction.orderAmount ?: ""
+            updateMap["orderAmountNum"] = latestOrderInteraction.orderAmountNum
+            
+            val pm = latestOrderInteraction.paymentMethod
+            val ps = latestOrderInteraction.paymentStatus
+            val isRev = (finalStatus == "Order Placed" || finalStatus == "Dispatched" || finalStatus == "Delivered") && !(pm == "Prepaid" && ps == "Link Sent")
+            updateMap["convertedAt"] = if (isRev) latestOrderInteraction.timestamp else null
         } else if (Constants.normalizeStatus(finalStatus) != Constants.STATUS_ORDER_PLACED) {
             // Wipe ghost order data when reverting from an order status!
             updateMap["product"] = ""
@@ -490,6 +501,7 @@ class LeadRepository @Inject constructor(
             updateMap["pincode"] = ""
             updateMap["paymentMethod"] = ""
             updateMap["orderAmount"] = ""
+            updateMap["orderAmountNum"] = 0L
             updateMap["convertedAt"] = null
         }
 
@@ -648,6 +660,59 @@ class LeadRepository @Inject constructor(
         }
     }
 
+    suspend fun migrateOldOrders(userId: String) {
+        try {
+            val snapshot = leadsCol()
+                .whereEqualTo("assignedTo", userId)
+                .get().await()
+            var batch = db.batch()
+            var count = 0
+            
+            snapshot.documents.forEach { doc ->
+                val status = doc.getString("status") ?: ""
+                if (status in listOf("Order Placed", "Dispatched", "Delivered")) {
+                    // Fetch the latest order interaction to get the correct amount
+                    val interactionsSnapshot = interactionsCol()
+                        .whereEqualTo("leadId", doc.id)
+                        .get().await()
+                    val latestOrderInteraction = interactionsSnapshot.documents
+                        .mapNotNull { it.toObject(com.nexaleads.app.data.model.Interaction::class.java) }
+                        .filter { it.statusAfter == "Order Placed" || !it.product.isNullOrEmpty() }
+                        .maxByOrNull { it.timestamp }
+
+                    val amtStr = latestOrderInteraction?.orderAmount ?: doc.getString("orderAmount") ?: "0"
+                    val cleanAmtStr = amtStr.replace(Regex("[^0-9]"), "")
+                    val amtNum = cleanAmtStr.toLongOrNull() ?: 0L
+                    val cAt = latestOrderInteraction?.timestamp ?: doc.getString("convertedAt")
+                
+                val updates = mutableMapOf<String, Any>("orderAmountNum" to amtNum)
+                
+                if (cAt.isNullOrEmpty()) {
+                    val isoFormat = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US).apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }
+                    updates["convertedAt"] = isoFormat.format(java.util.Date()) // Fallback to today if unknown
+                } else {
+                    updates["convertedAt"] = cAt
+                }
+                
+                batch.update(doc.reference, updates)
+                count++
+                
+                if (count == 400) {
+                    batch.commit().await()
+                    batch = db.batch()
+                    count = 0
+                }
+                }
+            }
+            if (count > 0) {
+                batch.commit().await()
+            }
+            android.util.Log.d("LeadRepository", "Revenue Migration Completed!")
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
     private fun parseLead(doc: com.google.firebase.firestore.DocumentSnapshot): Lead {
         return Lead(
             id = doc.id,
@@ -666,6 +731,7 @@ class LeadRepository @Inject constructor(
             pincode = doc.getString("pincode") ?: "",
             paymentMethod = doc.getString("paymentMethod") ?: "",
             orderAmount = doc.getString("orderAmount") ?: "",
+            orderAmountNum = doc.getLong("orderAmountNum") ?: 0L,
             subStatus = doc.getString("subStatus"),
             followUpTimeSlot = doc.getString("followUpTimeSlot"),
             paymentStatus = doc.getString("paymentStatus"),
@@ -683,7 +749,22 @@ class LeadRepository @Inject constructor(
             parentLeadId = doc.getString("parentLeadId"),
             isReorder = doc.getBoolean("isReorder") ?: false,
             searchKeywords = doc.get("searchKeywords") as? List<String> ?: emptyList(),
-            updatedAt = doc.getTimestamp("updatedAt")?.toDate()?.time ?: doc.getLong("updatedAt")
+            updatedAt = try {
+                val raw = doc.get("updatedAt")
+                when (raw) {
+                    is com.google.firebase.Timestamp -> raw.toDate().time
+                    is Long -> raw
+                    is Number -> raw.toLong()
+                    is String -> {
+                        val format = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US)
+                        format.timeZone = java.util.TimeZone.getTimeZone("UTC")
+                        format.parse(raw)?.time
+                    }
+                    else -> null
+                }
+            } catch (e: Exception) {
+                null
+            }
         )
     }
 }

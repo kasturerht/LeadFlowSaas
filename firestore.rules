@@ -15,7 +15,18 @@ service cloud.firestore {
     // User to Organization Mappings
     match /user_mappings/{userId} {
       allow read: if request.auth != null;
-      allow write: if isSuperAdmin(); 
+      
+      allow create, update: if isSuperAdmin() || (
+        request.auth != null && 
+        get(/databases/$(database)/documents/user_mappings/$(request.auth.uid)).data.role == 'admin' &&
+        request.resource.data.orgId == get(/databases/$(database)/documents/user_mappings/$(request.auth.uid)).data.orgId
+      );
+      
+      allow delete: if isSuperAdmin() || (
+        request.auth != null && 
+        get(/databases/$(database)/documents/user_mappings/$(request.auth.uid)).data.role == 'admin' &&
+        (resource == null || resource.data.orgId == get(/databases/$(database)/documents/user_mappings/$(request.auth.uid)).data.orgId)
+      );
     }
 
     // Allow Super Admin to access legacy root collections for migration and collectionGroup queries

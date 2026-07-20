@@ -14,7 +14,7 @@ import javax.inject.Inject
 sealed class AuthState {
     object Idle : AuthState()
     object Loading : AuthState()
-    data class Authenticated(val userId: String, val userName: String, val contactNumber: String, val orgId: String) : AuthState()
+    data class Authenticated(val userId: String, val userName: String, val contactNumber: String, val orgId: String, val orgName: String) : AuthState()
     data class Unauthenticated(val error: String? = null) : AuthState()
 }
 
@@ -40,6 +40,10 @@ class AuthViewModel @Inject constructor(
                     val mappingDoc = db.collection("user_mappings").document(currentUser.uid).get().await()
                     if (mappingDoc.exists()) {
                         val orgId = mappingDoc.getString("orgId") ?: return@launch
+                        
+                        val orgBaseDoc = db.collection("organizations").document(orgId).get().await()
+                        val orgName = if (orgBaseDoc.exists()) orgBaseDoc.getString("name")?.takeIf { it.isNotBlank() } ?: "ORGANIZATION" else "ORGANIZATION"
+
                         val doc = db.collection("organizations").document(orgId)
                                     .collection("users").document(currentUser.uid).get().await()
                         
@@ -48,7 +52,7 @@ class AuthViewModel @Inject constructor(
                             if (isActive) {
                                 val name = doc.getString("name") ?: "Agent"
                                 val contactNumber = doc.getString("contactNumber") ?: "+91 98347 83503"
-                                _authState.value = AuthState.Authenticated(currentUser.uid, name, contactNumber, orgId)
+                                _authState.value = AuthState.Authenticated(currentUser.uid, name, contactNumber, orgId, orgName)
                             } else {
                                 auth.signOut()
                                 _authState.value = AuthState.Unauthenticated("Your account has been disabled by Admin.")

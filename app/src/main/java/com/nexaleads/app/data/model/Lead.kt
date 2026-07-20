@@ -22,6 +22,7 @@ data class Lead(
     val pincode: String = "",
     val paymentMethod: String = "",
     val orderAmount: String = "",
+    val orderAmountNum: Long = 0L,
     val subStatus: String? = null,
     val followUpTimeSlot: String? = null,
     val paymentStatus: String? = null,

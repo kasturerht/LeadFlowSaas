@@ -10,9 +10,11 @@ import Products from './components/Products';
 import Reports from './components/Reports';
 import DispatchCenter from './components/DispatchCenter';
 import SaasAdminDashboard from './components/SaasAdminDashboard';
+import MigrationTool from './components/MigrationTool';
+import Suspended from './components/Suspended';
 
 function App() {
-  const { user, loading } = useAuth();
+  const { user, loading, orgStatus, role } = useAuth();
 
   if (loading) {
     return (
@@ -31,7 +33,7 @@ function App() {
         />
         
         {/* Protected Routes wrapped in Layout */}
-        <Route element={user ? <Layout /> : <Navigate to="/login" />}>
+        <Route element={user ? (orgStatus === 'suspended' && role !== 'superadmin' ? <Navigate to="/suspended" /> : <Layout />) : <Navigate to="/login" />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/telecallers" element={<Telecallers />} />
           <Route path="/history" element={<CallHistory />} />
@@ -39,11 +41,14 @@ function App() {
           <Route path="/reports" element={<Reports />} />
           <Route path="/dispatch" element={<DispatchCenter />} />
           <Route path="/saas-admin" element={<SaasAdminDashboard />} />
+          <Route path="/super-migrate" element={<MigrationTool />} />
         </Route>
+
+        <Route path="/suspended" element={user && orgStatus === 'suspended' && role !== 'superadmin' ? <Suspended /> : <Navigate to="/dashboard" />} />
 
         <Route 
           path="/" 
-          element={<Navigate to={user ? "/dashboard" : "/login"} />} 
+          element={<Navigate to={user ? (orgStatus === 'suspended' && role !== 'superadmin' ? "/suspended" : "/dashboard") : "/login"} />} 
         />
       </Routes>
     </Router>

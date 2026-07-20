@@ -5,7 +5,7 @@ import { auth } from '../firebase';
 import { useAuth } from '../AuthContext';
 import { Users, PhoneCall, TrendingUp, LogOut, Tag, BarChart3, Package, ShieldAlert } from 'lucide-react';
 export default function Layout() {
-  const { role, orgId } = useAuth();
+  const { role, orgId, impersonatingOrgId, orgName } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -59,7 +59,23 @@ export default function Layout() {
     <div className="app-container">
       {/* Sidebar */}
       <div className="sidebar glass-panel" style={{ borderRadius: 0, borderTop: 0, borderBottom: 0, borderLeft: 0 }}>
-        <h2 className="auth-title" style={{ textAlign: 'left', marginBottom: '20px', fontSize: '18px' }}>NexaLeads</h2>
+        <h2 className="auth-title" style={{ 
+          textAlign: 'left', 
+          marginBottom: '20px', 
+          fontSize: '18px',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          maxWidth: '100%',
+          color: 'transparent',
+          backgroundClip: 'text',
+          WebkitBackgroundClip: 'text',
+          backgroundImage: 'linear-gradient(90deg, var(--primary) 0%, #a855f7 100%)',
+          letterSpacing: '0.5px',
+          fontWeight: 800
+        }} title={orgName || 'NexaLeads'}>
+          {orgName || 'NexaLeads'}
+        </h2>
         
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {role === 'superadmin' && (
@@ -70,59 +86,64 @@ export default function Layout() {
               </div>
             </NavLink>
           )}
-          <NavLink to="/dashboard" style={navLinkStyle}>
-            <div style={innerContentStyle}>
-              <TrendingUp size={16} />
-              <span>Dashboard</span>
-            </div>
-          </NavLink>
           
-          <NavLink to="/dispatch" style={navLinkStyle}>
-            <div style={innerContentStyle}>
-              <Package size={16} />
-              <span>Dispatch Center</span>
-            </div>
-            {pendingDispatchCount > 0 && (
-              <span style={{
-                background: '#ef4444',
-                color: 'white',
-                fontSize: '11px',
-                fontWeight: 'bold',
-                padding: '2px 6px',
-                borderRadius: '10px'
-              }}>
-                {pendingDispatchCount}
-              </span>
-            )}
-          </NavLink>
+          {(role !== 'superadmin' || impersonatingOrgId) && (
+            <>
+              <NavLink to="/dashboard" style={navLinkStyle}>
+                <div style={innerContentStyle}>
+                  <TrendingUp size={16} />
+                  <span>Dashboard</span>
+                </div>
+              </NavLink>
+              
+              <NavLink to="/dispatch" style={navLinkStyle}>
+                <div style={innerContentStyle}>
+                  <Package size={16} />
+                  <span>Dispatch Center</span>
+                </div>
+                {pendingDispatchCount > 0 && (
+                  <span style={{
+                    background: '#ef4444',
+                    color: 'white',
+                    fontSize: '11px',
+                    fontWeight: 'bold',
+                    padding: '2px 6px',
+                    borderRadius: '10px'
+                  }}>
+                    {pendingDispatchCount}
+                  </span>
+                )}
+              </NavLink>
 
-          <NavLink to="/telecallers" style={navLinkStyle}>
-            <div style={innerContentStyle}>
-              <Users size={16} />
-              <span>Telecallers</span>
-            </div>
-          </NavLink>
-          
-          <NavLink to="/history" style={navLinkStyle}>
-            <div style={innerContentStyle}>
-              <PhoneCall size={16} />
-              <span>Call History</span>
-            </div>
-          </NavLink>
-          
-          <NavLink to="/products" style={navLinkStyle}>
-            <div style={innerContentStyle}>
-              <Tag size={16} />
-              <span>Products</span>
-            </div>
-          </NavLink>
+              <NavLink to="/telecallers" style={navLinkStyle}>
+                <div style={innerContentStyle}>
+                  <Users size={16} />
+                  <span>Telecallers</span>
+                </div>
+              </NavLink>
+              
+              <NavLink to="/history" style={navLinkStyle}>
+                <div style={innerContentStyle}>
+                  <PhoneCall size={16} />
+                  <span>Call History</span>
+                </div>
+              </NavLink>
+              
+              <NavLink to="/products" style={navLinkStyle}>
+                <div style={innerContentStyle}>
+                  <Tag size={16} />
+                  <span>Products</span>
+                </div>
+              </NavLink>
 
-          <NavLink to="/reports" style={navLinkStyle}>
-            <div style={innerContentStyle}>
-              <BarChart3 size={16} />
-              <span>Reports</span>
-            </div>
-          </NavLink>
+              <NavLink to="/reports" style={navLinkStyle}>
+                <div style={innerContentStyle}>
+                  <BarChart3 size={16} />
+                  <span>Reports</span>
+                </div>
+              </NavLink>
+            </>
+          )}
         </div>
 
         <button onClick={handleLogout} className="btn-secondary" style={{ width: '100%', justifyContent: 'center', fontSize: '13px', padding: '6px 12px' }}>

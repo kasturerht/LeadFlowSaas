@@ -7,9 +7,25 @@ export default function CreateTenantModal({ onClose, onSubmit }) {
     adminName: '',
     adminEmail: '',
     adminPhone: '',
-    adminPassword: ''
+    adminPassword: '',
+    planType: 'basic',
+    maxUsers: 5,
+    billingCycle: 'monthly'
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handlePlanChange = (e) => {
+    const plan = e.target.value;
+    let maxU = 5;
+    if (plan === 'pro') maxU = 20;
+    if (plan === 'enterprise') maxU = 999;
+    
+    setFormData({ 
+      ...formData, 
+      planType: plan, 
+      maxUsers: maxU 
+    });
+  };
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -18,13 +34,19 @@ export default function CreateTenantModal({ onClose, onSubmit }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-    await onSubmit(formData);
+    
+    // Calculate MRR based on plan
+    let mrr = 1000;
+    if (formData.planType === 'pro') mrr = 3000;
+    if (formData.planType === 'enterprise') mrr = 10000;
+    
+    await onSubmit({ ...formData, mrr });
     setIsSubmitting(false);
   };
 
   return (
     <div className="modal-overlay">
-      <div className="modal-content" style={{ maxWidth: '500px' }}>
+      <div className="modal-content" style={{ maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto' }}>
         <div className="modal-header">
           <h3>Create New Client Organization</h3>
           <button className="icon-btn" onClick={onClose}><X size={20} /></button>
@@ -48,7 +70,30 @@ export default function CreateTenantModal({ onClose, onSubmit }) {
           </div>
 
           <div style={{ marginBottom: '24px' }}>
-            <h4 style={{ marginBottom: '12px', color: 'var(--text-primary)', fontSize: '15px' }}>2. Primary Admin Account</h4>
+            <h4 style={{ marginBottom: '12px', color: 'var(--text-primary)', fontSize: '15px' }}>2. Subscription Plan</h4>
+            <div className="form-group" style={{ marginBottom: '12px' }}>
+              <label>Plan Type</label>
+              <select name="planType" className="input-field" value={formData.planType} onChange={handlePlanChange}>
+                <option value="basic">Basic (₹1000/mo) - Up to 5 Users</option>
+                <option value="pro">Pro (₹3000/mo) - Up to 20 Users</option>
+                <option value="enterprise">Enterprise (₹10000/mo) - Unlimited Users</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Max Users Allowed</label>
+              <input 
+                type="number" 
+                name="maxUsers" 
+                className="input-field"
+                required 
+                value={formData.maxUsers}
+                onChange={handleChange}
+              />
+            </div>
+          </div>
+
+          <div style={{ marginBottom: '24px' }}>
+            <h4 style={{ marginBottom: '12px', color: 'var(--text-primary)', fontSize: '15px' }}>3. Primary Admin Account</h4>
             <div className="form-group" style={{ marginBottom: '12px' }}>
               <label>Admin Full Name</label>
               <input 

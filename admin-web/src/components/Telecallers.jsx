@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { db, secondaryAuth } from '../firebase';
 import { useAuth } from '../AuthContext';
-import { collection, query, getDocs, doc, setDoc, updateDoc } from 'firebase/firestore';
+import { collection, query, getDocs, doc, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { createUserWithEmailAndPassword, signOut } from 'firebase/auth';
-import { UserPlus, X } from 'lucide-react';
+import { UserPlus, X, Edit2, Trash2 } from 'lucide-react';
 
 export default function Telecallers() {
-  const { orgId, role } = useAuth();
+  const { orgId, role, impersonatingOrgId } = useAuth();
   const [telecallers, setTelecallers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -19,11 +19,53 @@ export default function Telecallers() {
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState('');
 
+  // Edit State
+  const [editingUser, setEditingUser] = useState(null);
+  const [editName, setEditName] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    if (!editingUser) return;
+    setIsUpdating(true);
+    try {
+      await updateDoc(doc(db, 'organizations', editingUser.orgId, 'users', editingUser.id), {
+        name: editName,
+        contactNumber: editPhone
+      });
+      setTelecallers(prev => prev.map(t => t.id === editingUser.id ? { ...t, name: editName, contactNumber: editPhone } : t));
+      setEditingUser(null);
+    } catch (err) {
+      console.error("Failed to update user", err);
+      alert("Failed to update user: " + err.message);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleDeleteTelecaller = async (userId, userOrgId) => {
+    if (!window.confirm("Are you sure you want to permanently delete this telecaller? This cannot be undone.")) return;
+    
+    try {
+      // 1. Delete from global mappings
+      await deleteDoc(doc(db, 'user_mappings', userId));
+      // 2. Delete from organization users
+      await deleteDoc(doc(db, 'organizations', userOrgId, 'users', userId));
+      
+      // Update UI
+      setTelecallers(prev => prev.filter(t => t.id !== userId));
+    } catch (err) {
+      console.error("Failed to delete user", err);
+      alert("Failed to delete user: " + err.message);
+    }
+  };
+
   const fetchTelecallers = async () => {
     if (!orgId) return;
     try {
       let q;
-      if (role === 'superadmin') {
+      if (role === 'superadmin' && !impersonatingOrgId) {
         const { collectionGroup } = await import('firebase/firestore');
         q = query(collectionGroup(db, 'users'));
       } else {
@@ -33,9 +75,9 @@ export default function Telecallers() {
       const t = [];
       snapshot.forEach(doc => {
         const data = doc.data();
-        if (data.role === 'telecaller' || role === 'superadmin') { // Super admin sees all users, or we can filter just telecallers
+        if (data.role === 'telecaller' || (role === 'superadmin' && !impersonatingOrgId)) { // Super admin sees all users, or we can filter just telecallers
           let userOrgId = orgId;
-          if (role === 'superadmin') {
+          if (role === 'superadmin' && !impersonatingOrgId) {
             const parentDoc = doc.ref.parent.parent;
             userOrgId = parentDoc ? parentDoc.id : 'LEGACY_ROOT';
           }
@@ -68,7 +110,7 @@ export default function Telecallers() {
       await setDoc(doc(db, 'organizations', orgId, 'users', newUserId), {
         name,
         email,
-        phoneNumber: phone,
+        contactNumber: phone,
         role: 'telecaller',
         isActive: true, // Crucial flag for disabling later
         createdAt: new Date().toISOString()
@@ -130,7 +172,7 @@ export default function Telecallers() {
                 <th>Name</th>
                 <th>Email</th>
                 <th>Phone</th>
-                {role === 'superadmin' && <th>Organization ID</th>}
+                {role === 'superadmin' && !impersonatingOrgId && <th>Organization ID</th>}
                 <th>Status</th>
                 <th style={{ textAlign: 'right' }}>Action</th>
               </tr>
@@ -153,8 +195,8 @@ export default function Telecallers() {
                     <tr key={t.id} style={{ opacity: active ? 1 : 0.5 }}>
                       <td style={{ fontWeight: 500 }}>{t.name || 'N/A'}</td>
                       <td>{t.email}</td>
-                      <td>{t.phoneNumber || 'N/A'}</td>
-                      {role === 'superadmin' && (
+                      <td>{t.contactNumber || t.phoneNumber || 'N/A'}</td>
+                      {role === 'superadmin' && !impersonatingOrgId && (
                         <td style={{ fontFamily: 'monospace', fontSize: '11px', color: 'var(--primary)' }}>
                           {t.orgId}
                         </td>
@@ -165,7 +207,22 @@ export default function Telecallers() {
                           : <span className="badge badge-danger">Disabled</span>
                         }
                       </td>
-                      <td style={{ textAlign: 'right' }}>
+                      <td style={{ textAlign: 'right', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                        <button 
+                          onClick={() => {
+                            setEditingUser(t);
+                            setEditName(t.name || '');
+                            setEditPhone(t.contactNumber || t.phoneNumber || '');
+                          }}
+                          className="btn-secondary"
+                          style={{
+                            padding: '4px 8px',
+                            fontSize: '11px',
+                          }}
+                          title="Edit Telecaller"
+                        >
+                          <Edit2 size={12} />
+                        </button>
                         <button 
                           onClick={() => toggleUserStatus(t.id, t.isActive, t.orgId)}
                           className="btn-secondary"
@@ -177,6 +234,20 @@ export default function Telecallers() {
                           }}
                         >
                           {active ? 'Disable' : 'Enable'}
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteTelecaller(t.id, t.orgId)}
+                          className="btn-secondary"
+                          style={{
+                            padding: '4px 8px',
+                            fontSize: '11px',
+                            borderColor: 'rgba(239, 68, 68, 0.3)',
+                            color: 'var(--danger)',
+                            marginLeft: '4px'
+                          }}
+                          title="Permanently Delete Telecaller"
+                        >
+                          <Trash2 size={12} />
                         </button>
                       </td>
                     </tr>
@@ -274,6 +345,71 @@ export default function Telecallers() {
                   disabled={isCreating}
                 >
                   {isCreating ? 'Creating...' : 'Register'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Telecaller Modal */}
+      {editingUser && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+          background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(3px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100
+        }}>
+          <div className="glass-panel auth-box" style={{ width: '100%', maxWidth: '340px', padding: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <h3 style={{ fontSize: '15px', fontWeight: 600 }}>Edit Telecaller</h3>
+              <button 
+                onClick={() => setEditingUser(null)} 
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+            
+            <form onSubmit={handleEditSubmit}>
+              <div className="form-group" style={{ marginBottom: '10px' }}>
+                <label className="form-label">Full Name</label>
+                <input 
+                  type="text" 
+                  className="input-field" 
+                  style={{ padding: '6px 10px', fontSize: '12px' }}
+                  required 
+                  value={editName} 
+                  onChange={e => setEditName(e.target.value)} 
+                />
+              </div>
+              <div className="form-group" style={{ marginBottom: '18px' }}>
+                <label className="form-label">Phone Number</label>
+                <input 
+                  type="tel" 
+                  className="input-field" 
+                  style={{ padding: '6px 10px', fontSize: '12px' }}
+                  required 
+                  value={editPhone} 
+                  onChange={e => setEditPhone(e.target.value)} 
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button 
+                  type="button" 
+                  className="btn-secondary" 
+                  style={{ flex: 1, fontSize: '12px', padding: '6px 10px' }} 
+                  onClick={() => setEditingUser(null)}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="btn-primary" 
+                  style={{ flex: 1, fontSize: '12px', padding: '6px 10px' }} 
+                  disabled={isUpdating}
+                >
+                  {isUpdating ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
             </form>

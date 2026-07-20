@@ -101,6 +101,9 @@ class CallingViewModel @Inject constructor(
     private val _telecallerContact = MutableStateFlow<String>("+91 98347 83503")
     val telecallerContact: StateFlow<String> = _telecallerContact
 
+    private val _orgName = MutableStateFlow<String>("ORGANIZATION")
+    val orgName: StateFlow<String> = _orgName
+
     private val _pendingMediaLead = MutableStateFlow<Lead?>(null)
     val pendingMediaLead: StateFlow<Lead?> = _pendingMediaLead
 
@@ -143,6 +146,136 @@ class CallingViewModel @Inject constructor(
             }
         }
         
+    }
+
+    private fun isRevenue(status: String?, paymentMethod: String?, paymentStatus: String?): Boolean {
+        if (status != "Order Placed" && status != "Dispatched" && status != "Delivered") return false
+        if (paymentMethod == "Prepaid" && paymentStatus == "Link Sent") return false
+        return true
+    }
+
+    private fun updateSalesMetricsOptimistically(amountDelta: Long, countDelta: Int) {
+        if (amountDelta == 0L && countDelta == 0) return
+        val current = _salesMetrics.value
+        _salesMetrics.value = current.copy(
+            todayRevenue = maxOf(0, (current.todayRevenue + amountDelta).toInt()),
+            weeklyRevenue = maxOf(0, (current.weeklyRevenue + amountDelta).toInt()),
+            todayOrdersCount = maxOf(0, current.todayOrdersCount + countDelta),
+            activeOrdersCount = maxOf(0, current.activeOrdersCount + countDelta)
+        )
+    }
+
+    private fun updateMetricsOptimistically(
+        oldStatus: String?,
+        newStatus: String?,
+        oldPaymentMethod: String? = null,
+        oldPaymentStatus: String? = null,
+        newPaymentMethod: String? = null,
+        newPaymentStatus: String? = null
+    ) {
+        val current = _dashboardMetrics.value
+        var fresh = current.freshLeadsCount
+        var followups = current.dueFollowupsCount
+        var confirmed = current.confirmedOrdersCount
+        var pendingPayment = current.pendingPaymentsCount
+        var attempted = current.attemptedCount
+        var rejected = current.rejectedCount
+        var dispatched = current.dispatchedCount
+        var delivered = current.deliveredCount
+        var rto = current.rtoCount
+
+        val freshList = listOf("New", "No Answer")
+        val rejectedList = listOf("Not Interested", "Invalid", "Order Cancelled")
+
+        fun isPendingPayment(status: String?, pm: String?, ps: String?): Boolean {
+            return status == "Order Placed" && pm == "Prepaid" && ps == "Link Sent"
+        }
+
+        val wasPending = isPendingPayment(oldStatus, oldPaymentMethod, oldPaymentStatus)
+        val isPending = isPendingPayment(newStatus, newPaymentMethod, newPaymentStatus)
+
+        // Reverse old status
+        if (oldStatus != null) {
+            when (oldStatus) {
+                in freshList -> fresh -= 1
+                "Follow-up" -> followups -= 1
+                "Call Not Answered" -> attempted -= 1
+                in rejectedList -> rejected -= 1
+                "Dispatched" -> dispatched -= 1
+                "Delivered" -> delivered -= 1
+                "RTO" -> rto -= 1
+                "Order Placed" -> {
+                    if (wasPending) {
+                        pendingPayment -= 1
+                    } else {
+                        confirmed -= 1
+                    }
+                }
+            }
+        }
+
+        // Apply new status
+        if (newStatus != null) {
+            when (newStatus) {
+                in freshList -> fresh += 1
+                "Follow-up" -> followups += 1
+                "Call Not Answered" -> attempted += 1
+                in rejectedList -> rejected += 1
+                "Dispatched" -> dispatched += 1
+                "Delivered" -> delivered += 1
+                "RTO" -> rto += 1
+                "Order Placed" -> {
+                    if (isPending) {
+                        pendingPayment += 1
+                    } else {
+                        confirmed += 1
+                    }
+                }
+            }
+        }
+
+        _dashboardMetrics.value = current.copy(
+            freshLeadsCount = maxOf(0, fresh),
+            dueFollowupsCount = maxOf(0, followups),
+            confirmedOrdersCount = maxOf(0, confirmed),
+            pendingPaymentsCount = maxOf(0, pendingPayment),
+            attemptedCount = maxOf(0, attempted),
+            rejectedCount = maxOf(0, rejected),
+            dispatchedCount = maxOf(0, dispatched),
+            deliveredCount = maxOf(0, delivered),
+            rtoCount = maxOf(0, rto)
+        )
+    }
+
+    private fun refreshMetricsBackground() {
+        viewModelScope.launch {
+            try {
+                val userId = _currentUserId.value ?: return@launch
+                val metrics = repository.getDashboardMetrics(userId)
+                _dashboardMetrics.value = DashboardMetrics(
+                    pendingPaymentsCount = metrics["pendingPayments"]?.toInt() ?: 0,
+                    dueFollowupsCount = metrics["dueFollowups"]?.toInt() ?: 0,
+                    freshLeadsCount = metrics["freshLeads"]?.toInt() ?: 0,
+                    confirmedOrdersCount = metrics["confirmedOrders"]?.toInt() ?: 0,
+                    inquiriesCount = metrics["inquiries"]?.toInt() ?: 0,
+                    attemptedCount = metrics["attempted"]?.toInt() ?: 0,
+                    rejectedCount = metrics["rejected"]?.toInt() ?: 0,
+                    dispatchedCount = metrics["dispatched"]?.toInt() ?: 0,
+                    rtoCount = metrics["rto"]?.toInt() ?: 0,
+                    deliveredCount = metrics["delivered"]?.toInt() ?: 0,
+                    retentionDueCount = 0 
+                )
+                val sales = repository.getSalesMetrics(userId)
+                _salesMetrics.value = SalesMetrics(
+                    todayOrdersCount = sales["todayCount"]?.toInt() ?: 0,
+                    todayRevenue = sales["todayRev"]?.toInt() ?: 0,
+                    weeklyRevenue = sales["weekRev"]?.toInt() ?: 0,
+                    activeOrdersCount = sales["totalActive"]?.toInt() ?: 0
+                )
+            } catch (e: Exception) {
+                // Ignore background errors
+            }
+        }
     }
 
     fun setPendingCall(leadId: String) {
@@ -254,11 +387,12 @@ class CallingViewModel @Inject constructor(
         _leadsLimit.value += 50L
     }
 
-    fun initialize(userId: String, name: String, contactNumber: String, orgId: String) {
+    fun initialize(userId: String, name: String, contactNumber: String, orgId: String, orgName: String) {
         if (_currentUserId.value == userId) return
         _currentUserId.value = userId
         callerName = name
         _telecallerContact.value = contactNumber
+        _orgName.value = orgName
         repository.setOrgId(orgId)
         
         viewModelScope.launch {
@@ -360,10 +494,18 @@ class CallingViewModel @Inject constructor(
                 }
                 val isoTimestamp = isoFormat.format(Date())
 
+                val amtNum = orderAmount.toLongOrNull() ?: 0L
+                val isNewRev = isRevenue(status, paymentMethod, paymentStatus)
+                val wasOldRev = isRevenue(lead.status, lead.paymentMethod, lead.paymentStatus)
+                val finalConvertedAt = if (isNewRev) {
+                    if (wasOldRev && lead.convertedAt != null) lead.convertedAt else isoTimestamp
+                } else null
+
                 val updateMap = mutableMapOf<String, Any?>(
                     "status" to status,
                     "notes" to notes,
                     "updatedAt" to isoTimestamp,
+                    "convertedAt" to finalConvertedAt,
                     "followUpDate" to followUpDate,
                     "product" to product,
                     "address" to address,
@@ -372,6 +514,7 @@ class CallingViewModel @Inject constructor(
                     "pincode" to pincode,
                     "paymentMethod" to paymentMethod,
                     "orderAmount" to orderAmount,
+                    "orderAmountNum" to amtNum,
                     "originalTotalValue" to originalTotalValue,
                     "discountAmount" to discountAmount,
                     "subStatus" to subStatus,
@@ -406,10 +549,34 @@ class CallingViewModel @Inject constructor(
                     pincode = pincode,
                     paymentMethod = paymentMethod,
                     orderAmount = orderAmount,
+                    orderAmountNum = amtNum,
                     originalTotalValue = originalTotalValue,
                     discountAmount = discountAmount
                 )
                 repository.addInteraction(interaction)
+                
+                var amtDelta = 0L
+                var countDelta = 0
+                if (isNewRev && !wasOldRev) {
+                    amtDelta = amtNum
+                    countDelta = 1
+                } else if (!isNewRev && wasOldRev) {
+                    amtDelta = -(lead.orderAmountNum)
+                    countDelta = -1
+                } else if (isNewRev && wasOldRev) {
+                    amtDelta = amtNum - lead.orderAmountNum
+                    countDelta = 0
+                }
+                updateSalesMetricsOptimistically(amtDelta, countDelta)
+                
+                updateMetricsOptimistically(
+                    oldStatus = lead.status,
+                    newStatus = status,
+                    oldPaymentMethod = lead.paymentMethod,
+                    oldPaymentStatus = lead.paymentStatus,
+                    newPaymentMethod = paymentMethod,
+                    newPaymentStatus = paymentStatus
+                )
                 onSuccess(logId, lead)
             } catch (e: Exception) {
                 onError(e.message ?: "Unknown error")
@@ -431,18 +598,24 @@ class CallingViewModel @Inject constructor(
 
                 val newLeadId = "l-" + UUID.randomUUID().toString()
 
+                val amtNum = parentLead.orderAmount.toLongOrNull() ?: 0L
                 val newLead = Lead(
                     id = newLeadId,
                     name = parentLead.name,
                     phone = parentLead.phone,
                     source = parentLead.source,
-                    status = "Order Placed", // Typical for Reorder
+                    status = "Order Placed", 
                     notes = "📞 Reorder created from ${parentLead.id}",
                     assignedTo = parentLead.assignedTo,
                     address = parentLead.address,
                     city = parentLead.city,
                     pincode = parentLead.pincode,
                     parentLeadId = parentLead.id,
+                    orderAmount = parentLead.orderAmount,
+                    orderAmountNum = amtNum,
+                    convertedAt = isoTimestamp,
+                    paymentMethod = parentLead.paymentMethod,
+                    paymentStatus = parentLead.paymentStatus,
                     isReorder = true
                 )
 
@@ -462,6 +635,9 @@ class CallingViewModel @Inject constructor(
 
                 val errorMsg = repository.createManualLeadBatch(newLead, interaction)
                 if (errorMsg == null) {
+                    updateMetricsOptimistically(oldStatus = null, newStatus = "Order Placed")
+                    val isRev = isRevenue("Order Placed", parentLead.paymentMethod, parentLead.paymentStatus)
+                    updateSalesMetricsOptimistically(if (isRev) amtNum else 0L, if (isRev) 1 else 0)
                     onSuccess()
                 } else {
                     onError(errorMsg)
@@ -480,7 +656,9 @@ class CallingViewModel @Inject constructor(
         interactionId: String
     ) {
         viewModelScope.launch {
-                repository.recalculateLeadStateAndBatch(leadId, interactionId)
+            if (repository.recalculateLeadStateAndBatch(leadId, interactionId)) {
+                refreshMetricsBackground()
+            }
         }
     }
 
@@ -556,6 +734,10 @@ class CallingViewModel @Inject constructor(
                 
                 val finalNotes = if (notes.trim().isNotEmpty()) "📞 ${notes.trim()}" else ""
 
+                val amtNum = orderAmount.toLongOrNull() ?: 0L
+                val isNewRev = isRevenue(status, paymentMethod, paymentStatus)
+                val finalConvertedAt = if (isNewRev) isoTimestamp else null
+
                 val lead = Lead(
                     id = newLeadId,
                     name = name,
@@ -576,9 +758,11 @@ class CallingViewModel @Inject constructor(
                     pincode = pincode,
                     paymentMethod = paymentMethod,
                     orderAmount = orderAmount,
+                    orderAmountNum = amtNum,
                     originalTotalValue = originalTotalValue,
                     discountAmount = discountAmount,
-                    paymentStatus = paymentStatus
+                    paymentStatus = paymentStatus,
+                    convertedAt = finalConvertedAt
                 )
 
                 val logId = "i-" + UUID.randomUUID().toString().take(6)
@@ -600,6 +784,13 @@ class CallingViewModel @Inject constructor(
 
                 val errorMsg = repository.createManualLeadBatch(lead, interaction)
                 if (errorMsg == null) {
+                    updateMetricsOptimistically(
+                        oldStatus = null,
+                        newStatus = status,
+                        newPaymentMethod = paymentMethod,
+                        newPaymentStatus = paymentStatus
+                    )
+                    updateSalesMetricsOptimistically(if (isNewRev) amtNum else 0L, if (isNewRev) 1 else 0)
                     onSuccess(logId, lead)
                 } else {
                     onError("DB Error: $errorMsg")
@@ -613,6 +804,7 @@ class CallingViewModel @Inject constructor(
     fun updateLead(lead: Lead) {
         viewModelScope.launch {
             try {
+                val amtNum = lead.orderAmount.toLongOrNull() ?: 0L
                 val updateMap = mapOf(
                     "name" to lead.name,
                     "phone" to lead.phone,
@@ -629,15 +821,18 @@ class CallingViewModel @Inject constructor(
                     "pincode" to lead.pincode,
                     "paymentMethod" to lead.paymentMethod,
                     "orderAmount" to lead.orderAmount,
+                    "orderAmountNum" to amtNum,
                     "originalTotalValue" to lead.originalTotalValue,
                     "discountAmount" to lead.discountAmount,
                     "paymentStatus" to lead.paymentStatus,
                     "dispatchStatus" to lead.dispatchStatus,
                     "cancellationReason" to lead.cancellationReason,
                     "cancellationNotes" to lead.cancellationNotes,
-                    "cancellationRequestedAt" to lead.cancellationRequestedAt
+                    "cancellationRequestedAt" to lead.cancellationRequestedAt,
+                    "convertedAt" to lead.convertedAt
                 )
                 repository.updateLead(lead.id, updateMap)
+                refreshMetricsBackground()
             } catch (e: Exception) {
                 // Ignore for now
             }
@@ -666,7 +861,9 @@ class CallingViewModel @Inject constructor(
                     "status" to "Cancellation Pending",
                     "cancellationReason" to reason,
                     "cancellationNotes" to notes,
-                    "cancellationRequestedAt" to isoTimestamp
+                    "cancellationRequestedAt" to isoTimestamp,
+                    "convertedAt" to null,
+                    "orderAmountNum" to 0L
                 )
                 repository.updateLead(lead.id, updates)
 
@@ -682,6 +879,9 @@ class CallingViewModel @Inject constructor(
                     timestamp = isoTimestamp
                 )
                 repository.addInteraction(interaction)
+                updateMetricsOptimistically(oldStatus = lead.status, newStatus = "Cancellation Pending")
+                val isRev = isRevenue(lead.status, lead.paymentMethod, lead.paymentStatus)
+                if (isRev) updateSalesMetricsOptimistically(-(lead.orderAmountNum), -1)
                 onSuccess()
             } catch (e: com.google.firebase.firestore.FirebaseFirestoreException) {
                 if (e.code == com.google.firebase.firestore.FirebaseFirestoreException.Code.PERMISSION_DENIED) {
@@ -707,11 +907,17 @@ class CallingViewModel @Inject constructor(
                     return@launch
                 }
 
+                val isoTimestamp = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
+                    timeZone = TimeZone.getTimeZone("UTC")
+                }.format(Date())
+                val amtNum = lead.orderAmount.toLongOrNull() ?: 0L
                 val updates = mapOf(
                     "status" to "Order Placed",
                     "cancellationReason" to null,
                     "cancellationNotes" to null,
-                    "cancellationRequestedAt" to null
+                    "cancellationRequestedAt" to null,
+                    "convertedAt" to isoTimestamp,
+                    "orderAmountNum" to amtNum
                 )
                 repository.updateLead(lead.id, updates)
 
@@ -729,6 +935,9 @@ class CallingViewModel @Inject constructor(
                     }.format(Date())
                 )
                 repository.addInteraction(interaction)
+                updateMetricsOptimistically(oldStatus = lead.status, newStatus = "Order Placed")
+                val isRev = isRevenue("Order Placed", lead.paymentMethod, lead.paymentStatus)
+                if (isRev) updateSalesMetricsOptimistically(amtNum, 1)
                 onSuccess()
             } catch (e: com.google.firebase.firestore.FirebaseFirestoreException) {
                 if (e.code == com.google.firebase.firestore.FirebaseFirestoreException.Code.PERMISSION_DENIED) {
@@ -762,7 +971,9 @@ class CallingViewModel @Inject constructor(
                 val updates = mapOf(
                     "status" to Constants.STATUS_ORDER_CANCELLED,
                     "cancellationReason" to reason,
-                    "cancellationRequestedAt" to isoTimestamp
+                    "cancellationRequestedAt" to isoTimestamp,
+                    "convertedAt" to null,
+                    "orderAmountNum" to 0L
                 )
                 repository.updateLead(lead.id, updates)
 
@@ -778,6 +989,9 @@ class CallingViewModel @Inject constructor(
                     timestamp = isoTimestamp
                 )
                 repository.addInteraction(interaction)
+                updateMetricsOptimistically(oldStatus = lead.status, newStatus = Constants.STATUS_ORDER_CANCELLED)
+                val isRev = isRevenue(lead.status, lead.paymentMethod, lead.paymentStatus)
+                if (isRev) updateSalesMetricsOptimistically(-(lead.orderAmountNum), -1)
                 onSuccess()
             } catch (e: com.google.firebase.firestore.FirebaseFirestoreException) {
                 if (e.code == com.google.firebase.firestore.FirebaseFirestoreException.Code.PERMISSION_DENIED) {
@@ -794,7 +1008,20 @@ class CallingViewModel @Inject constructor(
     fun archiveLead(leadId: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
         viewModelScope.launch {
             try {
-                repository.updateLead(leadId, mapOf("archived" to true, "status" to "Invalid"))
+                val lead = _leads.value.find { it.id == leadId }
+                repository.updateLead(leadId, mapOf(
+                    "archived" to true, 
+                    "status" to "Invalid",
+                    "convertedAt" to null,
+                    "orderAmountNum" to 0L
+                ))
+                if (lead != null) {
+                    updateMetricsOptimistically(oldStatus = lead.status, newStatus = null)
+                    val isRev = isRevenue(lead.status, lead.paymentMethod, lead.paymentStatus)
+                    if (isRev) updateSalesMetricsOptimistically(-(lead.orderAmountNum), -1)
+                } else {
+                    refreshMetricsBackground()
+                }
                 onSuccess()
             } catch (e: Exception) {
                 onError(e.message ?: "Failed to delete lead")
@@ -840,6 +1067,15 @@ class CallingViewModel @Inject constructor(
             } catch (e: Exception) {
                 e.printStackTrace()
             }
+        }
+    }
+
+    fun migrateOldOrders(onComplete: () -> Unit) {
+        viewModelScope.launch {
+            val userId = _currentUserId.value ?: return@launch
+            repository.migrateOldOrders(userId)
+            refreshMetricsBackground()
+            onComplete()
         }
     }
 }

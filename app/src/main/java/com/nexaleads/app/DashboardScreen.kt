@@ -100,6 +100,7 @@ fun DashboardScreen(
 
     // Metrics
     val metrics by viewModel.dashboardMetrics.collectAsStateWithLifecycle()
+    val orgName by viewModel.orgName.collectAsStateWithLifecycle()
 
     val currentHour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
     val greeting = when {
@@ -194,6 +195,10 @@ fun DashboardScreen(
             // ULTRA PREMIUM SILICON VALLEY HEADER
             val firstName = callerName.split(" ").firstOrNull()?.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() } ?: callerName
             
+            val orgNameParts = orgName.split(" ", limit = 2)
+            val brandName = orgNameParts.firstOrNull()?.uppercase() ?: "ORGANIZATION"
+            val subTitle = if (orgNameParts.size > 1) orgNameParts[1].uppercase() else ""
+            
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -202,33 +207,33 @@ fun DashboardScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // LEFT SIDE: Organization Branding
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(24.dp)
-                                .clip(CircleShape)
-                                .background(ModernViolet)
-                                .clickable { viewModel.injectDummyRetentionLead() }
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "SUJATA",
+                            text = brandName,
                             fontSize = 18.sp,
                             color = TextPrimary,
                             fontWeight = FontWeight.Black,
-                            letterSpacing = 2.sp
+                            letterSpacing = 2.sp,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                         )
                     }
-                    Text(
-                        text = "HEALTH & WELLNESS",
-                        fontSize = 9.sp,
-                        color = TextSecondary,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp,
-                        modifier = Modifier.padding(start = 18.dp)
-                    )
+                    if (subTitle.isNotEmpty()) {
+                        Text(
+                            text = subTitle,
+                            fontSize = 9.sp,
+                            color = TextSecondary,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp,
+                            modifier = Modifier.padding(start = 18.dp),
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                        )
+                    }
                 }
+                
+                Spacer(modifier = Modifier.width(16.dp))
                 
                 // RIGHT SIDE: User Profile (Premium "Smart" Glass Pill)
                 Row(
@@ -298,13 +303,35 @@ fun DashboardScreen(
             }
 
             if (showLogoutDialog) {
+                val userEmail = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.email ?: ""
+                var isMigrating by remember { mutableStateOf(false) }
+
                 AlertDialog(
                     onDismissRequest = { showLogoutDialog = false },
                     title = {
-                        Text("Log Out", fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 20.sp)
+                        Text("Settings & Log Out", fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 20.sp)
                     },
                     text = {
-                        Text("Are you sure you want to log out of your session?", color = TextSecondary)
+                        Column {
+                            Text("Are you sure you want to log out of your session?", color = TextSecondary)
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text("Admin Actions", fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 14.sp)
+                            Spacer(modifier = Modifier.height(8.dp))
+                                Button(
+                                    onClick = { 
+                                        isMigrating = true
+                                        viewModel.migrateOldOrders {
+                                            isMigrating = false
+                                            showLogoutDialog = false
+                                        }
+                                    },
+                                    enabled = !isMigrating,
+                                    colors = ButtonDefaults.buttonColors(containerColor = ModernViolet),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text(if (isMigrating) "Migrating..." else "Migrate Old Orders Data")
+                                }
+                        }
                     },
                     containerColor = SurfaceLight,
                     confirmButton = {
