@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
+import { useAuth } from '../AuthContext';
 import { collection, query, orderBy, onSnapshot, doc, setDoc, deleteDoc, getDocs } from 'firebase/firestore';
 import { Tag, Plus, Edit2, Archive, ArchiveRestore, X, Settings2 } from 'lucide-react';
 import CategoryMaster from './CategoryMaster';
 
 export default function Products() {
+  const { orgId } = useAuth();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -43,7 +45,8 @@ export default function Products() {
   ];
 
   useEffect(() => {
-    const q = query(collection(db, "products"), orderBy("sortOrder", "asc"));
+    if (!orgId) return;
+    const q = query(collection(db, "organizations", orgId, "products"), orderBy("sortOrder", "asc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const prods = [];
       snapshot.forEach(docSnap => prods.push({ id: docSnap.id, ...docSnap.data() }));
@@ -52,7 +55,7 @@ export default function Products() {
     });
 
     // Fetch Categories
-    const unsubCats = onSnapshot(query(collection(db, "categories"), orderBy("name")), (snapshot) => {
+    const unsubCats = onSnapshot(query(collection(db, "organizations", orgId, "categories"), orderBy("name")), (snapshot) => {
       const cats = [];
       snapshot.forEach(docSnap => cats.push({ id: docSnap.id, ...docSnap.data() }));
       
@@ -70,7 +73,7 @@ export default function Products() {
               { id: "cat_combos", name: "Value Combos", color: "#f43f5e", icon: "🎁" }
             ];
             for (const c of defaults) {
-              await setDoc(doc(db, "categories", c.id), { name: c.name, color: c.color, icon: c.icon, isActive: true });
+              await setDoc(doc(db, "organizations", orgId, "categories", c.id), { name: c.name, color: c.color, icon: c.icon, isActive: true });
             }
           } catch (err) {
             console.error("Error seeding default categories:", err);
@@ -90,7 +93,7 @@ export default function Products() {
       unsubscribe();
       unsubCats();
     };
-  }, []);
+  }, [orgId]);
 
   const openAdd = () => {
     setEditingId(null);
@@ -180,9 +183,9 @@ export default function Products() {
 
     try {
       if (editingId) {
-        await setDoc(doc(db, "products", editingId), prodData, { merge: true });
+        await setDoc(doc(db, "organizations", orgId, "products", editingId), prodData, { merge: true });
       } else {
-        await setDoc(doc(collection(db, "products")), prodData);
+        await setDoc(doc(collection(db, "organizations", orgId, "products")), prodData);
       }
       setShowModal(false);
     } catch (err) {
@@ -192,8 +195,9 @@ export default function Products() {
   };
 
   const toggleStatus = async (p) => {
+    if (!orgId) return;
     if (window.confirm(`Are you sure you want to ${p.isActive ? 'disable' : 'enable'} ${p.name}?`)) {
-      await setDoc(doc(db, "products", p.id), { isActive: !p.isActive }, { merge: true });
+      await setDoc(doc(db, "organizations", orgId, "products", p.id), { isActive: !p.isActive }, { merge: true });
     }
   };
 
@@ -202,15 +206,15 @@ export default function Products() {
     
     try {
       // 1. Clear old Products
-      const snapshot = await getDocs(query(collection(db, "products")));
+      const snapshot = await getDocs(query(collection(db, "organizations", orgId, "products")));
       for (const docSnap of snapshot.docs) {
-        await deleteDoc(doc(db, "products", docSnap.id));
+        await deleteDoc(doc(db, "organizations", orgId, "products", docSnap.id));
       }
 
       // 2. Clear old Categories
-      const catSnapshot = await getDocs(query(collection(db, "categories")));
+      const catSnapshot = await getDocs(query(collection(db, "organizations", orgId, "categories")));
       for (const docSnap of catSnapshot.docs) {
-        await deleteDoc(doc(db, "categories", docSnap.id));
+        await deleteDoc(doc(db, "organizations", orgId, "categories", docSnap.id));
       }
 
       // 3. Define and insert 7 New Categories
@@ -225,7 +229,7 @@ export default function Products() {
       ];
 
       for (const c of newCategories) {
-        await setDoc(doc(db, "categories", c.id), c);
+        await setDoc(doc(db, "organizations", orgId, "categories", c.id), c);
       }
 
       const baseProducts = [
@@ -305,7 +309,7 @@ export default function Products() {
           bundledProducts: [],
           updatedAt: new Date().toISOString()
         };
-        await setDoc(doc(db, "products", id), data);
+        await setDoc(doc(db, "organizations", orgId, "products", id), data);
       }
 
       // Insert Combos
@@ -319,7 +323,7 @@ export default function Products() {
           type: 'combo',
           updatedAt: new Date().toISOString()
         };
-        await setDoc(doc(db, "products", id), data);
+        await setDoc(doc(db, "organizations", orgId, "products", id), data);
       }
 
       alert("Database Reset Complete: 7 Premium Categories & 21 Mapped Products added successfully!");

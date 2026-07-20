@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { db } from '../firebase';
+import { useAuth } from '../AuthContext';
 import { 
   collection, 
   query, 
@@ -19,6 +20,7 @@ import {
 import { RefreshCw, Search } from 'lucide-react';
 
 export default function Dashboard() {
+  const { orgId } = useAuth();
   const [leads, setLeads] = useState([]);
   const [lastDoc, setLastDoc] = useState(null);
   const [hasMore, setHasMore] = useState(true);
@@ -44,6 +46,7 @@ export default function Dashboard() {
 
   // Fetch aggregate statistics from server (scalable for 100k+ records)
   const fetchStats = async () => {
+    if (!orgId) return;
     setStatsLoading(true);
     try {
       const [
@@ -57,17 +60,17 @@ export default function Dashboard() {
         afternoonSnap,
         eveningSnap
       ] = await Promise.all([
-        getCountFromServer(collection(db, 'leads')),
-        getCountFromServer(query(collection(db, 'leads'), where('status', 'in', ['Order Placed', 'Converted', 'Visited']))),
-        getAggregateFromServer(query(collection(db, 'leads'), where('status', 'in', ['Order Placed', 'Converted', 'Visited'])), {
+        getCountFromServer(collection(db, 'organizations', orgId, 'leads')),
+        getCountFromServer(query(collection(db, 'organizations', orgId, 'leads'), where('status', 'in', ['Order Placed', 'Converted', 'Visited']))),
+        getAggregateFromServer(query(collection(db, 'organizations', orgId, 'leads'), where('status', 'in', ['Order Placed', 'Converted', 'Visited'])), {
           totalRevenue: sum('orderAmount')
         }),
-        getCountFromServer(query(collection(db, 'leads'), where('subStatus', '==', 'Ringing'))),
-        getCountFromServer(query(collection(db, 'leads'), where('subStatus', '==', 'Busy'))),
-        getCountFromServer(query(collection(db, 'leads'), where('subStatus', '==', 'Switched Off'))),
-        getCountFromServer(query(collection(db, 'leads'), where('followUpTimeSlot', '==', 'Morning (10-1)'))),
-        getCountFromServer(query(collection(db, 'leads'), where('followUpTimeSlot', '==', 'Afternoon (2-5)'))),
-        getCountFromServer(query(collection(db, 'leads'), where('followUpTimeSlot', '==', 'Evening (5-8)')))
+        getCountFromServer(query(collection(db, 'organizations', orgId, 'leads'), where('subStatus', '==', 'Ringing'))),
+        getCountFromServer(query(collection(db, 'organizations', orgId, 'leads'), where('subStatus', '==', 'Busy'))),
+        getCountFromServer(query(collection(db, 'organizations', orgId, 'leads'), where('subStatus', '==', 'Switched Off'))),
+        getCountFromServer(query(collection(db, 'organizations', orgId, 'leads'), where('followUpTimeSlot', '==', 'Morning (10-1)'))),
+        getCountFromServer(query(collection(db, 'organizations', orgId, 'leads'), where('followUpTimeSlot', '==', 'Afternoon (2-5)'))),
+        getCountFromServer(query(collection(db, 'organizations', orgId, 'leads'), where('followUpTimeSlot', '==', 'Evening (5-8)')))
       ]);
 
       setStats({
@@ -90,15 +93,14 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchStats();
-  }, []);
+  }, [orgId]);
 
-  // Real-time listener for the top 50 recent leads (only active when not searching)
   useEffect(() => {
-    if (activeSearch) return;
+    if (!orgId || activeSearch) return;
 
     setLoadingLeads(true);
     const q = query(
-      collection(db, 'leads'),
+      collection(db, 'organizations', orgId, 'leads'),
       limit(50)
     );
 
@@ -117,12 +119,13 @@ export default function Dashboard() {
     });
 
     return () => unsubscribe();
-  }, [activeSearch]);
+  }, [activeSearch, orgId]);
 
   // Real-time listener for Pending Payments
   useEffect(() => {
+    if (!orgId) return;
     const q = query(
-      collection(db, 'leads'),
+      collection(db, 'organizations', orgId, 'leads'),
       where('status', '==', 'Pending Payment'),
       orderBy('lastUpdated', 'desc')
     );
@@ -134,11 +137,12 @@ export default function Dashboard() {
       setPendingPayments(pending);
     });
     return () => unsubscribe();
-  }, []);
+  }, [orgId]);
 
   // Load products catalog list for combo lookup mapping
   useEffect(() => {
-    const q = query(collection(db, "products"));
+    if (!orgId) return;
+    const q = query(collection(db, "organizations", orgId, "products"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const prods = [];
       snapshot.forEach(docSnap => prods.push({ id: docSnap.id, ...docSnap.data() }));
@@ -164,13 +168,13 @@ export default function Dashboard() {
 
     if (isPhone) {
       q = query(
-        collection(db, 'leads'),
+        collection(db, 'organizations', orgId, 'leads'),
         where('phoneNumber', '==', term),
         limit(50)
       );
     } else {
       q = query(
-        collection(db, 'leads'),
+        collection(db, 'organizations', orgId, 'leads'),
         where('name', '>=', term),
         where('name', '<=', term + '\uf8ff'),
         limit(50)
@@ -205,7 +209,7 @@ export default function Dashboard() {
 
   // Pagination: fetch next 50 leads (works for both default feed and search query)
   const loadMoreLeads = async () => {
-    if (!lastDoc || loadingLeads) return;
+    if (!orgId || !lastDoc || loadingLeads) return;
     setLoadingLeads(true);
 
     let q;
@@ -215,14 +219,14 @@ export default function Dashboard() {
       const isPhone = /^\+?[0-9\s-]+$/.test(term);
       if (isPhone) {
         q = query(
-          collection(db, 'leads'),
+          collection(db, 'organizations', orgId, 'leads'),
           where('phoneNumber', '==', term),
           startAfter(lastDoc),
           limit(50)
         );
       } else {
         q = query(
-          collection(db, 'leads'),
+          collection(db, 'organizations', orgId, 'leads'),
           where('name', '>=', term),
           where('name', '<=', term + '\uf8ff'),
           startAfter(lastDoc),
@@ -231,7 +235,7 @@ export default function Dashboard() {
       }
     } else {
       q = query(
-        collection(db, 'leads'),
+        collection(db, 'organizations', orgId, 'leads'),
         startAfter(lastDoc),
         limit(50)
       );
@@ -258,7 +262,7 @@ export default function Dashboard() {
     if (!confirm) return;
 
     try {
-      const leadRef = doc(db, 'leads', lead.id);
+      const leadRef = doc(db, 'organizations', orgId, 'leads', lead.id);
       await updateDoc(leadRef, {
         status: 'Order Placed',
         paymentStatus: 'Paid',
@@ -313,9 +317,10 @@ export default function Dashboard() {
   };
 
   const handleFixOldPaymentStatuses = async () => {
+    if (!orgId) return;
     if (!window.confirm("Are you sure you want to fix all old Payment Statuses (Emojis)?")) return;
     try {
-      const leadsSnap = await getDocs(collection(db, 'leads'));
+      const leadsSnap = await getDocs(collection(db, 'organizations', orgId, 'leads'));
       let updatedCount = 0;
       const promises = [];
       leadsSnap.forEach((docSnap) => {
@@ -325,7 +330,7 @@ export default function Dashboard() {
         else if (data.paymentStatus === "⏳ UPI Link Sent") newStatus = "Link Sent";
         
         if (newStatus) {
-          promises.push(updateDoc(doc(db, 'leads', docSnap.id), { paymentStatus: newStatus }));
+          promises.push(updateDoc(doc(db, 'organizations', orgId, 'leads', docSnap.id), { paymentStatus: newStatus }));
           updatedCount++;
         }
       });

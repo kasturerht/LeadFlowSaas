@@ -2,6 +2,9 @@ package com.nexaleads.app.data.model
 
 import com.nexaleads.app.Constants
 
+import androidx.annotation.Keep
+
+@Keep
 data class Lead(
     val id: String = "",
     val name: String = "",
@@ -40,10 +43,14 @@ data class Lead(
     // Retention & Reorder Engine
     val deliveredAt: String? = null,
     val exhaustionDate: String? = null,
+    val exhaustionTimestamp: Long? = null,
     val parentLeadId: String? = null,
-    val isReorder: Boolean = false
+    val isReorder: Boolean = false,
+    val searchKeywords: List<String> = emptyList(),
+    val updatedAt: Long? = null
 )
 
+@Keep
 data class LeadEvent(
     val id: String = java.util.UUID.randomUUID().toString(),
     val type: String = "",

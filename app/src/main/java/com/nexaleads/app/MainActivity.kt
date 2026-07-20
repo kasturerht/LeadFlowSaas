@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -48,11 +49,11 @@ class MainActivity : ComponentActivity() {
             LeadFlowSaaSTheme {
                 val navController = rememberNavController()
                 val authViewModel: AuthViewModel = hiltViewModel()
-                val authState by authViewModel.authState.collectAsState()
+                val authState by authViewModel.authState.collectAsStateWithLifecycle()
                 
                 val callingViewModel: CallingViewModel = hiltViewModel()
-                val pendingInvoiceLead by callingViewModel.pendingInvoiceLead.collectAsState()
-                val telecallerContact by callingViewModel.telecallerContact.collectAsState()
+                val pendingInvoiceLead by callingViewModel.pendingInvoiceLead.collectAsStateWithLifecycle()
+                val telecallerContact by callingViewModel.telecallerContact.collectAsStateWithLifecycle()
 
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     pendingInvoiceLead?.let { lead ->
@@ -95,9 +96,9 @@ class MainActivity : ComponentActivity() {
                             val authStateFlow = authState
                             if (authStateFlow is AuthState.Authenticated) {
                                 LaunchedEffect(authStateFlow.userId) {
-                                    callingViewModel.initialize(authStateFlow.userId, authStateFlow.userName, authStateFlow.contactNumber)
+                                    callingViewModel.initialize(authStateFlow.userId, authStateFlow.userName, authStateFlow.contactNumber, authStateFlow.orgId)
                                 }
-                                val leads by callingViewModel.leads.collectAsState()
+                                val leads by callingViewModel.leads.collectAsStateWithLifecycle()
                                 
                                 DashboardScreen(
                                     callerName = authStateFlow.userName,
@@ -124,9 +125,9 @@ class MainActivity : ComponentActivity() {
                             val authStateFlow = authState
                             if (authStateFlow is AuthState.Authenticated) {
                                 LaunchedEffect(authStateFlow.userId) {
-                                    callingViewModel.initialize(authStateFlow.userId, authStateFlow.userName, authStateFlow.contactNumber)
+                                    callingViewModel.initialize(authStateFlow.userId, authStateFlow.userName, authStateFlow.contactNumber, authStateFlow.orgId)
                                 }
-                                val leads by callingViewModel.leads.collectAsState()
+                                val leads by callingViewModel.leads.collectAsStateWithLifecycle()
                                 
                                 TodayCallingListScreen(
                                     currentUserId = authStateFlow.userId,
@@ -149,12 +150,13 @@ class MainActivity : ComponentActivity() {
                             val authStateFlow = authState
                             if (authStateFlow is AuthState.Authenticated) {
                                 LaunchedEffect(authStateFlow.userId) {
-                                    callingViewModel.initialize(authStateFlow.userId, authStateFlow.userName, authStateFlow.contactNumber)
+                                    callingViewModel.initialize(authStateFlow.userId, authStateFlow.userName, authStateFlow.contactNumber, authStateFlow.orgId)
                                 }
-                                val leads by callingViewModel.leads.collectAsState()
+                                val leads by callingViewModel.leads.collectAsStateWithLifecycle()
                                 
                                 HistoryScreen(
                                     currentUserId = authStateFlow.userId,
+                                    orgId = authStateFlow.orgId,
                                     fullLeadsList = leads,
                                     onBack = { navController.popBackStack() },
                                     onLogout = {
@@ -285,7 +287,7 @@ fun LoginScreen(authViewModel: AuthViewModel, onLoginSuccess: () -> Unit) {
     var passwordInput by remember { mutableStateOf("") }
     var isSubmitting by remember { mutableStateOf(false) }
     
-    val authState by authViewModel.authState.collectAsState()
+    val authState by authViewModel.authState.collectAsStateWithLifecycle()
     
     LaunchedEffect(authState) {
         if (authState is AuthState.Authenticated) {

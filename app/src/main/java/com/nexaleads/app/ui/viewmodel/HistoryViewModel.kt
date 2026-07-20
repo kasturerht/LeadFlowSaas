@@ -21,8 +21,9 @@ class HistoryViewModel @Inject constructor(
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
 
-    fun fetchHistory(userId: String) {
+    fun fetchHistory(userId: String, orgId: String) {
         viewModelScope.launch {
+            repository.setOrgId(orgId)
             _isLoading.value = true
             try {
                 _interactions.value = repository.getRecentInteractions(userId)

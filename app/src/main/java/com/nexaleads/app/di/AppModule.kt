@@ -24,8 +24,11 @@ object AppModule {
     fun provideFirebaseFirestore(): FirebaseFirestore {
         val db = FirebaseFirestore.getInstance()
         val settings = FirebaseFirestoreSettings.Builder()
-            .setPersistenceEnabled(true)
-            .setCacheSizeBytes(FirebaseFirestoreSettings.CACHE_SIZE_UNLIMITED)
+            .setLocalCacheSettings(
+                com.google.firebase.firestore.PersistentCacheSettings.newBuilder()
+                    .setSizeBytes(104857600L) // 100 MB cache for robust offline behavior
+                    .build()
+            )
             .build()
         db.firestoreSettings = settings
         return db

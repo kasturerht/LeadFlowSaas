@@ -372,10 +372,10 @@ fun TodayCallingListScreen(
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = BackgroundLight)
             )
         }
-    ) { padding ->
+    ) { paddingValues ->
         Column(
             modifier = Modifier
-                .padding(padding)
+                .padding(paddingValues)
                 .fillMaxSize()
                 .background(BackgroundLight)
                 .padding(16.dp)

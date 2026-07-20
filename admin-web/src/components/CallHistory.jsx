@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { db } from '../firebase';
+import { useAuth } from '../AuthContext';
 import { 
   collection, 
   query, 
@@ -15,6 +16,7 @@ import {
 import { AlertTriangle, CheckSquare, Search, Award, Clock, Activity, Flag } from 'lucide-react';
 
 export default function CallHistory() {
+  const { orgId } = useAuth();
   const [interactions, setInteractions] = useState([]);
   const [lastDoc, setLastDoc] = useState(null);
   const [hasMore, setHasMore] = useState(true);
@@ -39,9 +41,10 @@ export default function CallHistory() {
 
   // Fetch telecallers to populate dropdown filter
   useEffect(() => {
+    if (!orgId) return;
     const fetchCallers = async () => {
       try {
-        const q = query(collection(db, 'users'), where('role', '==', 'telecaller'));
+        const q = query(collection(db, 'organizations', orgId, 'users'), where('role', '==', 'telecaller'));
         const snap = await getDocs(q);
         const callers = [];
         snap.forEach(doc => {
@@ -54,11 +57,12 @@ export default function CallHistory() {
       }
     };
     fetchCallers();
-  }, []);
+  }, [orgId]);
 
   // Fetch products catalog list for combo lookup mapping
   useEffect(() => {
-    const q = query(collection(db, "products"));
+    if (!orgId) return;
+    const q = query(collection(db, "organizations", orgId, "products"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const prods = [];
       snapshot.forEach(docSnap => prods.push({ id: docSnap.id, ...docSnap.data() }));
@@ -67,13 +71,14 @@ export default function CallHistory() {
       console.error("Error loading products for lookup in history:", err);
     });
     return () => unsubscribe();
-  }, []);
+  }, [orgId]);
 
   // Listen to filtered interactions (with limit(50) for high performance)
   useEffect(() => {
+    if (!orgId) return;
     setLoading(true);
     let q = query(
-      collection(db, 'interactions'),
+      collection(db, 'organizations', orgId, 'interactions'),
       orderBy('timestamp', 'desc'),
       limit(50)
     );
@@ -100,7 +105,7 @@ export default function CallHistory() {
     }
 
     q = query(
-      collection(db, 'interactions'),
+      collection(db, 'organizations', orgId, 'interactions'),
       ...constraints,
       orderBy('timestamp', 'desc'),
       limit(50)
@@ -119,10 +124,11 @@ export default function CallHistory() {
     });
 
     return () => unsubscribe();
-  }, [selectedCaller, selectedType, auditStatusFilter]);
+  }, [selectedCaller, selectedType, auditStatusFilter, orgId]);
 
   // Dynamically resolve lead details for loaded interactions (batch fetch chunks of 30)
   useEffect(() => {
+    if (!orgId) return;
     const fetchLeadsForInteractions = async () => {
       const missingIds = interactions
         .map(item => item.leadId || item.lead_id)
@@ -139,7 +145,7 @@ export default function CallHistory() {
       for (let i = 0; i < uniqueIds.length; i += 30) {
         const chunk = uniqueIds.slice(i, i + 30);
         try {
-          const q = query(collection(db, 'leads'), where('__name__', 'in', chunk));
+          const q = query(collection(db, 'organizations', orgId, 'leads'), where('__name__', 'in', chunk));
           const snap = await getDocs(q);
           snap.forEach(docSnap => {
             const data = docSnap.data();
@@ -166,15 +172,15 @@ export default function CallHistory() {
     if (interactions.length > 0) {
       fetchLeadsForInteractions();
     }
-  }, [interactions]);
+  }, [interactions, orgId]);
 
   // Load more interactions using startAfter cursor
   const loadMoreInteractions = async () => {
-    if (!lastDoc || loading) return;
+    if (!lastDoc || loading || !orgId) return;
     setLoading(true);
 
     let q = query(
-      collection(db, 'interactions'),
+      collection(db, 'organizations', orgId, 'interactions'),
       orderBy('timestamp', 'desc'),
       startAfter(lastDoc),
       limit(50)
@@ -201,7 +207,7 @@ export default function CallHistory() {
     }
 
     q = query(
-      collection(db, 'interactions'),
+      collection(db, 'organizations', orgId, 'interactions'),
       ...constraints,
       orderBy('timestamp', 'desc'),
       startAfter(lastDoc),
@@ -290,7 +296,7 @@ export default function CallHistory() {
     const data = getAuditData(id, originalItem);
     
     try {
-      const docRef = doc(db, 'interactions', id);
+      const docRef = doc(db, 'organizations', orgId, 'interactions', id);
       await updateDoc(docRef, {
         reviewStatus: data.reviewStatus,
         isFlagged: data.isFlagged,

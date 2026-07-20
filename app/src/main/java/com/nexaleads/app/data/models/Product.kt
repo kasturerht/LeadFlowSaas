@@ -1,10 +1,14 @@
 package com.nexaleads.app.data.models
 
+import androidx.annotation.Keep
+
+@Keep
 data class BundledProduct(
     val productId: String = "",
     val quantity: Int = 1
 )
 
+@Keep
 data class Product(
     val id: String = "",
     val name: String = "",

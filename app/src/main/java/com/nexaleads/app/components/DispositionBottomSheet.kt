@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -50,7 +51,7 @@ fun DispositionBottomSheet(
     val haptic = LocalHapticFeedback.current
     val coroutineScope = rememberCoroutineScope()
     val mainScope = rememberCoroutineScope()
-    val productsList by viewModel.products.collectAsState()
+    val productsList by viewModel.products.collectAsStateWithLifecycle()
     val pricesMap = remember(productsList) { productsList.associate { it.name to it.getEffectiveOfferPrice() } }
     val bottomPricesMap = remember(productsList) { productsList.associate { it.name to it.getEffectiveBottomPrice() } }
     val shippingFeesMap = remember(productsList) { productsList.associate { it.name to it.shippingFee } }
@@ -87,7 +88,7 @@ fun DispositionBottomSheet(
     var includeDispatchNote by remember { mutableStateOf(true) }
     var includeSupportPhone by remember { mutableStateOf(true) }
     var selectedLanguage by remember { mutableStateOf("Marathi") }
-    val telecallerContact by viewModel.telecallerContact.collectAsState()
+    val telecallerContact by viewModel.telecallerContact.collectAsStateWithLifecycle()
 
     var originalTotalValue by remember { mutableStateOf(lead.originalTotalValue ?: "") }
     var discountAmount by remember { mutableStateOf(lead.discountAmount ?: "") }
@@ -760,6 +761,11 @@ fun DispositionBottomSheet(
                             }
                             
                             val enteredAmt = orderAmount.toIntOrNull() ?: 0
+                            if (enteredAmt <= 0) {
+                                Toast.makeText(context, "Order amount must be greater than 0", Toast.LENGTH_SHORT).show()
+                                return@Button
+                            }
+                            
                             if (calculatedBottomTotal > 0 && enteredAmt < calculatedBottomTotal) {
                                 Toast.makeText(context, "Amount cannot be below limit (₹${calculatedBottomTotal.toInt()})", Toast.LENGTH_SHORT).show()
                                 return@Button
@@ -929,7 +935,7 @@ fun DispositionBottomSheet(
     if (showProductPopup) {
         PremiumProductSelector(
             productsList = productsList,
-            categoriesList = viewModel.categories.collectAsState().value,
+            categoriesList = viewModel.categories.collectAsStateWithLifecycle().value,
             selectedOption = selectedProduct,
             onSelect = {
                 selectedProduct = it

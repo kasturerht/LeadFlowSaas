@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,13 +38,14 @@ import java.util.*
 @Composable
 fun HistoryScreen(
     currentUserId: String,
+    orgId: String,
     fullLeadsList: List<Lead>,
     onBack: () -> Unit,
     onLogout: () -> Unit,
     viewModel: HistoryViewModel = hiltViewModel()
 ) {
-    val interactions by viewModel.interactions.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
+    val interactions by viewModel.interactions.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     
     var showPopup by remember { mutableStateOf(false) }
     var selectedLead by remember { mutableStateOf<Lead?>(null) }
@@ -51,8 +53,8 @@ fun HistoryScreen(
     
     val context = LocalContext.current
 
-    LaunchedEffect(currentUserId) {
-        viewModel.fetchHistory(currentUserId)
+    LaunchedEffect(currentUserId, orgId) {
+        viewModel.fetchHistory(currentUserId, orgId)
     }
 
     // Grouping logic

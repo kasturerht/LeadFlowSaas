@@ -10,6 +10,7 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.async
 import javax.inject.Inject
 import com.nexaleads.app.data.models.Product
 import com.nexaleads.app.data.models.Category
@@ -17,8 +18,18 @@ import com.nexaleads.app.data.models.Category
 class LeadRepository @Inject constructor(
     private val db: FirebaseFirestore
 ) {
-    fun getLeadsForUser(userId: String): Flow<List<Lead>> = callbackFlow {
-        val listener = db.collection("leads")
+    private var orgId: String = ""
+
+    fun setOrgId(id: String) {
+        orgId = id
+    }
+
+    private fun leadsCol() = db.collection("organizations").document(orgId).collection("leads")
+    private fun interactionsCol() = db.collection("organizations").document(orgId).collection("interactions")
+    private fun productsCol() = db.collection("organizations").document(orgId).collection("products")
+    private fun categoriesCol() = db.collection("organizations").document(orgId).collection("categories")
+    fun getLeadsForUser(userId: String, limit: Long = 100): Flow<List<Lead>> = callbackFlow {
+        val listener = leadsCol()
             .whereEqualTo("assignedTo", userId)
             .whereEqualTo("archived", false)
             .addSnapshotListener { snapshot, error ->
@@ -28,41 +39,7 @@ class LeadRepository @Inject constructor(
                 }
                 
                 if (snapshot != null) {
-                    val leads = snapshot.documents.mapNotNull { doc ->
-                        Lead(
-                            id = doc.id,
-                            name = doc.getString("name") ?: "",
-                            phone = doc.getString("phone") ?: "",
-                            source = doc.getString("source") ?: "",
-                            status = doc.getString("status") ?: "New",
-                            notes = doc.getString("notes") ?: "",
-                            label = doc.getString("label") ?: "",
-                            followUpDate = doc.getString("followUpDate"),
-                            archived = doc.getBoolean("archived") ?: false,
-                            assignedTo = doc.getString("assignedTo") ?: "",
-                            product = doc.getString("product") ?: "",
-                            address = doc.getString("address") ?: "",
-                            city = doc.getString("city") ?: "",
-                            pincode = doc.getString("pincode") ?: "",
-                            paymentMethod = doc.getString("paymentMethod") ?: "",
-                            orderAmount = doc.getString("orderAmount") ?: "",
-                            subStatus = doc.getString("subStatus"),
-                            followUpTimeSlot = doc.getString("followUpTimeSlot"),
-                            paymentStatus = doc.getString("paymentStatus"),
-                            isSuspiciousShortCall = doc.getBoolean("isSuspiciousShortCall") ?: false,
-                            originalTotalValue = doc.getString("originalTotalValue") ?: "",
-                            discountAmount = doc.getString("discountAmount") ?: "",
-                            convertedAt = doc.getString("convertedAt"),
-                            dispatchStatus = doc.getString("dispatchStatus") ?: "",
-                            cancellationReason = doc.getString("cancellationReason") ?: "",
-                            cancellationNotes = doc.getString("cancellationNotes") ?: "",
-                            cancellationRequestedAt = doc.getString("cancellationRequestedAt") ?: "",
-                            deliveredAt = doc.getString("deliveredAt"),
-                            exhaustionDate = doc.getString("exhaustionDate"),
-                            parentLeadId = doc.getString("parentLeadId"),
-                            isReorder = doc.getBoolean("isReorder") ?: false
-                        )
-                    }
+                    val leads = snapshot.documents.mapNotNull { doc -> parseLead(doc) }
                     trySend(leads)
                 }
             }
@@ -70,8 +47,55 @@ class LeadRepository @Inject constructor(
         awaitClose { listener.remove() }
     }
 
+    fun getRetentionDueLeads(userId: String, limit: Long = 100): Flow<List<Lead>> = callbackFlow {
+        val now = System.currentTimeMillis()
+        val next7Days = now + (7L * 24 * 60 * 60 * 1000)
+        
+        val listener = leadsCol()
+            .whereEqualTo("assignedTo", userId)
+            .whereEqualTo("archived", false)
+            .whereLessThanOrEqualTo("exhaustionTimestamp", next7Days)
+            .limit(limit)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    trySend(emptyList())
+                    return@addSnapshotListener
+                }
+                if (snapshot != null) {
+                    val leads = snapshot.documents.mapNotNull { doc -> parseLead(doc) }
+                    trySend(leads)
+                }
+            }
+        awaitClose { listener.remove() }
+    }
+
+    fun searchLeads(query: String, userId: String, limit: Long = 50): Flow<List<Lead>> = callbackFlow {
+        val sanitizedQuery = query.lowercase().trim()
+        if (sanitizedQuery.isEmpty()) {
+            trySend(emptyList())
+            return@callbackFlow
+        }
+        
+        val listener = leadsCol()
+            .whereEqualTo("assignedTo", userId)
+            .whereEqualTo("archived", false)
+            .whereArrayContains("searchKeywords", sanitizedQuery)
+            .limit(limit)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    trySend(emptyList())
+                    return@addSnapshotListener
+                }
+                if (snapshot != null) {
+                    val leads = snapshot.documents.mapNotNull { doc -> parseLead(doc) }
+                    trySend(leads)
+                }
+            }
+        awaitClose { listener.remove() }
+    }
+
     fun getCategories(): Flow<List<Category>> = callbackFlow {
-        val listener = db.collection("categories")
+        val listener = categoriesCol()
             .whereEqualTo("isActive", true)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
@@ -85,7 +109,8 @@ class LeadRepository @Inject constructor(
                             name = doc.getString("name") ?: "",
                             color = doc.getString("color") ?: "#ffffff",
                             icon = doc.getString("icon") ?: "📦",
-                            isActive = doc.getBoolean("isActive") ?: true
+                            isActive = doc.getBoolean("isActive") ?: true,
+                            order = doc.getLong("order")?.toInt() ?: 0
                         )
                     }
                     trySend(categories.sortedBy { it.name })
@@ -94,22 +119,118 @@ class LeadRepository @Inject constructor(
         awaitClose { listener.remove() }
     }
 
+    suspend fun getDashboardMetrics(userId: String): Map<String, Long> = kotlinx.coroutines.coroutineScope {
+        val baseQuery = leadsCol().whereEqualTo("assignedTo", userId).whereEqualTo("archived", false)
+        
+        val deferredFresh = async {
+            baseQuery.whereIn("status", listOf("New", "No Answer")).count().get(com.google.firebase.firestore.AggregateSource.SERVER).await().count
+        }
+        val deferredFollowup = async {
+            baseQuery.whereEqualTo("status", "Follow-up").count().get(com.google.firebase.firestore.AggregateSource.SERVER).await().count
+        }
+        val deferredConfirmed = async {
+            baseQuery.whereEqualTo("status", "Order Placed").count().get(com.google.firebase.firestore.AggregateSource.SERVER).await().count
+        }
+        val deferredAttempted = async {
+            baseQuery.whereEqualTo("status", "Call Not Answered").count().get(com.google.firebase.firestore.AggregateSource.SERVER).await().count
+        }
+        val deferredRejected = async {
+            baseQuery.whereIn("status", listOf("Not Interested", "Invalid", "Order Cancelled")).count().get(com.google.firebase.firestore.AggregateSource.SERVER).await().count
+        }
+        val deferredDispatched = async {
+            baseQuery.whereEqualTo("status", "Dispatched").count().get(com.google.firebase.firestore.AggregateSource.SERVER).await().count
+        }
+        val deferredDelivered = async {
+            baseQuery.whereEqualTo("status", "Delivered").count().get(com.google.firebase.firestore.AggregateSource.SERVER).await().count
+        }
+        val deferredRTO = async {
+            baseQuery.whereEqualTo("status", "RTO").count().get(com.google.firebase.firestore.AggregateSource.SERVER).await().count
+        }
+        val deferredPendingPayments = async {
+            baseQuery.whereEqualTo("status", "Order Placed")
+                .whereEqualTo("paymentMethod", "Prepaid")
+                .whereEqualTo("paymentStatus", "Link Sent")
+                .count().get(com.google.firebase.firestore.AggregateSource.SERVER).await().count
+        }
+
+        mapOf(
+            "freshLeads" to deferredFresh.await(),
+            "dueFollowups" to deferredFollowup.await(),
+            "confirmedOrders" to (deferredConfirmed.await() - deferredPendingPayments.await()),
+            "pendingPayments" to deferredPendingPayments.await(),
+            "attempted" to deferredAttempted.await(),
+            "rejected" to deferredRejected.await(),
+            "dispatched" to deferredDispatched.await(),
+            "delivered" to deferredDelivered.await(),
+            "rto" to deferredRTO.await()
+        )
+    }
+
+    suspend fun getSalesMetrics(userId: String): Map<String, Long> = kotlinx.coroutines.coroutineScope {
+        val isoFormat = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).apply { timeZone = java.util.TimeZone.getTimeZone("Asia/Kolkata") }
+        val todayStr = isoFormat.format(java.util.Date())
+        
+        val cal = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("Asia/Kolkata"))
+        cal.add(java.util.Calendar.DAY_OF_YEAR, -7)
+        val lastWeekStr = isoFormat.format(cal.time)
+
+        val baseQuery = leadsCol()
+            .whereEqualTo("assignedTo", userId)
+            .whereEqualTo("archived", false)
+            .whereEqualTo("status", "Order Placed")
+
+        val totalActive = baseQuery.count().get(com.google.firebase.firestore.AggregateSource.SERVER).await().count
+        
+        // Summing values server-side requires Firestore sum() aggregations
+        // But orderAmount is a String in the database! We can't sum() strings on the server.
+        // For a true 100k scale, orderAmount should be a Number. 
+        // As a fallback for Phase 4, we query the recent confirmed leads and sum locally.
+        
+        val recentLeads = baseQuery.whereGreaterThanOrEqualTo("convertedAt", lastWeekStr).get().await()
+        
+        var todayCount = 0L
+        var todayRev = 0L
+        var weekRev = 0L
+
+        recentLeads.documents.forEach { doc ->
+            val cAt = doc.getString("convertedAt") ?: ""
+            val amountStr = doc.getString("orderAmount") ?: "0"
+            val amount = amountStr.toLongOrNull() ?: 0L
+            
+            if (cAt >= lastWeekStr) {
+                weekRev += amount
+            }
+            if (cAt.startsWith(todayStr)) {
+                todayCount++
+                todayRev += amount
+            }
+        }
+        
+        mapOf(
+            "totalActive" to totalActive,
+            "todayCount" to todayCount,
+            "todayRev" to todayRev,
+            "weekRev" to weekRev
+        )
+    }
+
     fun getProducts(): Flow<List<Product>> = callbackFlow {
-        val listener = db.collection("products")
+        val listener = productsCol()
             .whereEqualTo("isActive", true)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     error.printStackTrace()
-                    trySend(emptyList()) // Send empty list instead of crashing
+                    close(error)
                     return@addSnapshotListener
                 }
                 if (snapshot != null) {
                     val products = snapshot.documents.mapNotNull { doc ->
-                        val bundledList = (doc.get("bundledProducts") as? List<Map<String, Any>>)?.mapNotNull { item ->
-                            val pId = item["productId"] as? String
-                            val qty = (item["quantity"] as? Number)?.toInt() ?: 1
-                            if (pId != null) com.nexaleads.app.data.models.BundledProduct(pId, qty) else null
-                        } ?: emptyList()
+                        try {
+                            val bundledList = (doc.get("bundledProducts") as? List<Map<String, Any>>)?.mapNotNull { item ->
+                                val pId = item["productId"] as? String
+                                val qty = (item["quantity"] as? Number)?.toInt() ?: 1
+                                if (pId != null) com.nexaleads.app.data.models.BundledProduct(pId, qty) else null
+                            } ?: emptyList()
 
                         Product(
                             id = doc.id,
@@ -128,6 +249,9 @@ class LeadRepository @Inject constructor(
                             consumptionDays = doc.getLong("consumptionDays")?.toInt() ?: 30,
                             categoryIds = doc.get("categoryIds") as? List<String> ?: emptyList()
                         )
+                        } catch (e: Exception) {
+                            com.nexaleads.app.data.models.Product(id = "error_id", name = "Parsing Error: ${e.message}", description = "Firestore Error", price = 0.0)
+                        }
                     }
                     trySend(products.sortedBy { it.sortOrder })
                 }
@@ -170,7 +294,7 @@ class LeadRepository @Inject constructor(
                 Product(id = "prod_21", name = "spirulina cookies 200 gram", price = 200.0, description = "Edibles", emojiIcon = "🍪", sortOrder = 21)
             )
             for (product in newProducts) {
-                val docRef = db.collection("products").document(product.id)
+                val docRef = productsCol().document(product.id)
                 batch.set(docRef, product)
             }
             batch.commit().await()
@@ -183,7 +307,7 @@ class LeadRepository @Inject constructor(
 
     suspend fun seedProductsIfEmpty() {
         try {
-            val snapshot = db.collection("products").limit(1).get().await()
+            val snapshot = productsCol().limit(1).get().await()
             if (snapshot.isEmpty) {
                 forceSeedProducts()
             }
@@ -194,7 +318,7 @@ class LeadRepository @Inject constructor(
 
     suspend fun getRecentInteractions(userId: String): List<Interaction> {
         return try {
-            val snapshot = db.collection("interactions")
+            val snapshot = interactionsCol()
                 .whereEqualTo("callerId", userId)
                 .get()
                 .await()
@@ -233,20 +357,48 @@ class LeadRepository @Inject constructor(
     }
 
     suspend fun updateLead(leadId: String, updates: Map<String, Any?>) {
-        db.collection("leads").document(leadId).update(updates).await()
+        kotlinx.coroutines.withTimeoutOrNull(3000) {
+            val finalUpdates = updates.toMutableMap()
+            finalUpdates["updatedAt"] = com.google.firebase.firestore.FieldValue.serverTimestamp()
+            leadsCol().document(leadId).update(finalUpdates).await()
+        }
+    }
+
+    suspend fun assignLeadToUser(leadId: String, userId: String): Boolean {
+        return try {
+            val leadRef = leadsCol().document(leadId)
+            db.runTransaction { transaction ->
+                val snapshot = transaction.get(leadRef)
+                val currentAssignedTo = snapshot.getString("assignedTo") ?: ""
+                if (currentAssignedTo.isEmpty() || currentAssignedTo == userId) {
+                    transaction.update(leadRef, "assignedTo", userId)
+                    transaction.update(leadRef, "updatedAt", com.google.firebase.firestore.FieldValue.serverTimestamp())
+                    true
+                } else {
+                    false // Someone else already claimed it
+                }
+            }.await()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
     }
 
     suspend fun addInteraction(interaction: Interaction) {
-        db.collection("interactions").document(interaction.id).set(interaction).await()
+        kotlinx.coroutines.withTimeoutOrNull(3000) {
+            interactionsCol().document(interaction.id).set(interaction).await()
+        }
     }
     
     suspend fun deleteInteraction(interactionId: String) {
-        db.collection("interactions").document(interactionId).delete().await()
+        kotlinx.coroutines.withTimeoutOrNull(3000) {
+            interactionsCol().document(interactionId).delete().await()
+        }
     }
 
     suspend fun recalculateLeadStateAndBatch(leadId: String, interactionIdToDelete: String): Boolean {
         return try {
-            val leadSnapshot = db.collection("leads").document(leadId).get().await()
+            val leadSnapshot = leadsCol().document(leadId).get().await()
             val currentNotes = leadSnapshot.getString("notes") ?: ""
             val safeMetaDump = if (currentNotes.contains("\n\n📞 ")) {
                 currentNotes.substringBefore("\n\n📞 ")
@@ -254,8 +406,12 @@ class LeadRepository @Inject constructor(
                 if (currentNotes.isNotEmpty() && !currentNotes.contains("📞 ")) currentNotes else ""
             }
 
-            val interactionsSnapshot = db.collection("interactions")
+            val interactionDoc = interactionsCol().document(interactionIdToDelete).get().await()
+            val callerId = interactionDoc.getString("callerId") ?: return false
+
+            val interactionsSnapshot = interactionsCol()
                 .whereEqualTo("leadId", leadId)
+                .whereEqualTo("callerId", callerId)
                 .get()
                 .await()
             
@@ -338,10 +494,10 @@ class LeadRepository @Inject constructor(
         }
 
         val batch = db.batch()
-        val leadRef = db.collection("leads").document(leadId)
+        val leadRef = leadsCol().document(leadId)
         batch.update(leadRef, updateMap)
             
-            val interactionRef = db.collection("interactions").document(interactionIdToDelete)
+            val interactionRef = interactionsCol().document(interactionIdToDelete)
             batch.delete(interactionRef)
             
             batch.commit().await()
@@ -357,23 +513,23 @@ class LeadRepository @Inject constructor(
             val sanitized = PhoneUtils.sanitizePhoneNumber(phone)
             
             // Check exact input just in case
-            var snapshot = db.collection("leads").whereEqualTo("phone", phone).limit(1).get().await()
+            var snapshot = leadsCol().whereEqualTo("phone", phone).limit(1).get().await()
             
             if (snapshot.isEmpty) {
                 // Check purely sanitized
-                snapshot = db.collection("leads").whereEqualTo("phone", sanitized).limit(1).get().await()
+                snapshot = leadsCol().whereEqualTo("phone", sanitized).limit(1).get().await()
             }
             if (snapshot.isEmpty) {
                 // Check sanitized with +91
-                snapshot = db.collection("leads").whereEqualTo("phone", "+91$sanitized").limit(1).get().await()
+                snapshot = leadsCol().whereEqualTo("phone", "+91$sanitized").limit(1).get().await()
             }
             if (snapshot.isEmpty) {
                 // Check sanitized with 0
-                snapshot = db.collection("leads").whereEqualTo("phone", "0$sanitized").limit(1).get().await()
+                snapshot = leadsCol().whereEqualTo("phone", "0$sanitized").limit(1).get().await()
             }
             if (snapshot.isEmpty && phone.startsWith("+91")) {
                 val withoutCode = phone.removePrefix("+91").trim()
-                snapshot = db.collection("leads").whereEqualTo("phone", withoutCode).limit(1).get().await()
+                snapshot = leadsCol().whereEqualTo("phone", withoutCode).limit(1).get().await()
             }
             
             if (!snapshot.isEmpty) {
@@ -412,10 +568,10 @@ class LeadRepository @Inject constructor(
         return try {
             val batch = db.batch()
             
-            val leadRef = db.collection("leads").document(lead.id)
+            val leadRef = leadsCol().document(lead.id)
             batch.set(leadRef, lead)
 
-            val interactionRef = db.collection("interactions").document(interaction.id)
+            val interactionRef = interactionsCol().document(interaction.id)
             batch.set(interactionRef, interaction)
 
             batch.commit().await()
@@ -424,5 +580,110 @@ class LeadRepository @Inject constructor(
             e.printStackTrace()
             e.message ?: "Unknown Firebase Error"
         }
+    }
+
+    private fun generateSearchKeywords(name: String, phone: String): List<String> {
+        val keywords = mutableSetOf<String>()
+        val words = name.lowercase().split("\\s+".toRegex()).filter { it.isNotBlank() }
+        for (word in words) {
+            for (i in 1..word.length) {
+                keywords.add(word.substring(0, i))
+            }
+        }
+        val cleanPhone = PhoneUtils.sanitizePhoneNumber(phone)
+        for (i in 3..cleanPhone.length) {
+            keywords.add(cleanPhone.substring(cleanPhone.length - i)) // Suffixes (last 3, 4, 5... 10 digits)
+        }
+        keywords.add(cleanPhone)
+        return keywords.toList()
+    }
+
+    suspend fun runSchemaMigration() {
+        try {
+            val snapshot = leadsCol().get().await()
+            val batch = db.batch()
+            var count = 0
+            val dateFormat = java.text.SimpleDateFormat("dd-MM-yyyy", java.util.Locale.US).apply { 
+                timeZone = java.util.TimeZone.getTimeZone("Asia/Kolkata") 
+            }
+            
+            for (doc in snapshot.documents) {
+                val updates = mutableMapOf<String, Any>()
+                
+                // 1. Search Keywords
+                val name = doc.getString("name") ?: ""
+                val phone = doc.getString("phone") ?: ""
+                if (doc.get("searchKeywords") == null) {
+                    updates["searchKeywords"] = generateSearchKeywords(name, phone)
+                }
+                
+                // 2. Exhaustion Timestamp
+                val exhaustionDateStr = doc.getString("exhaustionDate")
+                if (!exhaustionDateStr.isNullOrEmpty() && doc.get("exhaustionTimestamp") == null) {
+                    try {
+                        val date = dateFormat.parse(exhaustionDateStr)
+                        if (date != null) {
+                            updates["exhaustionTimestamp"] = date.time
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+                
+                if (updates.isNotEmpty()) {
+                    batch.update(doc.reference, updates)
+                    count++
+                    if (count >= 400) { // Firestore batch limit is 500
+                        batch.commit().await()
+                        count = 0
+                    }
+                }
+            }
+            if (count > 0) {
+                batch.commit().await()
+            }
+            android.util.Log.d("LeadRepository", "Schema migration completed!")
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun parseLead(doc: com.google.firebase.firestore.DocumentSnapshot): Lead {
+        return Lead(
+            id = doc.id,
+            name = doc.getString("name") ?: "",
+            phone = doc.getString("phone") ?: "",
+            source = doc.getString("source") ?: "",
+            status = doc.getString("status") ?: "New",
+            notes = doc.getString("notes") ?: "",
+            label = doc.getString("label") ?: "",
+            followUpDate = doc.getString("followUpDate"),
+            archived = doc.getBoolean("archived") ?: false,
+            assignedTo = doc.getString("assignedTo") ?: "",
+            product = doc.getString("product") ?: "",
+            address = doc.getString("address") ?: "",
+            city = doc.getString("city") ?: "",
+            pincode = doc.getString("pincode") ?: "",
+            paymentMethod = doc.getString("paymentMethod") ?: "",
+            orderAmount = doc.getString("orderAmount") ?: "",
+            subStatus = doc.getString("subStatus"),
+            followUpTimeSlot = doc.getString("followUpTimeSlot"),
+            paymentStatus = doc.getString("paymentStatus"),
+            isSuspiciousShortCall = doc.getBoolean("isSuspiciousShortCall") ?: false,
+            originalTotalValue = doc.getString("originalTotalValue") ?: "",
+            discountAmount = doc.getString("discountAmount") ?: "",
+            convertedAt = doc.getString("convertedAt"),
+            dispatchStatus = doc.getString("dispatchStatus") ?: "",
+            cancellationReason = doc.getString("cancellationReason") ?: "",
+            cancellationNotes = doc.getString("cancellationNotes") ?: "",
+            cancellationRequestedAt = doc.getString("cancellationRequestedAt") ?: "",
+            deliveredAt = doc.getString("deliveredAt"),
+            exhaustionDate = doc.getString("exhaustionDate"),
+            exhaustionTimestamp = doc.getLong("exhaustionTimestamp"),
+            parentLeadId = doc.getString("parentLeadId"),
+            isReorder = doc.getBoolean("isReorder") ?: false,
+            searchKeywords = doc.get("searchKeywords") as? List<String> ?: emptyList(),
+            updatedAt = doc.getTimestamp("updatedAt")?.toDate()?.time ?: doc.getLong("updatedAt")
+        )
     }
 }

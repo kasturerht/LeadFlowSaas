@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
+import { useAuth } from '../AuthContext';
 import { collection, query, onSnapshot, doc, setDoc, deleteDoc, orderBy } from 'firebase/firestore';
 import { X, Plus, Edit2, Trash2 } from 'lucide-react';
 
@@ -20,6 +21,7 @@ const ICONS = [
 ];
 
 export default function CategoryMaster({ onClose }) {
+  const { orgId } = useAuth();
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   
@@ -29,7 +31,8 @@ export default function CategoryMaster({ onClose }) {
   const [icon, setIcon] = useState(ICONS[0]);
 
   useEffect(() => {
-    const q = query(collection(db, "categories"), orderBy("name"));
+    if (!orgId) return;
+    const q = query(collection(db, "organizations", orgId, "categories"), orderBy("name"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const cats = [];
       snapshot.forEach(docSnap => cats.push({ id: docSnap.id, ...docSnap.data() }));
@@ -42,7 +45,7 @@ export default function CategoryMaster({ onClose }) {
       setLoading(false);
     });
     return () => unsubscribe();
-  }, []);
+  }, [orgId]);
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -50,10 +53,10 @@ export default function CategoryMaster({ onClose }) {
 
     try {
       if (editingId) {
-        await setDoc(doc(db, "categories", editingId), { name, color, icon, isActive: true }, { merge: true });
+        await setDoc(doc(db, "organizations", orgId, "categories", editingId), { name, color, icon, isActive: true }, { merge: true });
       } else {
         const id = "cat_" + Date.now();
-        await setDoc(doc(db, "categories", id), { name, color, icon, isActive: true });
+        await setDoc(doc(db, "organizations", orgId, "categories", id), { name, color, icon, isActive: true });
       }
       resetForm();
     } catch (err) {
@@ -64,7 +67,7 @@ export default function CategoryMaster({ onClose }) {
 
   const handleDelete = async (id) => {
     if (window.confirm("Delete this category? Ensure no products are using it first.")) {
-      await deleteDoc(doc(db, "categories", id));
+      await deleteDoc(doc(db, "organizations", orgId, "categories", id));
     }
   };
 

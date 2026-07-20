@@ -43,7 +43,7 @@ import com.nexaleads.app.utils.CallLogEntry
 import com.nexaleads.app.utils.ContactUtils
 import com.nexaleads.app.utils.getRecentCallLogs
 import kotlinx.coroutines.launch
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexaleads.app.ui.viewmodel.LeadFormDraft
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -63,8 +63,8 @@ fun CreateLeadBottomSheet(
     val focusManager = LocalFocusManager.current
     val coroutineScope = rememberCoroutineScope()
 
-    val draft by viewModel.leadDraft.collectAsState()
-    val productsList by viewModel.products.collectAsState()
+    val draft by viewModel.leadDraft.collectAsStateWithLifecycle()
+    val productsList by viewModel.products.collectAsStateWithLifecycle()
     val pricesMap = remember(productsList) { productsList.associate { it.name to it.getEffectiveOfferPrice() } }
     val bottomPricesMap = remember(productsList) { productsList.associate { it.name to it.getEffectiveBottomPrice() } }
     val shippingFeesMap = remember(productsList) { productsList.associate { it.name to it.shippingFee } }
@@ -186,7 +186,7 @@ fun CreateLeadBottomSheet(
         }
     }
 
-    val saveToContactsPref by viewModel.saveToContactsPreference.collectAsState()
+    val saveToContactsPref by viewModel.saveToContactsPreference.collectAsStateWithLifecycle()
     var isSaveToContactsToggleOn by remember(saveToContactsPref) { mutableStateOf(saveToContactsPref) }
 
     LaunchedEffect(isSaveToContactsToggleOn) {
@@ -1285,7 +1285,7 @@ fun CreateLeadBottomSheet(
     if (showProductPopup) {
         PremiumProductSelector(
             productsList = productsList,
-            categoriesList = viewModel.categories.collectAsState().value,
+            categoriesList = viewModel.categories.collectAsStateWithLifecycle().value,
             selectedOption = selectedProduct,
             onSelect = {
                 selectedProduct = it

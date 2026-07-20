@@ -14,7 +14,7 @@ import javax.inject.Inject
 sealed class AuthState {
     object Idle : AuthState()
     object Loading : AuthState()
-    data class Authenticated(val userId: String, val userName: String, val contactNumber: String) : AuthState()
+    data class Authenticated(val userId: String, val userName: String, val contactNumber: String, val orgId: String) : AuthState()
     data class Unauthenticated(val error: String? = null) : AuthState()
 }
 
@@ -37,20 +37,29 @@ class AuthViewModel @Inject constructor(
         if (currentUser != null) {
             viewModelScope.launch {
                 try {
-                    val doc = db.collection("users").document(currentUser.uid).get().await()
-                    if (doc.exists() && doc.getString("role") == "telecaller") {
-                        val isActive = doc.getBoolean("isActive") ?: true
-                        if (isActive) {
-                            val name = doc.getString("name") ?: "Agent"
-                            val contactNumber = doc.getString("contactNumber") ?: "+91 98347 83503"
-                            _authState.value = AuthState.Authenticated(currentUser.uid, name, contactNumber)
+                    val mappingDoc = db.collection("user_mappings").document(currentUser.uid).get().await()
+                    if (mappingDoc.exists()) {
+                        val orgId = mappingDoc.getString("orgId") ?: return@launch
+                        val doc = db.collection("organizations").document(orgId)
+                                    .collection("users").document(currentUser.uid).get().await()
+                        
+                        if (doc.exists() && doc.getString("role") == "telecaller") {
+                            val isActive = doc.getBoolean("isActive") ?: true
+                            if (isActive) {
+                                val name = doc.getString("name") ?: "Agent"
+                                val contactNumber = doc.getString("contactNumber") ?: "+91 98347 83503"
+                                _authState.value = AuthState.Authenticated(currentUser.uid, name, contactNumber, orgId)
+                            } else {
+                                auth.signOut()
+                                _authState.value = AuthState.Unauthenticated("Your account has been disabled by Admin.")
+                            }
                         } else {
                             auth.signOut()
-                            _authState.value = AuthState.Unauthenticated("Your account has been disabled by Admin.")
+                            _authState.value = AuthState.Unauthenticated("Invalid role or user not found.")
                         }
                     } else {
                         auth.signOut()
-                        _authState.value = AuthState.Unauthenticated("Invalid role or user not found.")
+                        _authState.value = AuthState.Unauthenticated("User mapping not found. Contact Admin.")
                     }
                 } catch (e: Exception) {
                     auth.signOut()

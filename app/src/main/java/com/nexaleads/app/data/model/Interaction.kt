@@ -1,5 +1,8 @@
 package com.nexaleads.app.data.model
 
+import androidx.annotation.Keep
+
+@Keep
 data class Interaction(
     val id: String = "",
     val leadId: String = "",

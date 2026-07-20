@@ -17,6 +17,8 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -84,94 +86,17 @@ class CallingViewModel @Inject constructor(
     private val _leads = MutableStateFlow<List<Lead>>(emptyList())
     val leads: StateFlow<List<Lead>> = _leads
 
-    val salesMetrics: StateFlow<SalesMetrics> = _leads.map { leadsList ->
-        val isoFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { timeZone = TimeZone.getTimeZone("Asia/Kolkata") }
-        val todayStr = isoFormat.format(Date())
-        val cal = java.util.Calendar.getInstance(TimeZone.getTimeZone("Asia/Kolkata"))
-        cal.add(java.util.Calendar.DAY_OF_YEAR, -7)
-        val lastWeekStr = isoFormat.format(cal.time)
+    private val _isLoading = MutableStateFlow(true)
+    val isLoading: StateFlow<Boolean> = _isLoading
 
-        var todayCount = 0
-        var todayRev = 0
-        var weekRev = 0
-        var totalActive = 0
+    private val _errorMessage = MutableStateFlow<String?>(null)
+    val errorMessage: StateFlow<String?> = _errorMessage
 
-        leadsList.forEach { lead ->
-            if (!lead.archived && com.nexaleads.app.Constants.normalizeStatus(lead.status) == com.nexaleads.app.Constants.STATUS_ORDER_PLACED) {
-                totalActive++
-                val cAt = lead.convertedAt ?: ""
-                val amount = lead.orderAmount.toIntOrNull() ?: 0
-                if (cAt.startsWith(todayStr)) {
-                    todayCount++
-                    todayRev += amount
-                }
-                if (cAt >= lastWeekStr) {
-                    weekRev += amount
-                }
-            }
-        }
-        SalesMetrics(todayCount, todayRev, weekRev, totalActive)
-    }.stateIn(viewModelScope, SharingStarted.Eagerly, SalesMetrics())
+    private val _salesMetrics = MutableStateFlow(SalesMetrics())
+    val salesMetrics: StateFlow<SalesMetrics> = _salesMetrics
 
-    val dashboardMetrics: StateFlow<DashboardMetrics> = _leads.map { leadsList ->
-        val isoFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { timeZone = TimeZone.getTimeZone("Asia/Kolkata") }
-        val todayStr = isoFormat.format(Date())
-        val uid = _currentUserId.value
-
-        var pendingPayments = 0
-        var dueFollowups = 0
-        var freshLeads = 0
-        var confirmedOrders = 0
-        var inquiries = 0
-        var attempted = 0
-        var rejected = 0
-        var dispatched = 0
-        var rto = 0
-        var delivered = 0
-        var retentionDue = 0
-
-        // Use Dispatchers.Default for heavy calculations automatically because flow runs map in the context it collects or we should flowOn(Dispatchers.Default)
-        leadsList.forEach { lead ->
-            // Filter by assigned user to prevent telecaller data mix-up
-            if (!lead.archived && (uid == null || lead.assignedTo == uid || lead.assignedTo.isEmpty())) {
-                val category = lead.getPrimaryCategory()
-                when (category) {
-                    "PENDING" -> freshLeads++
-                    "FOLLOWUP", "VISIT_SCHEDULED" -> {
-                        if (lead.followUpDate.isNullOrEmpty() || lead.followUpDate <= todayStr) {
-                            dueFollowups++
-                        }
-                    }
-                    "CONVERTED" -> {
-                        if (lead.paymentMethod.equals("Prepaid", ignoreCase = true) && lead.paymentStatus?.equals("Link Sent", ignoreCase = true) == true) {
-                            pendingPayments++
-                        } else {
-                            confirmedOrders++
-                        }
-                    }
-                    "INQUIRY" -> inquiries++
-                    "ATTEMPTED" -> attempted++
-                    "REJECTED" -> rejected++
-                    "DISPATCHED" -> dispatched++
-                    "RTO" -> rto++
-                    "DELIVERED" -> {
-                        delivered++
-                        if (!lead.exhaustionDate.isNullOrEmpty()) {
-                            // Check if exhaustionDate is within next 7 days or already passed
-                            val isoFull = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).apply { timeZone = TimeZone.getTimeZone("Asia/Kolkata") }
-                            val calTarget = java.util.Calendar.getInstance(TimeZone.getTimeZone("Asia/Kolkata"))
-                            calTarget.add(java.util.Calendar.DAY_OF_YEAR, 7)
-                            val targetDateStr = isoFull.format(calTarget.time)
-                            if (lead.exhaustionDate <= targetDateStr) {
-                                retentionDue++
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        DashboardMetrics(pendingPayments, dueFollowups, freshLeads, confirmedOrders, inquiries, attempted, rejected, dispatched, rto, delivered, retentionDue)
-    }.stateIn(viewModelScope, SharingStarted.Eagerly, DashboardMetrics())
+    private val _dashboardMetrics = MutableStateFlow(DashboardMetrics())
+    val dashboardMetrics: StateFlow<DashboardMetrics> = _dashboardMetrics
 
     private val _telecallerContact = MutableStateFlow<String>("+91 98347 83503")
     val telecallerContact: StateFlow<String> = _telecallerContact
@@ -218,18 +143,6 @@ class CallingViewModel @Inject constructor(
             }
         }
         
-        viewModelScope.launch {
-            repository.seedProductsIfEmpty()
-            repository.getProducts().collect { fetchedProducts ->
-                _products.value = fetchedProducts
-            }
-        }
-        
-        viewModelScope.launch {
-            repository.getCategories().collect { fetchedCategories ->
-                _categories.value = fetchedCategories
-            }
-        }
     }
 
     fun setPendingCall(leadId: String) {
@@ -334,21 +247,85 @@ class CallingViewModel @Inject constructor(
         _saveToContactsPreference.value = save
     }
 
-    fun initialize(userId: String, name: String, contactNumber: String) {
+    private val _leadsLimit = MutableStateFlow(50L)
+    val leadsLimit: StateFlow<Long> = _leadsLimit
+
+    fun loadMoreLeads() {
+        _leadsLimit.value += 50L
+    }
+
+    fun initialize(userId: String, name: String, contactNumber: String, orgId: String) {
         if (_currentUserId.value == userId) return
         _currentUserId.value = userId
         callerName = name
         _telecallerContact.value = contactNumber
+        repository.setOrgId(orgId)
+        
         viewModelScope.launch {
-            repository.getLeadsForUser(userId)
-                .catch { /* Handle error */ }
-                .collect { newLeads ->
-                    _leads.value = newLeads
-                    val pendingInvoiceId = prefs.getString("pending_invoice_lead_id", null)
-                    if (pendingInvoiceId != null && _pendingInvoiceLead.value == null) {
-                        _pendingInvoiceLead.value = newLeads.find { it.id == pendingInvoiceId }
-                    }
+            repository.seedProductsIfEmpty()
+            repository.getProducts()
+                .catch { e -> e.printStackTrace() }
+                .collect { fetchedProducts ->
+                    _products.value = fetchedProducts
                 }
+        }
+        
+        viewModelScope.launch {
+            repository.getCategories()
+                .catch { e -> e.printStackTrace() }
+                .collect { fetchedCategories ->
+                    _categories.value = fetchedCategories
+                }
+        }
+
+        viewModelScope.launch {
+            _isLoading.value = true
+            
+            _leadsLimit.flatMapLatest { limit ->
+                repository.getLeadsForUser(userId, limit)
+            }
+            .catch { e -> 
+                e.printStackTrace()
+                _errorMessage.value = "Failed to load data: ${e.message}"
+                _isLoading.value = false
+            }
+            .collect { newLeads ->
+                _leads.value = newLeads
+                _isLoading.value = false
+                val pendingInvoiceId = prefs.getString("pending_invoice_lead_id", null)
+                if (pendingInvoiceId != null && _pendingInvoiceLead.value == null) {
+                    _pendingInvoiceLead.value = newLeads.find { it.id == pendingInvoiceId }
+                }
+            }
+        }
+        
+        viewModelScope.launch {
+            try {
+                val metrics = repository.getDashboardMetrics(userId)
+                _dashboardMetrics.value = DashboardMetrics(
+                    pendingPaymentsCount = metrics["pendingPayments"]?.toInt() ?: 0,
+                    dueFollowupsCount = metrics["dueFollowups"]?.toInt() ?: 0,
+                    freshLeadsCount = metrics["freshLeads"]?.toInt() ?: 0,
+                    confirmedOrdersCount = metrics["confirmedOrders"]?.toInt() ?: 0,
+                    inquiriesCount = metrics["inquiries"]?.toInt() ?: 0,
+                    attemptedCount = metrics["attempted"]?.toInt() ?: 0,
+                    rejectedCount = metrics["rejected"]?.toInt() ?: 0,
+                    dispatchedCount = metrics["dispatched"]?.toInt() ?: 0,
+                    rtoCount = metrics["rto"]?.toInt() ?: 0,
+                    deliveredCount = metrics["delivered"]?.toInt() ?: 0,
+                    retentionDueCount = 0 // Needs dedicated query if we want count
+                )
+                
+                val sales = repository.getSalesMetrics(userId)
+                _salesMetrics.value = SalesMetrics(
+                    todayOrdersCount = sales["todayCount"]?.toInt() ?: 0,
+                    todayRevenue = sales["todayRev"]?.toInt() ?: 0,
+                    weeklyRevenue = sales["weekRev"]?.toInt() ?: 0,
+                    activeOrdersCount = sales["totalActive"]?.toInt() ?: 0
+                )
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 
@@ -821,6 +798,47 @@ class CallingViewModel @Inject constructor(
                 onSuccess()
             } catch (e: Exception) {
                 onError(e.message ?: "Failed to delete lead")
+            }
+        }
+    }
+
+    fun injectDummyRetentionLead() {
+        val uid = _currentUserId.value ?: return
+        viewModelScope.launch {
+            try {
+                val isoFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
+                    timeZone = TimeZone.getTimeZone("UTC")
+                }
+                val targetDate = java.util.Calendar.getInstance().apply {
+                    add(java.util.Calendar.DAY_OF_YEAR, 3) // Expires in 3 days, will show in retention due
+                }.time
+                
+                val dummyLead = Lead(
+                    id = "dummy-retention-" + java.util.UUID.randomUUID().toString().take(6),
+                    name = "Rahul Sharma (Dummy)",
+                    phone = "9999988888",
+                    status = "Delivered",
+                    assignedTo = uid,
+                    exhaustionDate = isoFormat.format(targetDate),
+                    product = "Spirulina, Hair Oil",
+                    address = "Hinjawadi IT Park",
+                    city = "Pune"
+                )
+                
+                val interaction = com.nexaleads.app.data.model.Interaction(
+                    id = "i-dummy-" + java.util.UUID.randomUUID().toString().take(6),
+                    leadId = dummyLead.id,
+                    callerId = uid,
+                    callerName = "System Test",
+                    statusBefore = "New",
+                    statusAfter = "Delivered",
+                    notes = "Injected for Retention Due UI Testing",
+                    timestamp = isoFormat.format(java.util.Date())
+                )
+                
+                repository.createManualLeadBatch(dummyLead, interaction)
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }

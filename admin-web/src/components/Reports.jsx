@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { db } from '../firebase';
+import { useAuth } from '../AuthContext';
 import { 
   collection, 
   query, 
@@ -10,6 +11,7 @@ import {
 import { BarChart3, Clock, DollarSign, Award, AlertTriangle, FileText, ChevronRight, User } from 'lucide-react';
 
 export default function Reports() {
+  const { orgId } = useAuth();
   const [telecallers, setTelecallers] = useState([]);
   const [presetRange, setPresetRange] = useState('month'); // 'today', 'yesterday', 'week', 'month', 'last30', 'ytd', 'all'
   
@@ -31,9 +33,10 @@ export default function Reports() {
 
   // Fetch telecallers once on mount
   useEffect(() => {
+    if (!orgId) return;
     const fetchMetadata = async () => {
       try {
-        const uQ = query(collection(db, 'users'), where('role', '==', 'telecaller'));
+        const uQ = query(collection(db, 'organizations', orgId, 'users'), where('role', '==', 'telecaller'));
         const uSnap = await getDocs(uQ);
         const callers = [];
         uSnap.forEach(docSnap => callers.push({ id: docSnap.id, ...docSnap.data() }));
@@ -51,7 +54,7 @@ export default function Reports() {
       }
     };
     fetchMetadata();
-  }, []);
+  }, [orgId]);
 
   // Compute timezone-compliant boundaries for selected preset
   const getDateBounds = (preset) => {
@@ -107,6 +110,7 @@ export default function Reports() {
   // Query Firestore and group everything in memory
   // This requires ZERO composite index builds on Firestore, preventing runtime crash warnings
   useEffect(() => {
+    if (!orgId) return;
     const loadReportsData = async () => {
       setLoading(true);
       const { start, end } = getDateBounds(presetRange);
@@ -114,7 +118,7 @@ export default function Reports() {
       try {
         // 1. Fetch all interaction logs in the date range (using ISO string comparisons matching Android DB schema)
         const intQuery = query(
-          collection(db, 'interactions'),
+          collection(db, 'organizations', orgId, 'interactions'),
           where('timestamp', '>=', start.toISOString()),
           where('timestamp', '<=', end.toISOString())
         );
@@ -126,13 +130,13 @@ export default function Reports() {
         let leadsQuery;
         if (presetRange === 'all') {
           leadsQuery = query(
-            collection(db, 'leads'),
+            collection(db, 'organizations', orgId, 'leads'),
             where('status', 'in', ['Order Placed', 'Converted', 'Visited']),
             limit(1000)
           );
         } else {
           leadsQuery = query(
-            collection(db, 'leads'),
+            collection(db, 'organizations', orgId, 'leads'),
             where('status', 'in', ['Order Placed', 'Converted', 'Visited'])
           );
         }
@@ -300,19 +304,19 @@ export default function Reports() {
     if (telecallers.length > 0) {
       loadReportsData();
     }
-  }, [presetRange, telecallers]);
+  }, [presetRange, telecallers, orgId]);
 
   // Dynamic Caller Audit Loader (triggers when selectedCallerId changes or range preset updates)
   useEffect(() => {
     const fetchAuditData = async () => {
-      if (!selectedCallerId) return;
+      if (!selectedCallerId || !orgId) return;
       setAuditLoading(true);
       const { start, end } = getDateBounds(presetRange);
 
       try {
         // Query interactions specifically belonging to the selected telecaller within range
         const auditQ = query(
-          collection(db, 'interactions'),
+          collection(db, 'organizations', orgId, 'interactions'),
           where('timestamp', '>=', start.toISOString()),
           where('timestamp', '<=', end.toISOString())
         );
@@ -342,7 +346,7 @@ export default function Reports() {
 
           const resolvedCache = { ...auditLeadsCache };
           for (const chunk of chunks) {
-            const leadsQ = query(collection(db, 'leads'), where('__name__', 'in', chunk));
+            const leadsQ = query(collection(db, 'organizations', orgId, 'leads'), where('__name__', 'in', chunk));
             const leadsSnap = await getDocs(leadsQ);
             leadsSnap.forEach(d => {
               resolvedCache[d.id] = d.data();
@@ -362,7 +366,7 @@ export default function Reports() {
       fetchAuditData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCallerId, presetRange, telecallers]);
+  }, [selectedCallerId, presetRange, telecallers, orgId]);
 
   // Export Leaderboard stats to CSV
   const handleExportCSV = () => {

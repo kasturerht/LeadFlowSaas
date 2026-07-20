@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { db, secondaryAuth } from '../firebase';
+import { useAuth } from '../AuthContext';
 import { collection, query, getDocs, doc, setDoc, updateDoc } from 'firebase/firestore';
 import { createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { UserPlus, X } from 'lucide-react';
 
 export default function Telecallers() {
+  const { orgId, role } = useAuth();
   const [telecallers, setTelecallers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -18,11 +20,28 @@ export default function Telecallers() {
   const [error, setError] = useState('');
 
   const fetchTelecallers = async () => {
+    if (!orgId) return;
     try {
-      const q = query(collection(db, 'users'));
+      let q;
+      if (role === 'superadmin') {
+        const { collectionGroup } = await import('firebase/firestore');
+        q = query(collectionGroup(db, 'users'));
+      } else {
+        q = query(collection(db, 'organizations', orgId, 'users'));
+      }
       const snapshot = await getDocs(q);
       const t = [];
-      snapshot.forEach(doc => t.push({ id: doc.id, ...doc.data() }));
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        if (data.role === 'telecaller' || role === 'superadmin') { // Super admin sees all users, or we can filter just telecallers
+          let userOrgId = orgId;
+          if (role === 'superadmin') {
+            const parentDoc = doc.ref.parent.parent;
+            userOrgId = parentDoc ? parentDoc.id : 'LEGACY_ROOT';
+          }
+          t.push({ id: doc.id, orgId: userOrgId, ...data });
+        }
+      });
       setTelecallers(t);
     } catch (error) {
       console.error("Error fetching telecallers", error);
@@ -33,7 +52,7 @@ export default function Telecallers() {
 
   useEffect(() => {
     fetchTelecallers();
-  }, []);
+  }, [orgId]);
 
   const handleCreateTelecaller = async (e) => {
     e.preventDefault();
@@ -46,13 +65,19 @@ export default function Telecallers() {
       const newUserId = userCredential.user.uid;
 
       // 2. Write User details to Firestore
-      await setDoc(doc(db, 'users', newUserId), {
+      await setDoc(doc(db, 'organizations', orgId, 'users', newUserId), {
         name,
         email,
         phoneNumber: phone,
         role: 'telecaller',
         isActive: true, // Crucial flag for disabling later
         createdAt: new Date().toISOString()
+      });
+
+      // 2.5 Write User Mapping (crucial for SaaS)
+      await setDoc(doc(db, 'user_mappings', newUserId), {
+        orgId: orgId,
+        role: 'telecaller'
       });
 
       // 3. Clean up secondary auth session
@@ -71,10 +96,11 @@ export default function Telecallers() {
     }
   };
 
-  const toggleUserStatus = async (userId, currentStatus) => {
+  const toggleUserStatus = async (userId, currentStatus, userOrgId) => {
+    if (!userOrgId) return;
     try {
       const newStatus = currentStatus === false ? true : false;
-      await updateDoc(doc(db, 'users', userId), {
+      await updateDoc(doc(db, 'organizations', userOrgId, 'users', userId), {
         isActive: newStatus
       });
       // Update local state to feel snappy
@@ -104,6 +130,7 @@ export default function Telecallers() {
                 <th>Name</th>
                 <th>Email</th>
                 <th>Phone</th>
+                {role === 'superadmin' && <th>Organization ID</th>}
                 <th>Status</th>
                 <th style={{ textAlign: 'right' }}>Action</th>
               </tr>
@@ -127,6 +154,11 @@ export default function Telecallers() {
                       <td style={{ fontWeight: 500 }}>{t.name || 'N/A'}</td>
                       <td>{t.email}</td>
                       <td>{t.phoneNumber || 'N/A'}</td>
+                      {role === 'superadmin' && (
+                        <td style={{ fontFamily: 'monospace', fontSize: '11px', color: 'var(--primary)' }}>
+                          {t.orgId}
+                        </td>
+                      )}
                       <td>
                         {active 
                           ? <span className="badge badge-success">Active</span>
@@ -135,7 +167,7 @@ export default function Telecallers() {
                       </td>
                       <td style={{ textAlign: 'right' }}>
                         <button 
-                          onClick={() => toggleUserStatus(t.id, t.isActive)}
+                          onClick={() => toggleUserStatus(t.id, t.isActive, t.orgId)}
                           className="btn-secondary"
                           style={{
                             padding: '4px 8px',

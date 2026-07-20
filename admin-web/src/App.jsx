@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { auth } from './firebase';
-import { onAuthStateChanged } from 'firebase/auth';
+import { useAuth } from './AuthContext';
 import Login from './components/Login';
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
@@ -10,17 +9,10 @@ import CallHistory from './components/CallHistory';
 import Products from './components/Products';
 import Reports from './components/Reports';
 import DispatchCenter from './components/DispatchCenter';
-function App() {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+import SaasAdminDashboard from './components/SaasAdminDashboard';
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      setLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
+function App() {
+  const { user, loading } = useAuth();
 
   if (loading) {
     return (
@@ -46,6 +38,7 @@ function App() {
           <Route path="/products" element={<Products />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/dispatch" element={<DispatchCenter />} />
+          <Route path="/saas-admin" element={<SaasAdminDashboard />} />
         </Route>
 
         <Route 

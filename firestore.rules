@@ -3,63 +3,101 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Function to check if the user is an Admin
-    function isAdmin() {
-      return request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    // Global Super Admin Check
+    function isSuperAdmin() {
+      return request.auth != null && (
+        get(/databases/$(database)/documents/user_mappings/$(request.auth.uid)).data.role == 'superadmin'
+        || request.auth.token.email == 'kasturerht@gmail.com'
+        || request.auth.token.email == 'admin@nexaleads.com'
+      );
     }
 
-    // Function to check if the user is a logged-in Telecaller
-    function isTelecaller() {
-      return request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'telecaller';
+    // User to Organization Mappings
+    match /user_mappings/{userId} {
+      allow read: if request.auth != null;
+      allow write: if isSuperAdmin(); 
     }
 
-    // 1. Users Collection
+    // Allow Super Admin to access legacy root collections for migration and collectionGroup queries
     match /users/{userId} {
-      allow read, write: if isAdmin();
-      allow read: if request.auth.uid == userId;
+      allow read, write: if isSuperAdmin();
     }
-
-    // 2. Leads Collection
     match /leads/{leadId} {
-      allow read, write: if isAdmin();
-      
-      allow read: if isTelecaller() && resource.data.assignedTo == request.auth.uid;
-      allow update: if isTelecaller() 
-        && resource.data.assignedTo == request.auth.uid 
-        && (
-          // Allow normal updates if not yet locked or dispatched
-          (!('dispatchStatus' in resource.data) || resource.data.dispatchStatus == null || resource.data.dispatchStatus == 'Pending')
-          
-          // If locked by admin, ONLY allow the Kill Switch (urgentCancelRequest) to be toggled
-          || (
-            resource.data.dispatchStatus == 'Processing' 
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['urgentCancelRequest'])
-          )
-        );
-      
-      // Telecallers can create leads assigned to them
-      allow create: if isTelecaller() && request.resource.data.assignedTo == request.auth.uid;
+      allow read, write: if isSuperAdmin();
     }
 
-    // 3. Interactions (Call History) Collection
-    match /interactions/{interactionId} {
-      allow read, write: if isAdmin();
+    // Organizations
+    match /organizations/{orgId} {
       
-      allow read, update, delete: if isTelecaller() && resource.data.callerId == request.auth.uid;
+      // Helper functions scoped to the specific organization
+      function getUserDoc() {
+        return get(/databases/$(database)/documents/organizations/$(orgId)/users/$(request.auth.uid));
+      }
       
-      // Telecallers can create their own call logs
-      allow create: if isTelecaller() && request.resource.data.callerId == request.auth.uid;
-    }
-    // 4. Products Collection
-    match /products/{productId} {
-      allow read: if request.auth != null;
-      allow write: if isAdmin();
-    }
+      function isAdmin() {
+        return request.auth != null && getUserDoc() != null && getUserDoc().data.role == 'admin';
+      }
 
-    // 5. Categories Collection
-    match /categories/{categoryId} {
-      allow read: if request.auth != null;
-      allow write: if isAdmin();
+      function isTelecaller() {
+        return request.auth != null && getUserDoc() != null && getUserDoc().data.role == 'telecaller';
+      }
+
+      // Organization document itself
+      allow read: if request.auth != null || isSuperAdmin();
+      allow write: if isAdmin() || isSuperAdmin();
+
+      match /{document=**} {
+        allow read, write: if isSuperAdmin();
+      }
+
+      // Users subcollection
+      match /users/{userId} {
+        allow read, write: if isAdmin();
+        allow read: if request.auth.uid == userId;
+      }
+
+      // Leads subcollection
+      match /leads/{leadId} {
+        allow read, write: if isAdmin();
+        
+        allow read: if isTelecaller() && resource.data.assignedTo == request.auth.uid;
+        
+        allow update: if isTelecaller() 
+          && resource.data.assignedTo == request.auth.uid 
+          && (
+            // Allow normal updates if not yet locked or dispatched
+            (!('dispatchStatus' in resource.data) || resource.data.dispatchStatus == null || resource.data.dispatchStatus == 'Pending')
+            
+            // If locked by admin, ONLY allow the Kill Switch (urgentCancelRequest) to be toggled
+            || (
+              resource.data.dispatchStatus == 'Processing' 
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['urgentCancelRequest'])
+            )
+          );
+        
+        // Telecallers can create leads assigned to them
+        allow create: if isTelecaller() && request.resource.data.assignedTo == request.auth.uid;
+      }
+
+      // Interactions (Call History) subcollection
+      match /interactions/{interactionId} {
+        allow read, write: if isAdmin();
+        
+        allow read, update, delete: if isTelecaller() && resource.data.callerId == request.auth.uid;
+        allow create: if isTelecaller() && request.resource.data.callerId == request.auth.uid;
+      }
+
+      // Products subcollection
+      match /products/{productId} {
+        allow read: if request.auth != null;
+        allow write: if isAdmin();
+      }
+
+      // Categories subcollection
+      match /categories/{categoryId} {
+        allow read: if request.auth != null;
+        allow write: if isAdmin();
+      }
     }
   }
 }

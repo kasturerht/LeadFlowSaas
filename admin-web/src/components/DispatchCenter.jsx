@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db, auth } from '../firebase';
+import { useAuth } from '../AuthContext';
 import { collection, query, where, orderBy, limit, startAfter, onSnapshot, runTransaction, doc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { Package, Truck, CheckCircle, XCircle, Search, AlertOctagon, Lock, Unlock, ChevronRight, ChevronLeft, QrCode, Settings, RotateCcw } from 'lucide-react';
 
@@ -20,6 +21,7 @@ const COURIERS = [
 ];
 
 export default function DispatchCenter() {
+  const { orgId } = useAuth();
   const [activeTab, setActiveTab] = useState('pending');
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -40,25 +42,28 @@ export default function DispatchCenter() {
   const [products, setProducts] = useState([]);
 
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, "products"), (snap) => {
+    if (!orgId) return;
+    const unsub = onSnapshot(collection(db, "organizations", orgId, "products"), (snap) => {
       const p = [];
       snap.forEach(doc => p.push({ id: doc.id, ...doc.data() }));
       setProducts(p);
     });
     return () => unsub();
-  }, []);
+  }, [orgId]);
 
   useEffect(() => {
+    if (!orgId) return;
     setPageCursors([]);
     fetchLeads(activeTab, null);
-  }, [activeTab]);
+  }, [activeTab, orgId]);
 
   const fetchLeads = (tabId, afterDoc = null) => {
+    if (!orgId) return;
     setLoading(true);
     const tabConfig = TABS.find(t => t.id === tabId);
     
     let q = query(
-      collection(db, 'leads'),
+      collection(db, 'organizations', orgId, 'leads'),
       where('status', 'in', tabConfig.statusQuery),
       orderBy('status'),
       limit(50)
@@ -105,7 +110,8 @@ export default function DispatchCenter() {
   };
 
   const handleLockOrder = async (lead) => {
-    const leadRef = doc(db, 'leads', lead.id);
+    if (!orgId) return;
+    const leadRef = doc(db, 'organizations', orgId, 'leads', lead.id);
     const currentUserUid = auth.currentUser?.uid;
 
     if (!currentUserUid) return alert("You must be logged in.");
@@ -145,7 +151,8 @@ export default function DispatchCenter() {
       const confirm = window.confirm("⚠️ This order is locked by another admin. Do you want to Force Unlock it?");
       if (!confirm) return;
     }
-    const leadRef = doc(db, 'leads', lead.id);
+    if (!orgId) return;
+    const leadRef = doc(db, 'organizations', orgId, 'leads', lead.id);
     await updateDoc(leadRef, {
       dispatchStatus: 'Pending',
       lockedByUid: null,
@@ -185,7 +192,7 @@ export default function DispatchCenter() {
 
     try {
       setIsProcessingAction(true);
-      const leadRef = doc(db, 'leads', selectedLead.id);
+      const leadRef = doc(db, 'organizations', orgId, 'leads', selectedLead.id);
       
       await runTransaction(db, async (transaction) => {
         const leadDoc = await transaction.get(leadRef);
@@ -244,7 +251,8 @@ export default function DispatchCenter() {
       if (!confirm) return;
     }
 
-    const leadRef = doc(db, 'leads', selectedManageLead.id);
+    if (!orgId) return;
+    const leadRef = doc(db, 'organizations', orgId, 'leads', selectedManageLead.id);
     
     try {
       setIsProcessingAction(true);

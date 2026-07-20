@@ -2,8 +2,10 @@ import React from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebase';
-import { Users, PhoneCall, TrendingUp, LogOut, Tag, BarChart3, Package } from 'lucide-react';
+import { useAuth } from '../AuthContext';
+import { Users, PhoneCall, TrendingUp, LogOut, Tag, BarChart3, Package, ShieldAlert } from 'lucide-react';
 export default function Layout() {
+  const { role, orgId } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -38,7 +40,8 @@ export default function Layout() {
       try {
         const { collection, query, where, getCountFromServer } = await import('firebase/firestore');
         const { db } = await import('../firebase');
-        const leadsRef = collection(db, 'leads');
+        if (!orgId) return;
+        const leadsRef = collection(db, 'organizations', orgId, 'leads');
         const q = query(leadsRef, where('status', '==', 'Order Placed'));
         const snapshot = await getCountFromServer(q);
         setPendingDispatchCount(snapshot.data().count);
@@ -59,6 +62,14 @@ export default function Layout() {
         <h2 className="auth-title" style={{ textAlign: 'left', marginBottom: '20px', fontSize: '18px' }}>NexaLeads</h2>
         
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {role === 'superadmin' && (
+            <NavLink to="/saas-admin" style={navLinkStyle}>
+              <div style={innerContentStyle}>
+                <ShieldAlert size={16} color="#4f46e5" />
+                <span style={{ color: '#4f46e5', fontWeight: 600 }}>SaaS Admin</span>
+              </div>
+            </NavLink>
+          )}
           <NavLink to="/dashboard" style={navLinkStyle}>
             <div style={innerContentStyle}>
               <TrendingUp size={16} />

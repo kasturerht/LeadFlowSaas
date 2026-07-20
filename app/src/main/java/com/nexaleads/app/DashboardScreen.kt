@@ -21,6 +21,7 @@ import androidx.compose.material.icons.rounded.ExitToApp
 import androidx.compose.material.icons.rounded.Business
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -56,8 +57,8 @@ fun DashboardScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
     // Workflow State
-    val pendingCallLeadId by viewModel.pendingCallLeadId.collectAsState()
-    val callStartTimestamp by viewModel.pendingCallTimestamp.collectAsState()
+    val pendingCallLeadId by viewModel.pendingCallLeadId.collectAsStateWithLifecycle()
+    val callStartTimestamp by viewModel.pendingCallTimestamp.collectAsStateWithLifecycle()
     
     val pendingCallLead = remember(leads, pendingCallLeadId) {
         val lead = leads.find { it.id == pendingCallLeadId }
@@ -73,7 +74,7 @@ fun DashboardScreen(
     val createLeadSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     val lifecycleOwner = LocalLifecycleOwner.current
-    val pendingMediaLead by viewModel.pendingMediaLead.collectAsState()
+    val pendingMediaLead by viewModel.pendingMediaLead.collectAsStateWithLifecycle()
     var showMediaPromptForLead by remember { mutableStateOf<Lead?>(null) }
     var sendBrochureChecked by remember { mutableStateOf(true) }
     var sendVisitingCardChecked by remember { mutableStateOf(true) }
@@ -98,7 +99,7 @@ fun DashboardScreen(
     }
 
     // Metrics
-    val metrics by viewModel.dashboardMetrics.collectAsState()
+    val metrics by viewModel.dashboardMetrics.collectAsStateWithLifecycle()
 
     val currentHour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
     val greeting = when {
@@ -205,9 +206,10 @@ fun DashboardScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
                             modifier = Modifier
-                                .size(10.dp)
+                                .size(24.dp)
                                 .clip(CircleShape)
                                 .background(ModernViolet)
+                                .clickable { viewModel.injectDummyRetentionLead() }
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
@@ -326,7 +328,7 @@ fun DashboardScreen(
             }
             
             // PRIMARY METRICS: SALES OVERVIEW (APPLE HEALTH STYLE)
-            val salesMetrics by viewModel.salesMetrics.collectAsState()
+            val salesMetrics by viewModel.salesMetrics.collectAsStateWithLifecycle()
             
             Column(
                 modifier = Modifier
