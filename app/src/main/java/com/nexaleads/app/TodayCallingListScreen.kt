@@ -470,7 +470,10 @@ fun TodayCallingListScreen(
                         val yesterdayStr = isoFormat.format(cal.time)
                         
                         val grouped = filteredLeads.groupBy { lead ->
-                            val cAt = lead.convertedAt ?: ""
+                            val fallbackCAt = lead.updatedAt?.let {
+                                java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US).apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }.format(java.util.Date(it))
+                            } ?: ""
+                            val cAt = lead.convertedAt ?: fallbackCAt
                             if (cAt.startsWith(todayStr)) "Today"
                             else if (cAt.startsWith(yesterdayStr)) "Yesterday"
                             else "Earlier"

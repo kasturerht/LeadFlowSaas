@@ -74,6 +74,18 @@ data class DashboardMetrics(
     val retentionDueCount: Int = 0
 )
 
+sealed class PipelineState {
+    object Idle : PipelineState()
+    object Loading : PipelineState()
+    data class Success(
+        val settled: List<Lead>,
+        val pending: List<Lead>,
+        val lost: List<Lead>,
+        val all: List<Lead>
+    ) : PipelineState()
+    data class Error(val message: String, val isIndexError: Boolean = false, val indexUrl: String? = null) : PipelineState()
+}
+
 @HiltViewModel
 class CallingViewModel @Inject constructor(
     private val repository: LeadRepository,
@@ -127,6 +139,71 @@ class CallingViewModel @Inject constructor(
     )
     val pendingCallTimestamp: StateFlow<Long?> = _pendingCallTimestamp
 
+    private val _pipelineActivityState = MutableStateFlow<PipelineState>(PipelineState.Idle)
+    val pipelineActivityState: StateFlow<PipelineState> = _pipelineActivityState
+    
+    private var pipelineJob: kotlinx.coroutines.Job? = null
+
+    fun loadRevenueBreakdown() {
+        pipelineJob?.cancel()
+        pipelineJob = viewModelScope.launch {
+            _pipelineActivityState.value = PipelineState.Loading
+            _leads.collect { activities ->
+                try {
+                    val isoFormat = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }
+                    val todayStr = isoFormat.format(java.util.Date())
+                    val todayStartMillis = isoFormat.parse(todayStr)?.time ?: 0L
+                    
+                    val settled = mutableListOf<Lead>()
+                    val pending = mutableListOf<Lead>()
+                    val lost = mutableListOf<Lead>()
+                    val todayActivities = mutableListOf<Lead>()
+                    
+                    activities.forEach { lead ->
+                        val isUpdatedToday = (lead.updatedAt ?: 0L) >= todayStartMillis
+                        if (!isUpdatedToday) return@forEach
+                        
+                        todayActivities.add(lead)
+                        
+                        val category = lead.getPrimaryCategory()
+                        val isValidRevenue = category == "CONVERTED" || category == "DISPATCHED" || category == "DELIVERED"
+                        val isUpiPending = lead.paymentMethod.equals("Prepaid", ignoreCase = true) && 
+                                           lead.paymentStatus?.equals("Link Sent", ignoreCase = true) == true
+                                           
+                        val fallbackCAt = lead.updatedAt?.let {
+                            java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US)
+                                .apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }
+                                .format(java.util.Date(it))
+                        }
+                        val cAt = lead.convertedAt ?: fallbackCAt ?: ""
+                        
+                        if (isValidRevenue && cAt >= todayStr && !isUpiPending) {
+                            settled.add(lead)
+                        } else if (isUpiPending) {
+                            pending.add(lead)
+                        } else if (category == "REJECTED" || category == "RTO") {
+                            lost.add(lead)
+                        }
+                    }
+                    
+                    _pipelineActivityState.value = PipelineState.Success(settled, pending, lost, todayActivities)
+                } catch (e: Exception) {
+                    _pipelineActivityState.value = PipelineState.Error(
+                        message = e.message ?: "Failed to load pipeline activity",
+                        isIndexError = false,
+                        indexUrl = null
+                    )
+                }
+            }
+        }
+    }
+
+    fun clearRevenueBreakdown() {
+        pipelineJob?.cancel()
+        pipelineJob = null
+        _pipelineActivityState.value = PipelineState.Idle
+    }
+
     init {
         // Auto-clear ghost calls (older than 2 hours)
         val currentTimestamp = _pendingCallTimestamp.value
@@ -155,14 +232,7 @@ class CallingViewModel @Inject constructor(
     }
 
     private fun updateSalesMetricsOptimistically(amountDelta: Long, countDelta: Int) {
-        if (amountDelta == 0L && countDelta == 0) return
-        val current = _salesMetrics.value
-        _salesMetrics.value = current.copy(
-            todayRevenue = maxOf(0, (current.todayRevenue + amountDelta).toInt()),
-            weeklyRevenue = maxOf(0, (current.weeklyRevenue + amountDelta).toInt()),
-            todayOrdersCount = maxOf(0, current.todayOrdersCount + countDelta),
-            activeOrdersCount = maxOf(0, current.activeOrdersCount + countDelta)
-        )
+        // No-op: Realtime Firebase flow handles this automatically and accurately now
     }
 
     private fun updateMetricsOptimistically(
@@ -173,109 +243,11 @@ class CallingViewModel @Inject constructor(
         newPaymentMethod: String? = null,
         newPaymentStatus: String? = null
     ) {
-        val current = _dashboardMetrics.value
-        var fresh = current.freshLeadsCount
-        var followups = current.dueFollowupsCount
-        var confirmed = current.confirmedOrdersCount
-        var pendingPayment = current.pendingPaymentsCount
-        var attempted = current.attemptedCount
-        var rejected = current.rejectedCount
-        var dispatched = current.dispatchedCount
-        var delivered = current.deliveredCount
-        var rto = current.rtoCount
-
-        val freshList = listOf("New", "No Answer")
-        val rejectedList = listOf("Not Interested", "Invalid", "Order Cancelled")
-
-        fun isPendingPayment(status: String?, pm: String?, ps: String?): Boolean {
-            return status == "Order Placed" && pm == "Prepaid" && ps == "Link Sent"
-        }
-
-        val wasPending = isPendingPayment(oldStatus, oldPaymentMethod, oldPaymentStatus)
-        val isPending = isPendingPayment(newStatus, newPaymentMethod, newPaymentStatus)
-
-        // Reverse old status
-        if (oldStatus != null) {
-            when (oldStatus) {
-                in freshList -> fresh -= 1
-                "Follow-up" -> followups -= 1
-                "Call Not Answered" -> attempted -= 1
-                in rejectedList -> rejected -= 1
-                "Dispatched" -> dispatched -= 1
-                "Delivered" -> delivered -= 1
-                "RTO" -> rto -= 1
-                "Order Placed" -> {
-                    if (wasPending) {
-                        pendingPayment -= 1
-                    } else {
-                        confirmed -= 1
-                    }
-                }
-            }
-        }
-
-        // Apply new status
-        if (newStatus != null) {
-            when (newStatus) {
-                in freshList -> fresh += 1
-                "Follow-up" -> followups += 1
-                "Call Not Answered" -> attempted += 1
-                in rejectedList -> rejected += 1
-                "Dispatched" -> dispatched += 1
-                "Delivered" -> delivered += 1
-                "RTO" -> rto += 1
-                "Order Placed" -> {
-                    if (isPending) {
-                        pendingPayment += 1
-                    } else {
-                        confirmed += 1
-                    }
-                }
-            }
-        }
-
-        _dashboardMetrics.value = current.copy(
-            freshLeadsCount = maxOf(0, fresh),
-            dueFollowupsCount = maxOf(0, followups),
-            confirmedOrdersCount = maxOf(0, confirmed),
-            pendingPaymentsCount = maxOf(0, pendingPayment),
-            attemptedCount = maxOf(0, attempted),
-            rejectedCount = maxOf(0, rejected),
-            dispatchedCount = maxOf(0, dispatched),
-            deliveredCount = maxOf(0, delivered),
-            rtoCount = maxOf(0, rto)
-        )
+        // No-op: Realtime Firebase count flows handle this automatically and accurately now
     }
 
     private fun refreshMetricsBackground() {
-        viewModelScope.launch {
-            try {
-                val userId = _currentUserId.value ?: return@launch
-                val metrics = repository.getDashboardMetrics(userId)
-                _dashboardMetrics.value = DashboardMetrics(
-                    pendingPaymentsCount = metrics["pendingPayments"]?.toInt() ?: 0,
-                    dueFollowupsCount = metrics["dueFollowups"]?.toInt() ?: 0,
-                    freshLeadsCount = metrics["freshLeads"]?.toInt() ?: 0,
-                    confirmedOrdersCount = metrics["confirmedOrders"]?.toInt() ?: 0,
-                    inquiriesCount = metrics["inquiries"]?.toInt() ?: 0,
-                    attemptedCount = metrics["attempted"]?.toInt() ?: 0,
-                    rejectedCount = metrics["rejected"]?.toInt() ?: 0,
-                    dispatchedCount = metrics["dispatched"]?.toInt() ?: 0,
-                    rtoCount = metrics["rto"]?.toInt() ?: 0,
-                    deliveredCount = metrics["delivered"]?.toInt() ?: 0,
-                    retentionDueCount = 0 
-                )
-                val sales = repository.getSalesMetrics(userId)
-                _salesMetrics.value = SalesMetrics(
-                    todayOrdersCount = sales["todayCount"]?.toInt() ?: 0,
-                    todayRevenue = sales["todayRev"]?.toInt() ?: 0,
-                    weeklyRevenue = sales["weekRev"]?.toInt() ?: 0,
-                    activeOrdersCount = sales["totalActive"]?.toInt() ?: 0
-                )
-            } catch (e: Exception) {
-                // Ignore background errors
-            }
-        }
+        // No-op: Realtime Firebase count flows handle this automatically and accurately now
     }
 
     fun setPendingCall(leadId: String) {
@@ -434,32 +406,37 @@ class CallingViewModel @Inject constructor(
         }
         
         viewModelScope.launch {
-            try {
-                val metrics = repository.getDashboardMetrics(userId)
-                _dashboardMetrics.value = DashboardMetrics(
-                    pendingPaymentsCount = metrics["pendingPayments"]?.toInt() ?: 0,
-                    dueFollowupsCount = metrics["dueFollowups"]?.toInt() ?: 0,
-                    freshLeadsCount = metrics["freshLeads"]?.toInt() ?: 0,
-                    confirmedOrdersCount = metrics["confirmedOrders"]?.toInt() ?: 0,
-                    inquiriesCount = metrics["inquiries"]?.toInt() ?: 0,
-                    attemptedCount = metrics["attempted"]?.toInt() ?: 0,
-                    rejectedCount = metrics["rejected"]?.toInt() ?: 0,
-                    dispatchedCount = metrics["dispatched"]?.toInt() ?: 0,
-                    rtoCount = metrics["rto"]?.toInt() ?: 0,
-                    deliveredCount = metrics["delivered"]?.toInt() ?: 0,
-                    retentionDueCount = 0 // Needs dedicated query if we want count
-                )
-                
-                val sales = repository.getSalesMetrics(userId)
-                _salesMetrics.value = SalesMetrics(
-                    todayOrdersCount = sales["todayCount"]?.toInt() ?: 0,
-                    todayRevenue = sales["todayRev"]?.toInt() ?: 0,
-                    weeklyRevenue = sales["weekRev"]?.toInt() ?: 0,
-                    activeOrdersCount = sales["totalActive"]?.toInt() ?: 0
-                )
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
+            repository.getDashboardMetricsFlow(userId)
+                .catch { e -> e.printStackTrace() }
+                .collect { metrics ->
+                    _dashboardMetrics.value = DashboardMetrics(
+                        pendingPaymentsCount = metrics["pendingPayments"]?.toInt() ?: 0,
+                        dueFollowupsCount = metrics["dueFollowups"]?.toInt() ?: 0,
+                        freshLeadsCount = metrics["freshLeads"]?.toInt() ?: 0,
+                        confirmedOrdersCount = metrics["confirmedOrders"]?.toInt() ?: 0,
+                        inquiriesCount = metrics["inquiries"]?.toInt() ?: 0,
+                        attemptedCount = metrics["attempted"]?.toInt() ?: 0,
+                        rejectedCount = metrics["rejected"]?.toInt() ?: 0,
+                        dispatchedCount = metrics["dispatched"]?.toInt() ?: 0,
+                        rtoCount = metrics["rto"]?.toInt() ?: 0,
+                        deliveredCount = metrics["delivered"]?.toInt() ?: 0,
+                        retentionDueCount = 0
+                    )
+                }
+        }
+        
+        // Listen to real-time sales metrics forever for this user
+        viewModelScope.launch {
+            repository.getSalesMetricsFlow(userId)
+                .catch { e -> e.printStackTrace() }
+                .collect { sales ->
+                    _salesMetrics.value = SalesMetrics(
+                        todayOrdersCount = sales["todayCount"]?.toInt() ?: 0,
+                        todayRevenue = sales["todayRev"]?.toInt() ?: 0,
+                        weeklyRevenue = sales["weekRev"]?.toInt() ?: 0,
+                        activeOrdersCount = sales["totalActive"]?.toInt() ?: 0
+                    )
+                }
         }
     }
 
@@ -494,7 +471,7 @@ class CallingViewModel @Inject constructor(
                 }
                 val isoTimestamp = isoFormat.format(Date())
 
-                val amtNum = orderAmount.toLongOrNull() ?: 0L
+                val amtNum = orderAmount.replace(Regex("[^0-9]"), "").toLongOrNull() ?: 0L
                 val isNewRev = isRevenue(status, paymentMethod, paymentStatus)
                 val wasOldRev = isRevenue(lead.status, lead.paymentMethod, lead.paymentStatus)
                 val finalConvertedAt = if (isNewRev) {
@@ -524,8 +501,6 @@ class CallingViewModel @Inject constructor(
                     "baseProductsBreakdown" to baseProductsBreakdown
                 )
 
-                repository.updateLead(lead.id, updateMap)
-
                 val logId = "i-" + UUID.randomUUID().toString().take(6)
                 val interaction = Interaction(
                     id = logId,
@@ -553,7 +528,7 @@ class CallingViewModel @Inject constructor(
                     originalTotalValue = originalTotalValue,
                     discountAmount = discountAmount
                 )
-                repository.addInteraction(interaction)
+                repository.updateLeadAndAddInteractionBatch(lead.id, updateMap, interaction)
                 
                 var amtDelta = 0L
                 var countDelta = 0
@@ -734,7 +709,7 @@ class CallingViewModel @Inject constructor(
                 
                 val finalNotes = if (notes.trim().isNotEmpty()) "📞 ${notes.trim()}" else ""
 
-                val amtNum = orderAmount.toLongOrNull() ?: 0L
+                val amtNum = orderAmount.replace(Regex("[^0-9]"), "").toLongOrNull() ?: 0L
                 val isNewRev = isRevenue(status, paymentMethod, paymentStatus)
                 val finalConvertedAt = if (isNewRev) isoTimestamp else null
 
@@ -804,7 +779,13 @@ class CallingViewModel @Inject constructor(
     fun updateLead(lead: Lead) {
         viewModelScope.launch {
             try {
-                val amtNum = lead.orderAmount.toLongOrNull() ?: 0L
+                val amtNum = lead.orderAmount.replace(Regex("[^0-9]"), "").toLongOrNull() ?: 0L
+                val isRev = isRevenue(lead.status, lead.paymentMethod, lead.paymentStatus)
+                val isoTimestamp = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }.format(Date())
+                val finalConvertedAt = if (isRev) {
+                    if (lead.convertedAt.isNullOrEmpty()) isoTimestamp else lead.convertedAt
+                } else null
+
                 val updateMap = mapOf(
                     "name" to lead.name,
                     "phone" to lead.phone,
@@ -829,9 +810,34 @@ class CallingViewModel @Inject constructor(
                     "cancellationReason" to lead.cancellationReason,
                     "cancellationNotes" to lead.cancellationNotes,
                     "cancellationRequestedAt" to lead.cancellationRequestedAt,
-                    "convertedAt" to lead.convertedAt
+                    "convertedAt" to finalConvertedAt
                 )
-                repository.updateLead(lead.id, updateMap)
+
+                val diffNotes = buildString {
+                    val oldLead = _leads.value.find { it.id == lead.id }
+                    if (oldLead != null) {
+                        if (oldLead.name != lead.name) append("Name: ${oldLead.name} -> ${lead.name}\n")
+                        if (oldLead.phone != lead.phone) append("Phone: ${oldLead.phone} -> ${lead.phone}\n")
+                        if (oldLead.address != lead.address) append("Address updated\n")
+                        if (oldLead.product != lead.product) append("Product: ${oldLead.product} -> ${lead.product}\n")
+                        if (oldLead.orderAmount != lead.orderAmount) append("Amount: ${oldLead.orderAmount} -> ${lead.orderAmount}\n")
+                    }
+                }.trim()
+
+                val finalNote = if (diffNotes.isNotEmpty()) "📝 Details Updated:\n$diffNotes" else "📝 Lead Details Updated"
+
+                val logId = "i-edit-" + UUID.randomUUID().toString().take(6)
+                val interaction = Interaction(
+                    id = logId,
+                    leadId = lead.id,
+                    callerId = _currentUserId.value ?: "",
+                    callerName = callerName,
+                    statusBefore = lead.status,
+                    statusAfter = lead.status,
+                    notes = finalNote,
+                    timestamp = isoTimestamp
+                )
+                repository.updateLeadAndAddInteractionBatch(lead.id, updateMap, interaction)
                 refreshMetricsBackground()
             } catch (e: Exception) {
                 // Ignore for now
@@ -865,7 +871,6 @@ class CallingViewModel @Inject constructor(
                     "convertedAt" to null,
                     "orderAmountNum" to 0L
                 )
-                repository.updateLead(lead.id, updates)
 
                 val logId = "i-cancel-" + java.util.UUID.randomUUID().toString().take(6)
                 val interaction = Interaction(
@@ -878,7 +883,7 @@ class CallingViewModel @Inject constructor(
                     notes = "Cancellation Requested: $reason | $notes",
                     timestamp = isoTimestamp
                 )
-                repository.addInteraction(interaction)
+                repository.updateLeadAndAddInteractionBatch(lead.id, updates, interaction)
                 updateMetricsOptimistically(oldStatus = lead.status, newStatus = "Cancellation Pending")
                 val isRev = isRevenue(lead.status, lead.paymentMethod, lead.paymentStatus)
                 if (isRev) updateSalesMetricsOptimistically(-(lead.orderAmountNum), -1)
@@ -919,7 +924,6 @@ class CallingViewModel @Inject constructor(
                     "convertedAt" to isoTimestamp,
                     "orderAmountNum" to amtNum
                 )
-                repository.updateLead(lead.id, updates)
 
                 val logId = "i-withdraw-" + java.util.UUID.randomUUID().toString().take(6)
                 val interaction = Interaction(
@@ -934,7 +938,7 @@ class CallingViewModel @Inject constructor(
                         timeZone = TimeZone.getTimeZone("UTC")
                     }.format(Date())
                 )
-                repository.addInteraction(interaction)
+                repository.updateLeadAndAddInteractionBatch(lead.id, updates, interaction)
                 updateMetricsOptimistically(oldStatus = lead.status, newStatus = "Order Placed")
                 val isRev = isRevenue("Order Placed", lead.paymentMethod, lead.paymentStatus)
                 if (isRev) updateSalesMetricsOptimistically(amtNum, 1)
@@ -975,7 +979,6 @@ class CallingViewModel @Inject constructor(
                     "convertedAt" to null,
                     "orderAmountNum" to 0L
                 )
-                repository.updateLead(lead.id, updates)
 
                 val logId = "i-cancel-direct-" + java.util.UUID.randomUUID().toString().take(6)
                 val interaction = Interaction(
@@ -988,7 +991,7 @@ class CallingViewModel @Inject constructor(
                     notes = "Order Cancelled Directly by Telecaller. Reason: $reason",
                     timestamp = isoTimestamp
                 )
-                repository.addInteraction(interaction)
+                repository.updateLeadAndAddInteractionBatch(lead.id, updates, interaction)
                 updateMetricsOptimistically(oldStatus = lead.status, newStatus = Constants.STATUS_ORDER_CANCELLED)
                 val isRev = isRevenue(lead.status, lead.paymentMethod, lead.paymentStatus)
                 if (isRev) updateSalesMetricsOptimistically(-(lead.orderAmountNum), -1)
@@ -1009,12 +1012,27 @@ class CallingViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val lead = _leads.value.find { it.id == leadId }
-                repository.updateLead(leadId, mapOf(
+                val isoTimestamp = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }.format(Date())
+                val updates = mapOf(
                     "archived" to true, 
                     "status" to "Invalid",
                     "convertedAt" to null,
                     "orderAmountNum" to 0L
-                ))
+                )
+                
+                val logId = "i-arch-" + UUID.randomUUID().toString().take(6)
+                val interaction = Interaction(
+                    id = logId,
+                    leadId = leadId,
+                    callerId = _currentUserId.value ?: "",
+                    callerName = callerName,
+                    statusBefore = lead?.status ?: "Unknown",
+                    statusAfter = "Invalid (Archived)",
+                    notes = "🗑️ Lead Archived/Deleted by User",
+                    timestamp = isoTimestamp
+                )
+                
+                repository.updateLeadAndAddInteractionBatch(leadId, updates, interaction)
                 if (lead != null) {
                     updateMetricsOptimistically(oldStatus = lead.status, newStatus = null)
                     val isRev = isRevenue(lead.status, lead.paymentMethod, lead.paymentStatus)
@@ -1029,53 +1047,5 @@ class CallingViewModel @Inject constructor(
         }
     }
 
-    fun injectDummyRetentionLead() {
-        val uid = _currentUserId.value ?: return
-        viewModelScope.launch {
-            try {
-                val isoFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
-                    timeZone = TimeZone.getTimeZone("UTC")
-                }
-                val targetDate = java.util.Calendar.getInstance().apply {
-                    add(java.util.Calendar.DAY_OF_YEAR, 3) // Expires in 3 days, will show in retention due
-                }.time
-                
-                val dummyLead = Lead(
-                    id = "dummy-retention-" + java.util.UUID.randomUUID().toString().take(6),
-                    name = "Rahul Sharma (Dummy)",
-                    phone = "9999988888",
-                    status = "Delivered",
-                    assignedTo = uid,
-                    exhaustionDate = isoFormat.format(targetDate),
-                    product = "Spirulina, Hair Oil",
-                    address = "Hinjawadi IT Park",
-                    city = "Pune"
-                )
-                
-                val interaction = com.nexaleads.app.data.model.Interaction(
-                    id = "i-dummy-" + java.util.UUID.randomUUID().toString().take(6),
-                    leadId = dummyLead.id,
-                    callerId = uid,
-                    callerName = "System Test",
-                    statusBefore = "New",
-                    statusAfter = "Delivered",
-                    notes = "Injected for Retention Due UI Testing",
-                    timestamp = isoFormat.format(java.util.Date())
-                )
-                
-                repository.createManualLeadBatch(dummyLead, interaction)
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
-    }
 
-    fun migrateOldOrders(onComplete: () -> Unit) {
-        viewModelScope.launch {
-            val userId = _currentUserId.value ?: return@launch
-            repository.migrateOldOrders(userId)
-            refreshMetricsBackground()
-            onComplete()
-        }
-    }
 }

@@ -210,6 +210,7 @@ fun TimelineHistoryItem(
     }
 
     val actionIcon: ImageVector = when {
+        interaction.isReverted -> Icons.Rounded.Undo
         isCancel -> Icons.Rounded.Cancel
         isArchive -> Icons.Rounded.Delete
         isRTO -> Icons.Rounded.Autorenew
@@ -289,8 +290,9 @@ fun TimelineHistoryItem(
                     Text(
                         text = leadName,
                         fontWeight = FontWeight.Bold,
-                        color = TextPrimary,
+                        color = if (interaction.isReverted) TextSecondary else TextPrimary,
                         fontSize = 15.sp,
+                        textDecoration = if (interaction.isReverted) androidx.compose.ui.text.style.TextDecoration.LineThrough else null,
                         modifier = Modifier.weight(1f)
                     )
                     Text(
@@ -318,7 +320,7 @@ fun TimelineHistoryItem(
                         Icon(
                             imageVector = Icons.Rounded.ArrowForward,
                             contentDescription = null,
-                            tint = ModernViolet,
+                            tint = if (interaction.isReverted) TextSecondary else ModernViolet,
                             modifier = Modifier
                                 .padding(horizontal = 6.dp)
                                 .size(14.dp)
@@ -327,10 +329,22 @@ fun TimelineHistoryItem(
                     
                     Text(
                         text = interaction.statusAfter,
-                        color = TextPrimary,
+                        color = if (interaction.isReverted) TextSecondary else TextPrimary,
                         fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        textDecoration = if (interaction.isReverted) androidx.compose.ui.text.style.TextDecoration.LineThrough else null
                     )
+                    
+                    if (interaction.isReverted) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Box(
+                            modifier = Modifier
+                                .background(StatusWarning.copy(alpha = 0.2f), RoundedCornerShape(4.dp))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text("Reverted", color = StatusWarning, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
                     
                     Spacer(modifier = Modifier.weight(1f))
                     

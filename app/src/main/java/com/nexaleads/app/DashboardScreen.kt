@@ -13,13 +13,19 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.ExitToApp
 import androidx.compose.material.icons.rounded.Business
+import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.*
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.foundation.horizontalScroll
+import com.nexaleads.app.ui.viewmodel.PipelineState
 import androidx.compose.runtime.*
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
@@ -54,6 +60,7 @@ fun DashboardScreen(
 ) {
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
+    val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
     val snackbarHostState = remember { SnackbarHostState() }
 
     // Workflow State
@@ -101,6 +108,7 @@ fun DashboardScreen(
     // Metrics
     val metrics by viewModel.dashboardMetrics.collectAsStateWithLifecycle()
     val orgName by viewModel.orgName.collectAsStateWithLifecycle()
+    val pipelineActivityState by viewModel.pipelineActivityState.collectAsStateWithLifecycle()
 
     val currentHour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
     val greeting = when {
@@ -304,7 +312,6 @@ fun DashboardScreen(
 
             if (showLogoutDialog) {
                 val userEmail = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.email ?: ""
-                var isMigrating by remember { mutableStateOf(false) }
 
                 AlertDialog(
                     onDismissRequest = { showLogoutDialog = false },
@@ -312,26 +319,7 @@ fun DashboardScreen(
                         Text("Settings & Log Out", fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 20.sp)
                     },
                     text = {
-                        Column {
-                            Text("Are you sure you want to log out of your session?", color = TextSecondary)
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text("Admin Actions", fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 14.sp)
-                            Spacer(modifier = Modifier.height(8.dp))
-                                Button(
-                                    onClick = { 
-                                        isMigrating = true
-                                        viewModel.migrateOldOrders {
-                                            isMigrating = false
-                                            showLogoutDialog = false
-                                        }
-                                    },
-                                    enabled = !isMigrating,
-                                    colors = ButtonDefaults.buttonColors(containerColor = ModernViolet),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Text(if (isMigrating) "Migrating..." else "Migrate Old Orders Data")
-                                }
-                        }
+                        Text("Are you sure you want to log out of your session?", color = TextSecondary)
                     },
                     containerColor = SurfaceLight,
                     confirmButton = {
@@ -369,6 +357,20 @@ fun DashboardScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
+                        text = "Sales Overview",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = TextPrimary,
+                        letterSpacing = (-0.5).sp
+                    )
+                }
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
                         text = "PERFORMANCE OVERVIEW",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Black,
@@ -387,6 +389,8 @@ fun DashboardScreen(
                     )
                 }
 
+                val formatter = java.text.NumberFormat.getNumberInstance(java.util.Locale("en", "IN"))
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -394,15 +398,16 @@ fun DashboardScreen(
                     SalesMetricCard(
                         modifier = Modifier.weight(1.2f),
                         title = "Today's Revenue",
-                        value = "₹${salesMetrics.todayRevenue}",
+                        value = "₹${formatter.format(salesMetrics.todayRevenue)}",
                         subtitle = "${salesMetrics.todayOrdersCount} Orders Today",
                         icon = Icons.Rounded.Business,
-                        color = ModernViolet
+                        color = ModernViolet,
+                        onClick = { viewModel.loadRevenueBreakdown() }
                     )
                     SalesMetricCard(
                         modifier = Modifier.weight(1f),
                         title = "Weekly",
-                        value = "₹${if (salesMetrics.weeklyRevenue >= 1000) "${salesMetrics.weeklyRevenue / 1000}k" else salesMetrics.weeklyRevenue}",
+                        value = "₹${formatter.format(salesMetrics.weeklyRevenue)}",
                         subtitle = "Last 7 Days",
                         icon = Icons.Rounded.History,
                         color = Color(0xFF10B981)
@@ -721,6 +726,207 @@ fun DashboardScreen(
         )
     }
     
+    if (pipelineActivityState !is PipelineState.Idle) {
+        val state = pipelineActivityState
+        var selectedFilter by remember { mutableStateOf("All") }
+        
+        ModalBottomSheet(
+            onDismissRequest = { viewModel.clearRevenueBreakdown() },
+            containerColor = Color.White,
+            shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 24.dp)
+            ) {
+                // Header
+                Column(modifier = Modifier.padding(horizontal = 24.dp)) {
+                    Text(
+                        text = "Pipeline Activity Ledger",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Black,
+                        color = TextPrimary
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Real-time updates for today",
+                        fontSize = 14.sp,
+                        color = TextSecondary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(20.dp))
+                
+                when (state) {
+                    is PipelineState.Loading -> {
+                        Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(color = ModernViolet)
+                        }
+                    }
+                    is PipelineState.Error -> {
+                        Column(
+                            modifier = Modifier.fillMaxWidth().height(200.dp).padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(Icons.Rounded.Warning, contentDescription = null, tint = StatusDanger, modifier = Modifier.size(48.dp))
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(state.message, color = StatusDanger, textAlign = TextAlign.Center, fontSize = 14.sp)
+                        }
+                    }
+                    is PipelineState.Success -> {
+                        // Summary Cards Row
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            // Settled
+                            Column(modifier = Modifier.weight(1f).background(StatusSuccess.copy(alpha=0.1f), RoundedCornerShape(12.dp)).padding(12.dp)) {
+                                Text("✅ Settled", fontSize = 12.sp, color = StatusSuccess)
+                                val sum = state.settled.sumOf { it.orderAmount.replace(Regex("[^0-9]"), "").toLongOrNull() ?: 0L }
+                                Text("₹$sum", fontSize = 16.sp, fontWeight = FontWeight.Black, color = StatusSuccess)
+                            }
+                            // Pending
+                            Column(modifier = Modifier.weight(1f).background(StatusWarning.copy(alpha=0.1f), RoundedCornerShape(12.dp)).padding(12.dp)) {
+                                Text("⏳ Pending", fontSize = 12.sp, color = StatusWarning)
+                                val sum = state.pending.sumOf { it.orderAmount.replace(Regex("[^0-9]"), "").toLongOrNull() ?: 0L }
+                                Text("₹$sum", fontSize = 16.sp, fontWeight = FontWeight.Black, color = StatusWarning)
+                            }
+                            // Lost
+                            Column(modifier = Modifier.weight(1f).background(StatusDanger.copy(alpha=0.1f), RoundedCornerShape(12.dp)).padding(12.dp)) {
+                                Text("❌ Lost", fontSize = 12.sp, color = StatusDanger)
+                                val sum = state.lost.sumOf { it.orderAmount.replace(Regex("[^0-9]"), "").toLongOrNull() ?: 0L }
+                                Text("₹$sum", fontSize = 16.sp, fontWeight = FontWeight.Black, color = StatusDanger)
+                            }
+                        }
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        // Filters
+                        val filters = listOf("All", "Settled", "Pending", "Lost")
+                        Row(
+                            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 24.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            filters.forEach { filter ->
+                                val isSelected = selectedFilter == filter
+                                val bgColor = if (isSelected) ModernViolet else BackgroundLight
+                                val contentColor = if (isSelected) Color.White else TextSecondary
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(16.dp))
+                                        .background(bgColor)
+                                        .clickable { selectedFilter = filter }
+                                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                                ) {
+                                    Text(filter, color = contentColor, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                                }
+                            }
+                        }
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        val displayList = when(selectedFilter) {
+                            "Settled" -> state.settled
+                            "Pending" -> state.pending
+                            "Lost" -> state.lost
+                            else -> state.all
+                        }
+                        
+                        if (displayList.isEmpty()) {
+                            Box(modifier = Modifier.fillMaxWidth().height(150.dp), contentAlignment = Alignment.Center) {
+                                Text("No activity in this category.", color = TextSecondary)
+                            }
+                        } else {
+                            LazyColumn(
+                                modifier = Modifier.padding(horizontal = 24.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                items(displayList) { lead ->
+                                    val isSettled = state.settled.contains(lead)
+                                    val isPending = state.pending.contains(lead)
+                                    val isLost = state.lost.contains(lead)
+                                    
+                                    val rowBg = when {
+                                        isSettled -> StatusSuccess.copy(alpha=0.05f)
+                                        isPending -> StatusWarning.copy(alpha=0.05f)
+                                        isLost -> StatusDanger.copy(alpha=0.05f)
+                                        else -> BackgroundLight
+                                    }
+                                    
+                                    val amtColor = when {
+                                        isSettled -> StatusSuccess
+                                        isPending -> StatusWarning
+                                        isLost -> StatusDanger
+                                        else -> TextSecondary
+                                    }
+                                    val prefix = when {
+                                        isSettled -> "+ ₹"
+                                        isPending -> "⏳ ₹"
+                                        isLost -> "- ₹"
+                                        else -> "₹"
+                                    }
+                                    
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .background(rowBg, RoundedCornerShape(12.dp))
+                                            .padding(16.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = lead.name,
+                                                fontSize = 15.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = TextPrimary
+                                            )
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(
+                                                text = lead.status,
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Medium,
+                                                color = amtColor
+                                            )
+                                        }
+                                        
+                                        Column(horizontalAlignment = Alignment.End) {
+                                            Text(
+                                                text = "$prefix${lead.orderAmount}",
+                                                fontSize = 16.sp,
+                                                fontWeight = FontWeight.Black,
+                                                color = amtColor
+                                            )
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            val time = try {
+                                                lead.updatedAt?.let { timestamp ->
+                                                    val date = java.util.Date(timestamp)
+                                                    val hm = java.text.SimpleDateFormat("hh:mm a", java.util.Locale.US)
+                                                    hm.format(date)
+                                                } ?: "N/A"
+                                            } catch (e: Exception) { "N/A" }
+                                            
+                                            Text(
+                                                text = time,
+                                                fontSize = 11.sp,
+                                                color = TextSecondary
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    else -> {}
+                }
+                Spacer(modifier = Modifier.navigationBarsPadding())
+            }
+        }
+    }
+
     if (showCreateLeadSheet) {
         CreateLeadBottomSheet(
             viewModel = viewModel,
@@ -742,10 +948,11 @@ fun SalesMetricCard(
     value: String,
     subtitle: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
-    color: Color
+    color: Color,
+    onClick: (() -> Unit)? = null
 ) {
     Surface(
-        modifier = modifier.height(110.dp),
+        modifier = if (onClick != null) modifier.height(110.dp).clickable { onClick() } else modifier.height(110.dp),
         shape = RoundedCornerShape(24.dp),
         color = Color.White,
         border = androidx.compose.foundation.BorderStroke(1.dp, BorderSubtle.copy(alpha = 0.5f))

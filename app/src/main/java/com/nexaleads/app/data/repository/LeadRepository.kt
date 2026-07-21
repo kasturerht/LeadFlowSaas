@@ -3,6 +3,7 @@ package com.nexaleads.app.data.repository
 import com.nexaleads.app.Constants
 import com.nexaleads.app.data.model.Interaction
 import com.nexaleads.app.data.model.Lead
+import com.nexaleads.app.data.model.getPrimaryCategory
 import com.nexaleads.app.utils.PhoneUtils
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
@@ -120,103 +121,150 @@ class LeadRepository @Inject constructor(
         awaitClose { listener.remove() }
     }
 
-    suspend fun getDashboardMetrics(userId: String): Map<String, Long> = kotlinx.coroutines.coroutineScope {
+    fun getDashboardMetricsFlow(userId: String): Flow<Map<String, Long>> = callbackFlow {
         val baseQuery = leadsCol().whereEqualTo("assignedTo", userId).whereEqualTo("archived", false)
         
-        val deferredFresh = async {
-            baseQuery.whereIn("status", listOf("New", "No Answer")).count().get(com.google.firebase.firestore.AggregateSource.SERVER).await().count
+        val listener = baseQuery.addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                trySend(mapOf(
+                    "freshLeads" to 0L, "dueFollowups" to 0L, "confirmedOrders" to 0L,
+                    "pendingPayments" to 0L, "attempted" to 0L, "rejected" to 0L,
+                    "dispatched" to 0L, "delivered" to 0L, "rto" to 0L, "inquiries" to 0L
+                ))
+                return@addSnapshotListener
+            }
+            
+            if (snapshot != null) {
+                var freshLeads = 0L
+                var dueFollowups = 0L
+                var confirmedOrders = 0L
+                var pendingPayments = 0L
+                var attempted = 0L
+                var rejected = 0L
+                var dispatched = 0L
+                var delivered = 0L
+                var rto = 0L
+                var inquiries = 0L
+                
+                for (doc in snapshot.documents) {
+                    val lead = parseLead(doc) ?: continue
+                    val category = lead.getPrimaryCategory()
+                    
+                    when (category) {
+                        "PENDING" -> freshLeads++
+                        "FOLLOWUP" -> dueFollowups++
+                        "INQUIRY" -> inquiries++
+                        "ATTEMPTED" -> attempted++
+                        "REJECTED" -> rejected++
+                        "DISPATCHED" -> dispatched++
+                        "DELIVERED" -> delivered++
+                        "RTO" -> rto++
+                        "CONVERTED" -> {
+                            val isPending = lead.paymentMethod.equals("Prepaid", ignoreCase = true) && 
+                                            lead.paymentStatus?.equals("Link Sent", ignoreCase = true) == true
+                            if (isPending) pendingPayments++ else confirmedOrders++
+                        }
+                    }
+                }
+                
+                trySend(mapOf(
+                    "freshLeads" to freshLeads,
+                    "dueFollowups" to dueFollowups,
+                    "confirmedOrders" to confirmedOrders,
+                    "pendingPayments" to pendingPayments,
+                    "attempted" to attempted,
+                    "rejected" to rejected,
+                    "dispatched" to dispatched,
+                    "delivered" to delivered,
+                    "rto" to rto,
+                    "inquiries" to inquiries
+                ))
+            }
         }
-        val deferredFollowup = async {
-            baseQuery.whereEqualTo("status", "Follow-up").count().get(com.google.firebase.firestore.AggregateSource.SERVER).await().count
-        }
-        val deferredConfirmed = async {
-            baseQuery.whereEqualTo("status", "Order Placed").count().get(com.google.firebase.firestore.AggregateSource.SERVER).await().count
-        }
-        val deferredAttempted = async {
-            baseQuery.whereEqualTo("status", "Call Not Answered").count().get(com.google.firebase.firestore.AggregateSource.SERVER).await().count
-        }
-        val deferredRejected = async {
-            baseQuery.whereIn("status", listOf("Not Interested", "Invalid", "Order Cancelled")).count().get(com.google.firebase.firestore.AggregateSource.SERVER).await().count
-        }
-        val deferredDispatched = async {
-            baseQuery.whereEqualTo("status", "Dispatched").count().get(com.google.firebase.firestore.AggregateSource.SERVER).await().count
-        }
-        val deferredDelivered = async {
-            baseQuery.whereEqualTo("status", "Delivered").count().get(com.google.firebase.firestore.AggregateSource.SERVER).await().count
-        }
-        val deferredRTO = async {
-            baseQuery.whereEqualTo("status", "RTO").count().get(com.google.firebase.firestore.AggregateSource.SERVER).await().count
-        }
-        val deferredPendingPayments = async {
-            baseQuery.whereEqualTo("status", "Order Placed")
-                .whereEqualTo("paymentMethod", "Prepaid")
-                .whereEqualTo("paymentStatus", "Link Sent")
-                .count().get(com.google.firebase.firestore.AggregateSource.SERVER).await().count
-        }
-
-        mapOf(
-            "freshLeads" to deferredFresh.await(),
-            "dueFollowups" to deferredFollowup.await(),
-            "confirmedOrders" to (deferredConfirmed.await() - deferredPendingPayments.await()),
-            "pendingPayments" to deferredPendingPayments.await(),
-            "attempted" to deferredAttempted.await(),
-            "rejected" to deferredRejected.await(),
-            "dispatched" to deferredDispatched.await(),
-            "delivered" to deferredDelivered.await(),
-            "rto" to deferredRTO.await()
-        )
+        
+        awaitClose { listener.remove() }
     }
 
-    suspend fun getSalesMetrics(userId: String): Map<String, Long> = kotlinx.coroutines.coroutineScope {
+    fun getSalesMetricsFlow(userId: String): Flow<Map<String, Long>> = callbackFlow {
+        val listener = leadsCol()
+            .whereEqualTo("assignedTo", userId)
+            .whereEqualTo("archived", false)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    trySend(mapOf("totalActive" to 0L, "todayCount" to 0L, "todayRev" to 0L, "weekRev" to 0L))
+                    return@addSnapshotListener
+                }
+                if (snapshot != null) {
+                    val isoFormat = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }
+                    val todayStr = isoFormat.format(java.util.Date())
+                    val cal = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC"))
+                    cal.add(java.util.Calendar.DAY_OF_YEAR, -7)
+                    val lastWeekStr = isoFormat.format(cal.time)
+
+                    var todayCount = 0L
+                    var todayRev = 0L
+                    var weekRev = 0L
+                    var totalActive = 0L
+
+                    for (doc in snapshot.documents) {
+                        val lead = parseLead(doc) ?: continue
+                        val category = lead.getPrimaryCategory()
+                        
+                        if (category != "CONVERTED" && category != "DISPATCHED" && category != "DELIVERED") continue
+                        
+                        val isPending = lead.paymentMethod.equals("Prepaid", ignoreCase = true) && 
+                                        lead.paymentStatus?.equals("Link Sent", ignoreCase = true) == true
+                        if (isPending) continue
+                        
+                        totalActive++
+                        val fallbackCAt = lead.updatedAt?.let {
+                            java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US).apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }.format(java.util.Date(it))
+                        }
+                        val cAt = lead.convertedAt ?: fallbackCAt ?: continue
+                        val amtNum = lead.orderAmountNum
+
+                        if (cAt >= todayStr) {
+                            todayCount++
+                            todayRev += amtNum
+                        }
+                        if (cAt >= lastWeekStr) {
+                            weekRev += amtNum
+                        }
+                    }
+                    trySend(mapOf(
+                        "totalActive" to totalActive,
+                        "todayCount" to todayCount,
+                        "todayRev" to todayRev,
+                        "weekRev" to weekRev
+                    ))
+                }
+            }
+        awaitClose { listener.remove() }
+    }
+    
+    suspend fun fetchTodayPipelineActivity(userId: String): List<Lead> {
         val isoFormat = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }
         val todayStr = isoFormat.format(java.util.Date())
         
-        val cal = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC"))
-        cal.add(java.util.Calendar.DAY_OF_YEAR, -7)
-        val lastWeekStr = isoFormat.format(cal.time)
-
-        val baseQuery = leadsCol()
-            .whereEqualTo("assignedTo", userId)
-            .whereEqualTo("archived", false)
-            .whereIn("status", listOf("Order Placed", "Dispatched", "Delivered"))
-
-        val totalActive = try {
-            baseQuery.count().get(com.google.firebase.firestore.AggregateSource.SERVER).await().count
-        } catch (e: Exception) { 0L }
-        
-        val todayQuery = leadsCol()
-            .whereEqualTo("assignedTo", userId)
-            .whereGreaterThanOrEqualTo("convertedAt", todayStr)
-            
-        val weekQuery = leadsCol()
-            .whereEqualTo("assignedTo", userId)
-            .whereGreaterThanOrEqualTo("convertedAt", lastWeekStr)
-
-        var todayCount = 0L
-        var todayRev = 0L
-        var weekRev = 0L
-
-        try {
-            todayCount = todayQuery.count().get(com.google.firebase.firestore.AggregateSource.SERVER).await().count
-            todayRev = (todayQuery.aggregate(com.google.firebase.firestore.AggregateField.sum("orderAmountNum"))
-                .get(com.google.firebase.firestore.AggregateSource.SERVER).await()
-                .get(com.google.firebase.firestore.AggregateField.sum("orderAmountNum")) as? Number)?.toLong() ?: 0L
+        return try {
+            val snapshot = leadsCol()
+                .whereEqualTo("assignedTo", userId)
+                .whereGreaterThanOrEqualTo("updatedAt", todayStr)
+                .orderBy("updatedAt", com.google.firebase.firestore.Query.Direction.DESCENDING)
+                .get()
+                .await()
                 
-            weekRev = (weekQuery.aggregate(com.google.firebase.firestore.AggregateField.sum("orderAmountNum"))
-                .get(com.google.firebase.firestore.AggregateSource.SERVER).await()
-                .get(com.google.firebase.firestore.AggregateField.sum("orderAmountNum")) as? Number)?.toLong() ?: 0L
+            snapshot.documents.mapNotNull { doc ->
+                parseLead(doc)
+            }
         } catch (e: Exception) {
-            e.printStackTrace()
+            if (e.message?.contains("FAILED_PRECONDITION") == true) {
+                throw Exception("INDEX_REQUIRED: ${e.message}")
+            }
+            emptyList()
         }
-        
-        mapOf(
-            "totalActive" to totalActive,
-            "todayCount" to todayCount,
-            "todayRev" to todayRev,
-            "weekRev" to weekRev
-        )
     }
-
+    
     fun getProducts(): Flow<List<Product>> = callbackFlow {
         val listener = productsCol()
             .whereEqualTo("isActive", true)
@@ -394,9 +442,24 @@ class LeadRepository @Inject constructor(
         }
     }
     
+    suspend fun updateLeadAndAddInteractionBatch(leadId: String, updates: Map<String, Any?>, interaction: Interaction) {
+        kotlinx.coroutines.withTimeoutOrNull(5000) {
+            val batch = db.batch()
+            val leadRef = leadsCol().document(leadId)
+            val finalUpdates = updates.toMutableMap()
+            finalUpdates["updatedAt"] = com.google.firebase.firestore.FieldValue.serverTimestamp()
+            batch.update(leadRef, finalUpdates)
+            
+            val interactionRef = interactionsCol().document(interaction.id)
+            batch.set(interactionRef, interaction)
+            
+            batch.commit().await()
+        }
+    }
+
     suspend fun deleteInteraction(interactionId: String) {
         kotlinx.coroutines.withTimeoutOrNull(3000) {
-            interactionsCol().document(interactionId).delete().await()
+            interactionsCol().document(interactionId).update("isReverted", true).await()
         }
     }
 
@@ -420,7 +483,7 @@ class LeadRepository @Inject constructor(
                 .await()
             
             val remainingInteractions = interactionsSnapshot.documents
-                .filter { it.id != interactionIdToDelete }
+                .filter { it.id != interactionIdToDelete && it.getBoolean("isReverted") != true }
                 .mapNotNull { doc ->
                     Interaction(
                         id = doc.id,
@@ -444,7 +507,8 @@ class LeadRepository @Inject constructor(
                     pincode = doc.getString("pincode"),
                     paymentMethod = doc.getString("paymentMethod"),
                     orderAmount = doc.getString("orderAmount"),
-                    orderAmountNum = doc.getLong("orderAmountNum") ?: 0L
+                    orderAmountNum = doc.getLong("orderAmountNum") ?: 0L,
+                    isReverted = doc.getBoolean("isReverted") ?: false
                 )
             }
             .sortedBy { it.timestamp }
@@ -510,7 +574,7 @@ class LeadRepository @Inject constructor(
         batch.update(leadRef, updateMap)
             
             val interactionRef = interactionsCol().document(interactionIdToDelete)
-            batch.delete(interactionRef)
+            batch.update(interactionRef, "isReverted", true, "serverCreatedAt", com.google.firebase.firestore.FieldValue.serverTimestamp())
             
             batch.commit().await()
             true

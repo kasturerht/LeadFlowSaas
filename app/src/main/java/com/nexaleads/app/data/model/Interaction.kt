@@ -27,5 +27,8 @@ data class Interaction(
     val orderAmount: String? = null,
     val orderAmountNum: Long = 0L,
     val originalTotalValue: String? = null,
-    val discountAmount: String? = null
+    val discountAmount: String? = null,
+    val isReverted: Boolean = false,
+    @com.google.firebase.firestore.ServerTimestamp
+    val serverCreatedAt: java.util.Date? = null
 )

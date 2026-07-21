@@ -77,7 +77,7 @@ service cloud.firestore {
           && resource.data.assignedTo == request.auth.uid 
           && (
             // Allow normal updates if not yet locked or dispatched
-            (!('dispatchStatus' in resource.data) || resource.data.dispatchStatus == null || resource.data.dispatchStatus == 'Pending')
+            (!('dispatchStatus' in resource.data) || resource.data.dispatchStatus == null || resource.data.dispatchStatus == '' || resource.data.dispatchStatus == 'Pending')
             
             // If locked by admin, ONLY allow the Kill Switch (urgentCancelRequest) to be toggled
             || (
