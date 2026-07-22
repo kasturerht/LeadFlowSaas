@@ -20,6 +20,9 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -143,6 +146,34 @@ class CallingViewModel @Inject constructor(
     val pipelineActivityState: StateFlow<PipelineState> = _pipelineActivityState
     
     private var pipelineJob: kotlinx.coroutines.Job? = null
+    
+    // --- Search State ---
+    private val _isSearching = MutableStateFlow(false)
+    val isSearching: StateFlow<Boolean> = _isSearching
+
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery
+
+    private val _searchResults = MutableStateFlow<List<Lead>>(emptyList())
+    val searchResults: StateFlow<List<Lead>> = _searchResults
+    
+    private val _isSearchLoading = MutableStateFlow(false)
+    val isSearchLoading: StateFlow<Boolean> = _isSearchLoading
+
+    private var searchJob: kotlinx.coroutines.Job? = null
+
+    fun setSearchMode(active: Boolean) {
+        _isSearching.value = active
+        if (!active) {
+            _searchQuery.value = ""
+            _searchResults.value = emptyList()
+        }
+    }
+
+    fun updateSearchQuery(query: String) {
+        _searchQuery.value = query
+    }
+    // -------------------
 
     fun loadRevenueBreakdown() {
         pipelineJob?.cancel()
@@ -352,22 +383,48 @@ class CallingViewModel @Inject constructor(
         _saveToContactsPreference.value = save
     }
 
-    private val _leadsLimit = MutableStateFlow(50L)
+    private val _leadsLimit = MutableStateFlow(500L)
     val leadsLimit: StateFlow<Long> = _leadsLimit
 
     fun loadMoreLeads() {
         _leadsLimit.value += 50L
     }
 
+    private var productsJob: kotlinx.coroutines.Job? = null
+    private var categoriesJob: kotlinx.coroutines.Job? = null
+    private var leadsJob: kotlinx.coroutines.Job? = null
+    private var metricsJob: kotlinx.coroutines.Job? = null
+    private var salesJob: kotlinx.coroutines.Job? = null
+
+    fun clearData() {
+        _currentUserId.value = null
+        productsJob?.cancel()
+        categoriesJob?.cancel()
+        leadsJob?.cancel()
+        metricsJob?.cancel()
+        salesJob?.cancel()
+        pipelineJob?.cancel()
+        
+        _leads.value = emptyList()
+        _dashboardMetrics.value = DashboardMetrics()
+        _salesMetrics.value = SalesMetrics()
+        _products.value = emptyList()
+        _categories.value = emptyList()
+    }
+
     fun initialize(userId: String, name: String, contactNumber: String, orgId: String, orgName: String) {
         if (_currentUserId.value == userId) return
+        
+        // Ensure any previous jobs are cancelled before starting new ones
+        clearData()
+        
         _currentUserId.value = userId
         callerName = name
         _telecallerContact.value = contactNumber
         _orgName.value = orgName
         repository.setOrgId(orgId)
         
-        viewModelScope.launch {
+        productsJob = viewModelScope.launch {
             repository.seedProductsIfEmpty()
             repository.getProducts()
                 .catch { e -> e.printStackTrace() }
@@ -376,7 +433,7 @@ class CallingViewModel @Inject constructor(
                 }
         }
         
-        viewModelScope.launch {
+        categoriesJob = viewModelScope.launch {
             repository.getCategories()
                 .catch { e -> e.printStackTrace() }
                 .collect { fetchedCategories ->
@@ -384,7 +441,7 @@ class CallingViewModel @Inject constructor(
                 }
         }
 
-        viewModelScope.launch {
+        leadsJob = viewModelScope.launch {
             _isLoading.value = true
             
             _leadsLimit.flatMapLatest { limit ->
@@ -405,7 +462,28 @@ class CallingViewModel @Inject constructor(
             }
         }
         
-        viewModelScope.launch {
+        @OptIn(FlowPreview::class)
+        searchJob = viewModelScope.launch {
+            _searchQuery
+                .debounce(500)
+                .distinctUntilChanged()
+                .collect { query ->
+                    if (query.trim().isEmpty()) {
+                        _searchResults.value = emptyList()
+                    } else {
+                        _isSearchLoading.value = true
+                        val cleanQuery = query.trim().lowercase()
+                        val results = _leads.value.filter {
+                            it.name.lowercase().contains(cleanQuery) ||
+                            it.phone.replace(" ", "").replace("+91", "").replace("91", "").contains(cleanQuery.replace(" ", "").replace("+91", "").replace("91", ""))
+                        }
+                        _searchResults.value = results
+                        _isSearchLoading.value = false
+                    }
+                }
+        }
+        
+        metricsJob = viewModelScope.launch {
             repository.getDashboardMetricsFlow(userId)
                 .catch { e -> e.printStackTrace() }
                 .collect { metrics ->
@@ -426,7 +504,7 @@ class CallingViewModel @Inject constructor(
         }
         
         // Listen to real-time sales metrics forever for this user
-        viewModelScope.launch {
+        salesJob = viewModelScope.launch {
             repository.getSalesMetricsFlow(userId)
                 .catch { e -> e.printStackTrace() }
                 .collect { sales ->
@@ -529,6 +607,11 @@ class CallingViewModel @Inject constructor(
                     discountAmount = discountAmount
                 )
                 repository.updateLeadAndAddInteractionBatch(lead.id, updateMap, interaction)
+                val updatedLead = lead.copy(status = status, notes = notes, updatedAt = System.currentTimeMillis(), convertedAt = finalConvertedAt, followUpDate = followUpDate, product = product, address = address, city = city, state = state, pincode = pincode, paymentMethod = paymentMethod, orderAmount = orderAmount, orderAmountNum = amtNum, originalTotalValue = originalTotalValue, discountAmount = discountAmount, subStatus = subStatus, followUpTimeSlot = followUpTimeSlot, paymentStatus = paymentStatus, isSuspiciousShortCall = isSuspiciousShortCall, baseProductsBreakdown = baseProductsBreakdown)
+                _leads.value = _leads.value.map { if (it.id == lead.id) updatedLead else it }
+                if (_isSearching.value) {
+                    _searchResults.value = _searchResults.value.map { if (it.id == lead.id) updatedLead else it }
+                }
                 
                 var amtDelta = 0L
                 var countDelta = 0
@@ -939,6 +1022,11 @@ class CallingViewModel @Inject constructor(
                     }.format(Date())
                 )
                 repository.updateLeadAndAddInteractionBatch(lead.id, updates, interaction)
+                val updatedLead = lead.copy(status = "Order Placed", cancellationReason = null, cancellationNotes = null, cancellationRequestedAt = null, convertedAt = isoTimestamp, orderAmountNum = amtNum)
+                _leads.value = _leads.value.map { if (it.id == lead.id) updatedLead else it }
+                if (_isSearching.value) {
+                    _searchResults.value = _searchResults.value.map { if (it.id == lead.id) updatedLead else it }
+                }
                 updateMetricsOptimistically(oldStatus = lead.status, newStatus = "Order Placed")
                 val isRev = isRevenue("Order Placed", lead.paymentMethod, lead.paymentStatus)
                 if (isRev) updateSalesMetricsOptimistically(amtNum, 1)

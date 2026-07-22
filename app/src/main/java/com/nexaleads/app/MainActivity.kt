@@ -9,6 +9,7 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -25,6 +26,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -54,6 +61,12 @@ class MainActivity : ComponentActivity() {
                 val callingViewModel: CallingViewModel = hiltViewModel()
                 val pendingInvoiceLead by callingViewModel.pendingInvoiceLead.collectAsStateWithLifecycle()
                 val telecallerContact by callingViewModel.telecallerContact.collectAsStateWithLifecycle()
+
+                LaunchedEffect(authState) {
+                    if (authState is AuthState.Unauthenticated) {
+                        callingViewModel.clearData()
+                    }
+                }
 
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     pendingInvoiceLead?.let { lead ->
@@ -280,11 +293,13 @@ fun SplashScreen(authState: AuthState, onNavigate: (String) -> Unit) {
     }
 }
 
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun LoginScreen(authViewModel: AuthViewModel, onLoginSuccess: () -> Unit) {
     val context = LocalContext.current
     var emailInput by remember { mutableStateOf("") }
     var passwordInput by remember { mutableStateOf("") }
+    var passwordVisible by remember { mutableStateOf(false) }
     var isSubmitting by remember { mutableStateOf(false) }
     
     val authState by authViewModel.authState.collectAsStateWithLifecycle()
@@ -300,23 +315,41 @@ fun LoginScreen(authViewModel: AuthViewModel, onLoginSuccess: () -> Unit) {
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(com.nexaleads.app.ui.theme.BackgroundLight), contentAlignment = Alignment.Center) {
+    val isImeVisible = WindowInsets.isImeVisible
+    val logoScale by animateFloatAsState(targetValue = if (isImeVisible) 0.8f else 1f, label = "logoScale")
+    val subtitleAlpha by animateFloatAsState(targetValue = if (isImeVisible) 0f else 1f, label = "subtitleAlpha")
+    val topPadding by animateDpAsState(targetValue = if (isImeVisible) 16.dp else 32.dp, label = "topPadding")
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(com.nexaleads.app.ui.theme.BackgroundLight)
+            .imePadding()
+            .navigationBarsPadding()
+            .statusBarsPadding(), 
+        contentAlignment = Alignment.Center
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(28.dp)
+                .padding(horizontal = 28.dp)
                 .shadow(elevation = 16.dp, shape = RoundedCornerShape(16.dp), spotColor = Color.Black.copy(alpha = 0.05f))
                 .background(com.nexaleads.app.ui.theme.SurfaceLight, RoundedCornerShape(16.dp))
-                .padding(32.dp),
+                .verticalScroll(rememberScrollState())
+                .padding(top = topPadding, bottom = 32.dp, start = 32.dp, end = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Row(verticalAlignment = Alignment.Bottom) {
+            Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.scale(logoScale)) {
                 Text("LEADFLOW", fontSize = 22.sp, fontWeight = FontWeight.Black, color = com.nexaleads.app.ui.theme.TextPrimary, letterSpacing = 4.sp)
                 Box(modifier = Modifier.padding(bottom = 5.dp, start = 2.dp).size(5.dp).background(com.nexaleads.app.ui.theme.ModernViolet, CircleShape))
             }
-            Spacer(modifier = Modifier.height(4.dp))
-            Text("Staff Workspace Login", fontSize = 11.sp, fontWeight = FontWeight.Medium, color = com.nexaleads.app.ui.theme.TextSecondary, letterSpacing = 1.5.sp)
-            Spacer(modifier = Modifier.height(36.dp))
+            if (subtitleAlpha > 0f) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text("Staff Workspace Login", fontSize = 11.sp, fontWeight = FontWeight.Medium, color = com.nexaleads.app.ui.theme.TextSecondary, letterSpacing = 1.5.sp, modifier = Modifier.alpha(subtitleAlpha))
+                Spacer(modifier = Modifier.height(36.dp))
+            } else {
+                Spacer(modifier = Modifier.height(16.dp))
+            }
 
             OutlinedTextField(
                 value = emailInput, onValueChange = { emailInput = it }, label = { Text("Workspace Email") },
@@ -331,8 +364,16 @@ fun LoginScreen(authViewModel: AuthViewModel, onLoginSuccess: () -> Unit) {
             Spacer(modifier = Modifier.height(16.dp))
             OutlinedTextField(
                 value = passwordInput, onValueChange = { passwordInput = it }, label = { Text("Access Key") },
-                visualTransformation = PasswordVisualTransformation(), singleLine = true, shape = RoundedCornerShape(10.dp),
+                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(), 
+                singleLine = true, shape = RoundedCornerShape(10.dp),
                 modifier = Modifier.fillMaxWidth(),
+                trailingIcon = {
+                    val image = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff
+                    val description = if (passwordVisible) "Hide password" else "Show password"
+                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                        Icon(imageVector = image, contentDescription = description, tint = com.nexaleads.app.ui.theme.TextSecondary)
+                    }
+                },
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedTextColor = com.nexaleads.app.ui.theme.TextPrimary, unfocusedTextColor = com.nexaleads.app.ui.theme.TextPrimary,
                     focusedBorderColor = com.nexaleads.app.ui.theme.ModernViolet, unfocusedBorderColor = com.nexaleads.app.ui.theme.BorderSubtle,

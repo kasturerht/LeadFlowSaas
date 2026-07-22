@@ -49,6 +49,49 @@ class LeadRepository @Inject constructor(
         awaitClose { listener.remove() }
     }
 
+    suspend fun searchMyLeads(userId: String, query: String): List<Lead> {
+        val cleanQuery = query.trim()
+        if (cleanQuery.isEmpty()) return emptyList()
+        
+        val isNumeric = cleanQuery.replace("+", "").all { it.isDigit() }
+        
+        return try {
+            val baseQuery = leadsCol().whereEqualTo("assignedTo", userId).whereEqualTo("archived", false)
+            
+            val snapshotDocs = if (isNumeric) {
+                val cleanPhone = cleanQuery.replace(" ", "").replace("+", "")
+                val q1 = baseQuery.whereGreaterThanOrEqualTo("phone", cleanPhone).whereLessThanOrEqualTo("phone", cleanPhone + "\uf8ff").limit(20).get()
+                val q2 = baseQuery.whereGreaterThanOrEqualTo("phone", "+91$cleanPhone").whereLessThanOrEqualTo("phone", "+91$cleanPhone" + "\uf8ff").limit(20).get()
+                val q3 = baseQuery.whereGreaterThanOrEqualTo("phone", "91$cleanPhone").whereLessThanOrEqualTo("phone", "91$cleanPhone" + "\uf8ff").limit(20).get()
+                
+                val res1 = q1.await().documents
+                val res2 = q2.await().documents
+                val res3 = q3.await().documents
+                
+                (res1 + res2 + res3).distinctBy { it.id }
+            } else {
+                val lowerQuery = cleanQuery.lowercase()
+                val upperQuery = cleanQuery.uppercase()
+                val capitalizedQuery = cleanQuery.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
+                
+                val q1 = baseQuery.whereGreaterThanOrEqualTo("name", capitalizedQuery).whereLessThanOrEqualTo("name", capitalizedQuery + "\uf8ff").limit(20).get()
+                val q2 = baseQuery.whereGreaterThanOrEqualTo("name", lowerQuery).whereLessThanOrEqualTo("name", lowerQuery + "\uf8ff").limit(20).get()
+                val q3 = baseQuery.whereGreaterThanOrEqualTo("name", upperQuery).whereLessThanOrEqualTo("name", upperQuery + "\uf8ff").limit(20).get()
+                
+                val res1 = q1.await().documents
+                val res2 = q2.await().documents
+                val res3 = q3.await().documents
+                
+                (res1 + res2 + res3).distinctBy { it.id }
+            }
+            
+            snapshotDocs.mapNotNull { parseLead(it) }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emptyList()
+        }
+    }
+
     fun getRetentionDueLeads(userId: String, limit: Long = 100): Flow<List<Lead>> = callbackFlow {
         val now = System.currentTimeMillis()
         val next7Days = now + (7L * 24 * 60 * 60 * 1000)

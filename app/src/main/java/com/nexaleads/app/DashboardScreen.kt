@@ -22,6 +22,7 @@ import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.ExitToApp
 import androidx.compose.material.icons.rounded.Business
 import androidx.compose.material.icons.rounded.Warning
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.horizontalScroll
@@ -241,7 +242,27 @@ fun DashboardScreen(
                     }
                 }
                 
-                Spacer(modifier = Modifier.width(16.dp))
+                // Search Button
+                IconButton(
+                    onClick = { 
+                        viewModel.setSearchMode(true)
+                        onSelectCategory("ALL")
+                    },
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(Color.White)
+                        .border(1.dp, BorderSubtle.copy(alpha = 0.4f), CircleShape)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Search Leads",
+                        tint = ModernViolet,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                
+                Spacer(modifier = Modifier.width(12.dp))
                 
                 // RIGHT SIDE: User Profile (Premium "Smart" Glass Pill)
                 Row(

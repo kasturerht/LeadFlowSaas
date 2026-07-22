@@ -55,6 +55,8 @@ import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -162,6 +164,10 @@ fun TodayCallingListScreen(
     val clipboardManager = LocalClipboardManager.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val pendingMediaLead by viewModel.pendingMediaLead.collectAsState()
+    val isSearching by viewModel.isSearching.collectAsState()
+    val searchQuery by viewModel.searchQuery.collectAsState()
+    val searchResults by viewModel.searchResults.collectAsState()
+    val isSearchLoading by viewModel.isSearchLoading.collectAsState()
     var showMediaPromptForLead by remember { mutableStateOf<Lead?>(null) }
     var sendBrochureChecked by remember { mutableStateOf(true) }
     var sendVisitingCardChecked by remember { mutableStateOf(true) }
@@ -355,22 +361,63 @@ fun TodayCallingListScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = { 
-                    Text(text = titleText, fontWeight = FontWeight.Black, fontSize = 18.sp, color = TextPrimary) 
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Text("←", fontSize = 24.sp, fontWeight = FontWeight.Black, color = TextPrimary)
-                    }
-                },
-                actions = {
-                    TextButton(onClick = onLogout) {
-                        Text("Logout", color = StatusDanger, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = BackgroundLight)
-            )
+            if (isSearching) {
+                TopAppBar(
+                    title = { 
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { viewModel.updateSearchQuery(it) },
+                            placeholder = { Text("Search name or phone...", color = TextSecondary, fontSize = 14.sp) },
+                            singleLine = true,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(50.dp)
+                                .padding(end = 8.dp),
+                            textStyle = androidx.compose.ui.text.TextStyle(fontSize = 14.sp, color = TextPrimary),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Color.Transparent,
+                                unfocusedBorderColor = Color.Transparent,
+                                cursorColor = ModernViolet,
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent
+                            ),
+                            trailingIcon = {
+                                if (searchQuery.isNotEmpty()) {
+                                    IconButton(onClick = { viewModel.updateSearchQuery("") }) {
+                                        Icon(Icons.Default.Close, contentDescription = "Clear", tint = TextSecondary, modifier = Modifier.size(18.dp))
+                                    }
+                                }
+                            }
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = { viewModel.setSearchMode(false) }) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = TextPrimary)
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = BackgroundLight)
+                )
+            } else {
+                TopAppBar(
+                    title = { 
+                        Text(text = titleText, fontWeight = FontWeight.Black, fontSize = 18.sp, color = TextPrimary) 
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Text("←", fontSize = 24.sp, fontWeight = FontWeight.Black, color = TextPrimary)
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { viewModel.setSearchMode(true) }) {
+                            Icon(Icons.Default.Search, contentDescription = "Search", tint = TextPrimary)
+                        }
+                        TextButton(onClick = onLogout) {
+                            Text("Logout", color = StatusDanger, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = BackgroundLight)
+                )
+            }
         }
     ) { paddingValues ->
         Column(
@@ -448,7 +495,54 @@ fun TodayCallingListScreen(
                 }
             }
 
-            if (filteredLeads.isEmpty()) {
+            if (isSearching && searchQuery.isNotEmpty()) {
+                if (isSearchLoading && searchResults.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxSize().weight(1f), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = ModernViolet)
+                    }
+                } else if (searchResults.isEmpty() && searchQuery.isNotEmpty() && !isSearchLoading) {
+                    Box(modifier = Modifier.fillMaxSize().weight(1f), contentAlignment = Alignment.Center) {
+                        Text("No leads found for \"$searchQuery\"", color = TextSecondary, fontSize = 14.sp)
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize().weight(1f).padding(horizontal = 4.dp),
+                        contentPadding = PaddingValues(bottom = 80.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(searchResults, key = { it.id }) { item ->
+                            PremiumLeadCard(
+                                item = item,
+                                statusColors = statusColors,
+                                indianStatusLabels = indianStatusLabels,
+                                onClick = { selectedOrderIdForDetails = item.id },
+                                onLongClick = {
+                                    leadForQuickActions = item
+                                },
+                                onCallClick = { cleanNum, dialNum ->
+                                    clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(cleanNum))
+                                    android.widget.Toast.makeText(context, "Number Copied to Dialer.", android.widget.Toast.LENGTH_SHORT).show()
+                                    selectedLead = item
+                                    viewModel.setPendingCall(item.id)
+                                    try {
+                                        val intent = android.content.Intent(android.content.Intent.ACTION_DIAL).apply { data = android.net.Uri.parse("tel:$dialNum") }
+                                        context.startActivity(intent)
+                                    } catch (e: Exception) {}
+                                    showBottomSheet = true
+                                },
+                                onWhatsAppClick = {
+                                    selectedLead = item
+                                    showWhatsAppSheet = true
+                                },
+                                onEditClick = {
+                                    selectedOrderIdForDetails = item.id
+                                },
+                                onVerifyDeliveryClick = if (item.getPrimaryCategory() == "DISPATCHED") { { selectedDeliveryVerifyLead = item } } else null
+                            )
+                        }
+                    }
+                }
+            } else if (filteredLeads.isEmpty()) {
                 Column(modifier = Modifier.fillMaxSize().weight(1f), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
                     Text("🏆", fontSize = 64.sp)
                     Spacer(modifier = Modifier.height(16.dp))
@@ -457,7 +551,11 @@ fun TodayCallingListScreen(
                     Text("You've crushed all your calls for this list.", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = TextSecondary, textAlign = TextAlign.Center)
                 }
             } else {
-                LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize().padding(horizontal = 4.dp),
+                    contentPadding = PaddingValues(bottom = 80.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     if (filter == "CONVERTED") {
                         item {
                             SalesLedgerDashboard(metrics = salesMetrics, callerName = callerName)
