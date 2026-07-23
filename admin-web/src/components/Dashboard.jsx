@@ -643,8 +643,8 @@ export default function Dashboard() {
           <table>
             <thead>
               <tr>
-                <th>Name</th>
-                <th>Phone Number</th>
+                <th style={{ padding: '16px', textAlign: 'left', fontWeight: '500', color: 'var(--text-muted)' }}>NAME & DATE</th>
+                <th style={{ padding: '16px', textAlign: 'left', fontWeight: '500', color: 'var(--text-muted)' }}>PHONE NUMBER</th>
                 <th>Product</th>
                 <th>Status</th>
                 <th>Dispatch Info</th>
@@ -672,8 +672,17 @@ export default function Dashboard() {
 
                   return (
                     <tr key={lead.id}>
-                      <td style={{ fontWeight: 500 }}>{lead.name}</td>
-                      <td>{lead.phoneNumber || lead.phone}</td>
+                      <td style={{ padding: '16px', borderBottom: '1px solid var(--surface-border)' }}>
+                        <div style={{ fontWeight: '500', color: 'var(--text-main)' }}>{lead.name}</div>
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                          {lead.updatedAt ? (
+                            typeof lead.updatedAt.toDate === 'function' 
+                              ? lead.updatedAt.toDate().toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                              : new Date(lead.updatedAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                          ) : 'No Date'}
+                        </div>
+                      </td>
+                      <td style={{ padding: '16px', borderBottom: '1px solid var(--surface-border)', color: 'var(--text-muted)' }}>{lead.phoneNumber || lead.phone}</td>
                       <td>
                         <div style={{ display: 'flex', flexDirection: 'column' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
