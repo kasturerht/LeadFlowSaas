@@ -36,6 +36,11 @@ export default function Products() {
   const [productType, setProductType] = useState('single'); // 'single' | 'combo'
   const [selectedSubProducts, setSelectedSubProducts] = useState([]); // array of { productId, quantity }
 
+  // Migration Security State
+  const [showMigrateConfirm, setShowMigrateConfirm] = useState(false);
+  const [migratePassword, setMigratePassword] = useState('');
+  const [isMigrating, setIsMigrating] = useState(false);
+
   const EMOJI_OPTIONS = [
     '🌿', '💊', '🧴', '🥃', '🍯', '🍵', 
     '🥥', '🥑', '🍎', '🍋', '🫐', '🥕',
@@ -201,9 +206,30 @@ export default function Products() {
     }
   };
 
-  const seedProducts = async () => {
-    if (!window.confirm("WARNING: This will delete all existing products and rebuild the structured catalog with Base SKUs and Combos. Proceed?")) return;
+  const handleMigrateClick = () => {
+    setShowMigrateConfirm(true);
+    setMigratePassword('');
+  };
+
+  const executeSeedProducts = async () => {
+    if (!migratePassword) {
+      alert("Password is required.");
+      return;
+    }
     
+    setIsMigrating(true);
+    try {
+      const { EmailAuthProvider, reauthenticateWithCredential } = await import('firebase/auth');
+      const { auth } = await import('../firebase');
+      const credential = EmailAuthProvider.credential(auth.currentUser.email, migratePassword);
+      await reauthenticateWithCredential(auth.currentUser, credential);
+    } catch (err) {
+      console.error(err);
+      alert("Incorrect password! Access denied.");
+      setIsMigrating(false);
+      return;
+    }
+
     try {
       // 1. Clear old Products
       const snapshot = await getDocs(query(collection(db, "organizations", orgId, "products")));
@@ -327,10 +353,12 @@ export default function Products() {
       }
 
       alert("Database Reset Complete: 7 Premium Categories & 21 Mapped Products added successfully!");
+      setShowMigrateConfirm(false);
     } catch (err) {
       console.error(err);
       alert("Error migrating products & categories!");
     }
+    setIsMigrating(false);
   };
 
   // Helper to safely increment or decrement product quantity inside combo
@@ -378,7 +406,7 @@ export default function Products() {
           <p className="page-subtitle">Manage products for your telecallers.</p>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
-          <button className="btn-secondary" onClick={seedProducts} style={{ padding: '6px 12px', fontSize: '13px', border: '1px solid var(--danger)', color: 'var(--danger)' }}>
+          <button className="btn-secondary" onClick={handleMigrateClick} style={{ padding: '6px 12px', fontSize: '13px', border: '1px solid var(--danger)', color: 'var(--danger)' }}>
             Migrate 21 Products
           </button>
           <button className="btn-secondary" onClick={() => setShowCategoryMaster(true)} style={{ padding: '6px 12px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -568,6 +596,29 @@ export default function Products() {
           </div>
         )}
       </div>
+
+      {showMigrateConfirm && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div className="cyber-modal fade-in" style={{ width: '100%', maxWidth: '400px', padding: '24px', border: '1px solid var(--danger)' }}>
+            <h2 style={{ fontSize: '18px', fontWeight: 600, color: '#ef4444', marginBottom: '16px' }}>Confirm Migration</h2>
+            <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '20px' }}>This action is irreversible. Please verify your Super Admin password to proceed with the bulk product migration.</p>
+            <input 
+              type="password" 
+              className="input-field" 
+              placeholder="Admin Password" 
+              value={migratePassword} 
+              onChange={(e) => setMigratePassword(e.target.value)}
+              style={{ marginBottom: '20px' }}
+            />
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button className="btn-secondary" onClick={() => setShowMigrateConfirm(false)} style={{ flex: 1 }} disabled={isMigrating}>Cancel</button>
+              <button className="btn-primary" onClick={executeSeedProducts} style={{ flex: 1, background: 'var(--danger)' }} disabled={isMigrating}>
+                {isMigrating ? 'Migrating...' : 'Confirm & Migrate'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
