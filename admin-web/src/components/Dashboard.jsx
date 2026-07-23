@@ -75,8 +75,8 @@ export default function Dashboard() {
           start.setDate(1);
         }
 
-        const startTimestamp = start.getTime();
-        const endTimestamp = now.getTime();
+        const startTimestamp = Timestamp.fromDate(start);
+        const endTimestamp = Timestamp.fromDate(now);
 
         const addDateFilter = (baseQuery) => {
           return query(baseQuery, where('updatedAt', '>=', startTimestamp), where('updatedAt', '<=', endTimestamp));
