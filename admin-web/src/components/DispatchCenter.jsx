@@ -359,29 +359,40 @@ export default function DispatchCenter() {
 
   return (
     <div className="reports-container fade-in">
-      <div className="reports-header" style={{ marginBottom: '20px' }}>
+      <div className="reports-header" style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h1 className="page-title">Dispatch Center</h1>
           <p className="page-subtitle">Fulfillment & Logistics Engine (God-Level)</p>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
-          <div className="search-bar">
-            <Search size={16} />
-            <input 
-              type="text" 
-              placeholder="Search Name or Phone..." 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
+          <div style={{ display: 'flex', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '24px', padding: '4px', border: '1px solid rgba(255,255,255,0.08)' }}>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <Search size={14} style={{ position: 'absolute', left: '12px', color: 'var(--text-muted)' }} />
+              <input 
+                type="text" 
+                placeholder="Search Name or Phone..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{ 
+                  background: 'transparent', 
+                  border: 'none', 
+                  color: 'white', 
+                  padding: '8px 12px 8px 32px',
+                  fontSize: '13px',
+                  width: '240px',
+                  outline: 'none'
+                }}
+              />
+            </div>
           </div>
-          <button className="btn-secondary" onClick={() => alert('Barcode scanner ready to listen...')}>
-            <QrCode size={16} /> Scan
+          <button className="btn-secondary" style={{ borderRadius: '24px', padding: '0 16px', fontSize: '13px', height: '40px', background: 'rgba(255,255,255,0.05)' }} onClick={() => alert('Barcode scanner ready to listen...')}>
+            <QrCode size={14} /> Scan
           </button>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="tabs" style={{ display: 'flex', gap: '10px', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
+      <div className="tabs" style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
         {TABS.map(tab => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -389,17 +400,17 @@ export default function DispatchCenter() {
             <button
               key={tab.id}
               onClick={() => { setActiveTab(tab.id); setPageNumber(1); }}
-              className={`tab-button ${isActive ? 'active' : ''}`}
+              className={`tab-btn ${isActive ? 'active' : ''}`}
               style={{
-                display: 'flex', alignItems: 'center', gap: '8px',
-                padding: '8px 16px', borderRadius: '8px',
-                background: isActive ? 'var(--primary)' : 'transparent',
-                color: isActive ? '#fff' : 'var(--text-muted)',
-                border: 'none', cursor: 'pointer',
-                fontWeight: isActive ? 600 : 400
+                display: 'flex', alignItems: 'center', gap: '6px',
+                padding: '8px 20px', borderRadius: '100px', fontSize: '13px', fontWeight: 600,
+                background: isActive ? 'var(--primary)' : 'rgba(255,255,255,0.05)',
+                color: isActive ? '#000000' : 'var(--text-main)',
+                border: '1px solid', borderColor: isActive ? 'var(--primary)' : 'rgba(255,255,255,0.1)',
+                cursor: 'pointer', transition: 'all 0.2s'
               }}
             >
-              <Icon size={16} />
+              <Icon size={14} />
               {tab.label}
             </button>
           )
@@ -417,11 +428,11 @@ export default function DispatchCenter() {
             <table className="leads-table">
               <thead>
                 <tr>
-                  <th>Client</th>
-                  <th>Product</th>
-                  <th>Address & Pincode</th>
-                  <th>Status & QC</th>
-                  <th>Action</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#e4e4e7', background: 'var(--surface)', borderBottom: '1px solid var(--surface-border)' }}>CLIENT</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#e4e4e7', background: 'var(--surface)', borderBottom: '1px solid var(--surface-border)' }}>PRODUCT</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#e4e4e7', background: 'var(--surface)', borderBottom: '1px solid var(--surface-border)' }}>ADDRESS & PINCODE</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#e4e4e7', background: 'var(--surface)', borderBottom: '1px solid var(--surface-border)' }}>STATUS & QC</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'right', fontWeight: '600', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#e4e4e7', background: 'var(--surface)', borderBottom: '1px solid var(--surface-border)' }}>ACTION</th>
                 </tr>
               </thead>
               <tbody>
@@ -441,56 +452,58 @@ export default function DispatchCenter() {
                   return (
                     <tr key={lead.id} style={{ background: isUrgentCancel ? 'rgba(239, 68, 68, 0.1)' : 'transparent' }}>
                       <td>
-                        <div style={{ fontWeight: 600 }}>{lead.name}</div>
-                        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{lead.phone}</div>
+                        <div style={{ fontWeight: 500, fontSize: '13px', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '160px' }}>{lead.name}</div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>{lead.phone}</div>
                       </td>
                       <td>
-                        <div style={{ display: 'inline-block', background: 'var(--primary-light)', color: 'var(--primary)', padding: '2px 8px', borderRadius: '12px', fontSize: '12px', fontWeight: 600 }}>
+                        <div style={{ display: 'inline-block', background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.1)', color: 'var(--text-main)', padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 500, whiteSpace: 'nowrap' }}>
                           {lead.product || 'Standard Kit'}
                         </div>
                       </td>
                       <td>
-                        <div style={{ fontSize: '13px' }}>{lead.address || 'No Address Provided'}</div>
-                        <div style={{ fontSize: '12px', fontWeight: 600, color: hasAddressIssue ? '#ef4444' : 'var(--text-muted)', marginBottom: '4px' }}>
+                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: '1.4' }}>{lead.address || 'No Address Provided'}</div>
+                        <div style={{ fontSize: '11px', fontWeight: 500, color: hasAddressIssue ? '#ef4444' : 'var(--text-main)', margin: '4px 0' }}>
                           {lead.pincode ? `PIN: ${lead.pincode}` : 'NO PINCODE'}
                         </div>
                         {/* Payment Gateway Visual Badges */}
-                        <div style={{ marginTop: '4px' }}>
+                        <div>
                           {lead.paymentMethod === 'Prepaid' ? (
                             <span style={{ 
-                              background: (lead.paymentStatus === 'Paid' || lead.paymentStatus === 'Payment Received') ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)', 
-                              color: (lead.paymentStatus === 'Paid' || lead.paymentStatus === 'Payment Received') ? '#10b981' : '#ef4444', 
-                              padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 700 
+                              background: (lead.paymentStatus === 'Paid' || lead.paymentStatus === 'Payment Received') ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)', 
+                              color: (lead.paymentStatus === 'Paid' || lead.paymentStatus === 'Payment Received') ? '#34d399' : '#f87171', 
+                              border: (lead.paymentStatus === 'Paid' || lead.paymentStatus === 'Payment Received') ? '1px solid rgba(16,185,129,0.2)' : '1px solid rgba(239,68,68,0.2)',
+                              padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 600, letterSpacing: '0.02em' 
                             }}>
                               PREPAID {(lead.paymentStatus === 'Paid' || lead.paymentStatus === 'Payment Received') ? '✓ PAID' : '❌ UNPAID'}
                             </span>
                           ) : (
                             <span style={{ 
-                              background: 'rgba(245, 158, 11, 0.15)', 
+                              background: 'transparent', 
                               color: '#f59e0b', 
-                              padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 700 
+                              border: '1px solid rgba(245,158,11,0.2)',
+                              padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 600, letterSpacing: '0.02em' 
                             }}>
-                              COD • Collect ₹{lead.orderAmount || 0}
+                              COD • COLLECT ₹{lead.orderAmount || 0}
                             </span>
                           )}
                         </div>
                       </td>
                       <td>
                         {isUrgentCancel && (
-                          <div style={{ color: '#ef4444', fontSize: '12px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <div style={{ color: '#ef4444', fontSize: '11px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
                             <AlertOctagon size={14} /> CANCEL REQUEST
                           </div>
                         )}
                         {!isUrgentCancel && isLocked && (
-                          <div style={{ color: lockedByMe ? '#10b981' : '#f59e0b', fontSize: '12px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <div style={{ color: lockedByMe ? '#10b981' : '#f59e0b', fontSize: '11px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
                             <Lock size={14} /> {lockedByMe ? 'Locked by You' : 'Locked by Another Admin'}
                           </div>
                         )}
                         {!isUrgentCancel && !isLocked && activeTab === 'pending' && (
-                          <div style={{ color: 'var(--text-muted)', fontSize: '12px' }}>Waiting to be packed</div>
+                          <div style={{ color: 'var(--text-muted)', fontSize: '11px', whiteSpace: 'nowrap' }}>Waiting to be packed</div>
                         )}
                         {!isUrgentCancel && !isLocked && activeTab === 'awaiting_payment' && (
-                          <div style={{ color: '#f59e0b', fontSize: '12px', fontWeight: 600 }}>Awaiting Payment Verification</div>
+                          <div style={{ color: '#f59e0b', fontSize: '11px', fontWeight: 600, whiteSpace: 'nowrap' }}>Awaiting Payment</div>
                         )}
                         {activeTab === 'dispatched' && (
                           <div style={{ fontSize: '12px' }}>
@@ -499,22 +512,22 @@ export default function DispatchCenter() {
                           </div>
                         )}
                       </td>
-                      <td>
+                      <td style={{ textAlign: 'right' }}>
                         {activeTab === 'awaiting_payment' && (
                           <button 
                             className="btn-secondary" 
-                            style={{ padding: '6px 12px', fontSize: '12px', opacity: 0.6, cursor: 'not-allowed' }}
+                            style={{ height: '26px', padding: '0 12px', fontSize: '11px', opacity: 0.6, cursor: 'not-allowed', marginLeft: 'auto', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center' }}
                             disabled={true}
                           >
                             Cannot Pack Yet
                           </button>
                         )}
                         {activeTab === 'pending' && (
-                          <>
+                          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                             {!isLocked && (
                               <button 
                                 className="btn-primary" 
-                                style={{ padding: '6px 12px', fontSize: '12px' }}
+                                style={{ height: '26px', padding: '0 12px', fontSize: '11px', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', borderRadius: '6px' }}
                                 onClick={() => handleLockOrder(lead)}
                                 disabled={isProcessingAction || isUrgentCancel}
                               >
@@ -522,34 +535,34 @@ export default function DispatchCenter() {
                               </button>
                             )}
                             {isLocked && lockedByMe && (
-                              <div style={{ display: 'flex', gap: '8px' }}>
-                                <button 
-                                  className="btn-primary" 
-                                  style={{ padding: '6px 12px', fontSize: '12px', background: '#10b981' }}
-                                  onClick={() => openDispatchModal(lead)}
-                                >
-                                  Ship Item
-                                </button>
+                              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                                 <button 
                                   className="btn-secondary" 
-                                  style={{ padding: '6px 8px' }}
+                                  style={{ height: '26px', width: '26px', padding: '0', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', background: 'transparent', border: '1px solid rgba(255,255,255,0.05)', color: 'var(--text-muted)' }}
                                   onClick={() => handleUnlockOrder(lead)}
                                   title="Release Lock"
                                 >
                                   <Unlock size={14} />
                                 </button>
+                                <button 
+                                  className="btn-primary" 
+                                  style={{ height: '26px', padding: '0 12px', fontSize: '11px', background: 'var(--secondary)', color: 'white', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', borderRadius: '6px' }}
+                                  onClick={() => openDispatchModal(lead)}
+                                >
+                                  Ship Item
+                                </button>
                               </div>
                             )}
-                          </>
+                          </div>
                         )}
                         {activeTab === 'dispatched' && (
-                          <div style={{ display: 'flex', gap: '8px' }}>
-                            <button className="btn-secondary" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={() => alert("Tracking API Hook triggered")}>
+                          <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+                            <button className="btn-secondary" style={{ height: '26px', padding: '0 12px', fontSize: '11px', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', borderRadius: '6px' }} onClick={() => alert("Tracking API Hook triggered")}>
                               Track
                             </button>
                             <button 
                               className="btn-secondary" 
-                              style={{ padding: '6px 12px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }} 
+                              style={{ height: '26px', padding: '0 12px', fontSize: '11px', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '4px', borderRadius: '6px' }} 
                               onClick={() => {
                                 setSelectedManageLead(lead);
                                 setManageAction(null);
@@ -561,12 +574,12 @@ export default function DispatchCenter() {
                           </div>
                         )}
                         {activeTab === 'delivered' && (
-                          <div style={{ color: '#10b981', fontSize: '12px', fontWeight: 600 }}>
+                          <div style={{ color: '#10b981', fontSize: '11px', fontWeight: 600, textAlign: 'right' }}>
                             Delivered
                           </div>
                         )}
                         {activeTab === 'returned' && (
-                          <div style={{ fontSize: '12px' }}>
+                          <div style={{ fontSize: '11px', textAlign: 'right' }}>
                             <strong style={{ color: '#ef4444' }}>RTO</strong>
                             <div style={{ color: 'var(--text-muted)', marginTop: '2px' }}>Reason: {lead.rtoReason || 'N/A'}</div>
                           </div>

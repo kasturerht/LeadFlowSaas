@@ -269,10 +269,10 @@ table {
 }
 
 th, td {
-  padding: 16px 20px;
+  padding: 10px 16px;
   text-align: left;
-  border-bottom: 1px solid var(--surface-border);
-  font-size: 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  font-size: 13px;
 }
 
 th {
