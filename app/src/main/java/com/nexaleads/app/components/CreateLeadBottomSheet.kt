@@ -70,11 +70,11 @@ fun CreateLeadBottomSheet(
     val shippingFeesMap = remember(productsList) { productsList.associate { it.name to it.shippingFee } }
 
     var callLogs by remember { mutableStateOf<List<CallLogEntry>>(emptyList()) }
-    var selectedNumber by remember { mutableStateOf(leadToEdit?.phone ?: draft.selectedNumber) }
-    var manualMode by remember { mutableStateOf(leadToEdit != null || draft.manualMode) }
+    var selectedNumber by remember { mutableStateOf(leadToEdit?.phone ?: com.nexaleads.app.utils.SharedState.sharedWhatsAppNumber ?: draft.selectedNumber) }
+    var manualMode by remember { mutableStateOf(leadToEdit != null || draft.manualMode || com.nexaleads.app.utils.SharedState.sharedWhatsAppNumber != null || com.nexaleads.app.utils.SharedState.sharedWhatsAppName != null) }
 
     // Form State
-    var clientName by remember { mutableStateOf(leadToEdit?.name ?: draft.clientName) }
+    var clientName by remember { mutableStateOf(leadToEdit?.name ?: com.nexaleads.app.utils.SharedState.sharedWhatsAppName ?: draft.clientName) }
     var source by remember { mutableStateOf(leadToEdit?.source ?: draft.source) }
     var selectedProduct by remember { mutableStateOf(leadToEdit?.product ?: draft.selectedProduct) }
     var selectedStatus by remember { mutableStateOf(leadToEdit?.status ?: draft.selectedStatus) }
@@ -146,7 +146,8 @@ fun CreateLeadBottomSheet(
         }
     }
     
-    LaunchedEffect(productsList) {
+    LaunchedEffect(Unit) {
+        callLogs = getRecentCallLogs(context)
         if (productsList.isNotEmpty() && selectedProduct.isNotEmpty()) {
             val sanitized = sanitizeSelectedProducts(selectedProduct, productsList.map { it.name })
             if (sanitized != selectedProduct) {
@@ -162,7 +163,7 @@ fun CreateLeadBottomSheet(
         paymentMethod, orderAmount
     ) {
         if (leadToEdit == null) {
-            kotlinx.coroutines.delay(500) // Debounce for 500ms to prevent SharedPreferences thrashing on fast typing
+            kotlinx.coroutines.delay(500)
             viewModel.saveDraft(
                 LeadFormDraft(
                     selectedNumber = selectedNumber,
@@ -311,16 +312,25 @@ fun CreateLeadBottomSheet(
         }
     }
 
-    val processNumberSelect: (String) -> Unit = { number ->
-        isCheckingDuplicate = true
-        selectedNumber = number
-        coroutineScope.launch {
-            val duplicate = viewModel.checkDuplicateLead(number)
-            isCheckingDuplicate = false
-            if (duplicate != null) {
-                Toast.makeText(context, "Lead already exists! Opening...", Toast.LENGTH_SHORT).show()
-                onDismiss()
-                onExistingLeadFound(duplicate)
+    val processNumberSelect: (CallLogEntry) -> Unit = { log ->
+        if (log.number.isEmpty()) {
+            // It's a WhatsApp call with only a name, no number.
+            manualMode = true
+            clientName = log.name ?: ""
+        } else {
+            isCheckingDuplicate = true
+            selectedNumber = log.number
+            if (log.name != null && clientName.isEmpty()) {
+                clientName = log.name
+            }
+            coroutineScope.launch {
+                val duplicate = viewModel.checkDuplicateLead(log.number)
+                isCheckingDuplicate = false
+                if (duplicate != null) {
+                    Toast.makeText(context, "Lead already exists! Opening...", Toast.LENGTH_SHORT).show()
+                    onDismiss()
+                    onExistingLeadFound(duplicate)
+                }
             }
         }
     }
@@ -366,7 +376,10 @@ fun CreateLeadBottomSheet(
     }
 
     ModalBottomSheet(
-        onDismissRequest = onDismiss,
+        onDismissRequest = {
+            com.nexaleads.app.utils.SharedState.clear()
+            onDismiss()
+        },
         sheetState = sheetState,
         containerColor = SurfaceLight,
         dragHandle = { BottomSheetDefaults.DragHandle(color = BorderSubtle) }
@@ -397,19 +410,32 @@ fun CreateLeadBottomSheet(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(12.dp))
-                                .clickable { processNumberSelect(log.number) }
+                                .clickable { processNumberSelect(log) }
                                 .padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                Box(modifier = Modifier.size(40.dp).background(SoftVioletBg, CircleShape), contentAlignment = Alignment.Center) {
-                                    Text("📞", fontSize = 16.sp)
+                                val iconBgColor = SoftVioletBg
+                                val iconEmoji = "📞"
+                                Box(modifier = Modifier.size(40.dp).background(iconBgColor, CircleShape), contentAlignment = Alignment.Center) {
+                                    Text(iconEmoji, fontSize = 16.sp)
                                 }
                                 Column {
-                                    Text(log.number, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = TextPrimary)
+                                    if (log.number.isNotEmpty()) {
+                                        Text(log.number, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = TextPrimary)
+                                    } else {
+                                        Text(log.name ?: "Unknown WhatsApp Contact", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = TextPrimary)
+                                    }
+                                    
                                     val sdf = SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault())
-                                    Text(log.name ?: sdf.format(Date(log.timestamp)), fontSize = 12.sp, color = TextSecondary)
+                                    val timeStr = sdf.format(Date(log.timestamp))
+                                    
+                                    if (log.number.isNotEmpty() && !log.name.isNullOrEmpty()) {
+                                        Text("${log.name} • $timeStr", fontSize = 12.sp, color = TextSecondary)
+                                    } else {
+                                        Text(timeStr, fontSize = 12.sp, color = TextSecondary)
+                                    }
                                 }
                             }
                         }
@@ -590,6 +616,9 @@ fun CreateLeadBottomSheet(
                         }
                     )
                     if (isSaveToContactsToggleOn) {
+                        Text("✓ Contact will be saved automatically", color = ModernViolet, fontSize = 10.sp, modifier = Modifier.padding(start = 12.dp, top = 4.dp))
+                    }
+                    if (isConverted && leadToEdit != null && leadToEdit.dispatchStatus == "") {
                         Text("✓ Contact will be saved automatically", color = ModernViolet, fontSize = 10.sp, modifier = Modifier.padding(start = 12.dp, top = 4.dp))
                     }
                 }

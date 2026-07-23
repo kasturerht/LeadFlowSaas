@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { db } from '../firebase';
 import { useAuth } from '../AuthContext';
+import { TableVirtuoso } from 'react-virtuoso';
 import { 
   collection, 
   query, 
@@ -18,7 +19,7 @@ import {
   arrayUnion,
   Timestamp
 } from 'firebase/firestore';
-import { RefreshCw, Search, Calendar } from 'lucide-react';
+import { RefreshCw, Search, Calendar, Users, ShoppingBag, IndianRupee, PhoneMissed, Clock } from 'lucide-react';
 
 export default function Dashboard() {
   const { orgId } = useAuth();
@@ -487,59 +488,55 @@ export default function Dashboard() {
 
       {/* Bento Grid layout */}
       <div className="bento-grid">
-        <div className="bento-card" style={{ borderTop: '2px solid rgba(79, 70, 229, 0.5)' }}>
-          <div className="bento-header">👥 Total Leads</div>
+        <div className="bento-card bento-span-2">
+          <div className="bento-header"><Users size={14} /> Total Leads</div>
           {statsLoading ? <div className="skeleton-text"></div> : <div className="bento-value">{stats.total.toLocaleString()}</div>}
         </div>
         
-        <div className="bento-card" style={{ borderTop: '2px solid rgba(16, 185, 129, 0.5)' }}>
-          <div className="bento-header">📦 Orders Placed</div>
+        <div className="bento-card bento-span-2">
+          <div className="bento-header"><ShoppingBag size={14} /> Orders Placed</div>
           {statsLoading ? <div className="skeleton-text"></div> : <div className="bento-value">{stats.orders.toLocaleString()}</div>}
         </div>
 
-        <div className="bento-card" style={{ borderTop: '2px solid rgba(245, 158, 11, 0.5)' }}>
-          <div className="bento-header">💰 Total Revenue</div>
+        <div className="bento-card bento-span-2">
+          <div className="bento-header"><IndianRupee size={14} /> Total Revenue</div>
           {statsLoading ? <div className="skeleton-text"></div> : <div className="bento-value">₹{stats.revenue.toLocaleString()}</div>}
         </div>
 
-        <div className="bento-card bento-span-2" style={{ borderTop: '2px solid rgba(244, 63, 94, 0.4)' }}>
-          <div className="bento-header">📞 Unanswered Breakdown</div>
-          <div style={{ display: 'flex', gap: '20px', marginTop: '8px', fontSize: '14px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>🔔 Ringing</span>
-              {statsLoading ? <div className="skeleton-small"></div> : <strong style={{ color: '#fb7185', fontSize: '18px' }}>{stats.ringing}</strong>}
+        <div className="bento-card bento-span-3">
+          <div className="bento-header"><PhoneMissed size={14} /> Unanswered Breakdown</div>
+          {statsLoading ? <div className="skeleton-text"></div> : (
+            <div style={{ marginTop: '8px' }}>
+              <div style={{ display: 'flex', height: '6px', borderRadius: '4px', overflow: 'hidden', background: 'rgba(255,255,255,0.05)', marginBottom: '12px' }}>
+                <div style={{ width: `${(stats.ringing / (stats.ringing + stats.busy + stats.off || 1)) * 100}%`, background: '#fb7185' }}></div>
+                <div style={{ width: `${(stats.busy / (stats.ringing + stats.busy + stats.off || 1)) * 100}%`, background: '#f43f5e' }}></div>
+                <div style={{ width: `${(stats.off / (stats.ringing + stats.busy + stats.off || 1)) * 100}%`, background: '#94a3b8' }}></div>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#fb7185' }}></div> <span style={{ color: 'var(--text-muted)' }}>Ringing: {stats.ringing}</span></div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#f43f5e' }}></div> <span style={{ color: 'var(--text-muted)' }}>Busy: {stats.busy}</span></div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#94a3b8' }}></div> <span style={{ color: 'var(--text-muted)' }}>Off: {stats.off}</span></div>
+              </div>
             </div>
-            <div style={{ width: '1px', background: 'rgba(255,255,255,0.1)' }}></div>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>🔴 Busy</span>
-              {statsLoading ? <div className="skeleton-small"></div> : <strong style={{ color: '#f43f5e', fontSize: '18px' }}>{stats.busy}</strong>}
-            </div>
-            <div style={{ width: '1px', background: 'rgba(255,255,255,0.1)' }}></div>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>📵 Off</span>
-              {statsLoading ? <div className="skeleton-small"></div> : <strong style={{ color: '#94a3b8', fontSize: '18px' }}>{stats.off}</strong>}
-            </div>
-          </div>
+          )}
         </div>
 
-        <div className="bento-card bento-span-2" style={{ borderTop: '2px solid rgba(129, 140, 248, 0.4)' }}>
-          <div className="bento-header">⏰ Follow-up Slots</div>
-          <div style={{ display: 'flex', gap: '20px', marginTop: '8px', fontSize: '14px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>🌅 Morning</span>
-              {statsLoading ? <div className="skeleton-small"></div> : <strong style={{ color: '#f59e0b', fontSize: '18px' }}>{stats.morning}</strong>}
+        <div className="bento-card bento-span-3">
+          <div className="bento-header"><Clock size={14} /> Follow-up Slots</div>
+          {statsLoading ? <div className="skeleton-text"></div> : (
+            <div style={{ marginTop: '8px' }}>
+              <div style={{ display: 'flex', height: '6px', borderRadius: '4px', overflow: 'hidden', background: 'rgba(255,255,255,0.05)', marginBottom: '12px' }}>
+                <div style={{ width: `${(stats.morning / (stats.morning + stats.afternoon + stats.evening || 1)) * 100}%`, background: '#f59e0b' }}></div>
+                <div style={{ width: `${(stats.afternoon / (stats.morning + stats.afternoon + stats.evening || 1)) * 100}%`, background: '#fbbf24' }}></div>
+                <div style={{ width: `${(stats.evening / (stats.morning + stats.afternoon + stats.evening || 1)) * 100}%`, background: '#818cf8' }}></div>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#f59e0b' }}></div> <span style={{ color: 'var(--text-muted)' }}>Morning: {stats.morning}</span></div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#fbbf24' }}></div> <span style={{ color: 'var(--text-muted)' }}>Afternoon: {stats.afternoon}</span></div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#818cf8' }}></div> <span style={{ color: 'var(--text-muted)' }}>Evening: {stats.evening}</span></div>
+              </div>
             </div>
-            <div style={{ width: '1px', background: 'rgba(255,255,255,0.1)' }}></div>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>☀️ Afternoon</span>
-              {statsLoading ? <div className="skeleton-small"></div> : <strong style={{ color: '#fbbf24', fontSize: '18px' }}>{stats.afternoon}</strong>}
-            </div>
-            <div style={{ width: '1px', background: 'rgba(255,255,255,0.1)' }}></div>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>🌙 Evening</span>
-              {statsLoading ? <div className="skeleton-small"></div> : <strong style={{ color: '#818cf8', fontSize: '18px' }}>{stats.evening}</strong>}
-            </div>
-          </div>
+          )}
         </div>
       </div>
 
@@ -596,51 +593,46 @@ export default function Dashboard() {
       )}
 
       <div className="glass-panel" style={{ padding: '16px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '14px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <h3 className="section-title" style={{ margin: 0 }}>
-              {activeSearch ? `Search Results for "${activeSearch}"` : "Recent Leads & Dispatches"}
-            </h3>
-            {!activeSearch && (
-              <button 
-                onClick={fetchLeads} 
-                className="btn-secondary"
-                disabled={loadingLeads}
-                style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', padding: '4px 8px' }}
-              >
-                <RefreshCw size={10} style={{ animation: loadingLeads ? 'spin 1s linear infinite' : 'none' }} />
-                Refresh Table
-              </button>
-            )}
-          </div>
-          
-          {/* Database Level Search Bar */}
-          <div style={{ display: 'flex', gap: '6px', alignItems: 'center', width: '100%', maxWidth: '320px' }}>
-            <div style={{ position: 'relative', flex: 1 }}>
-              <Search style={{ position: 'absolute', top: '8px', left: '8px', color: 'var(--text-muted)' }} size={14} />
-              <input
-                type="text"
-                className="input-field"
-                style={{ paddingLeft: '28px', height: '30px', fontSize: '12px' }}
-                placeholder="Search name prefix or exact phone..."
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <h2 style={{ fontSize: '15px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+            Recent Leads & Dispatches
+            <button onClick={fetchLeads} className="btn-secondary" style={{ padding: '4px 8px', fontSize: '11px' }} disabled={loadingLeads}>
+              <RefreshCw size={12} className={loadingLeads ? "spin" : ""} /> {loadingLeads ? "Refreshing" : "Refresh"}
+            </button>
+          </h2>
+          <div style={{ display: 'flex', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '24px', padding: '4px', border: '1px solid rgba(255,255,255,0.08)' }}>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <Search size={14} style={{ position: 'absolute', left: '12px', color: 'var(--text-muted)' }} />
+              <input 
+                type="text" 
+                placeholder="Search precise prefix..." 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSearchClick()}
+                style={{ 
+                  background: 'transparent', 
+                  border: 'none', 
+                  color: 'white', 
+                  padding: '8px 12px 8px 32px',
+                  fontSize: '13px',
+                  width: '240px',
+                  outline: 'none'
+                }}
               />
             </div>
             <button 
+              onClick={handleSearchClick} 
               className="btn-primary" 
-              style={{ height: '30px', fontSize: '12px', padding: '0 10px' }} 
-              onClick={handleSearchClick}
+              style={{ padding: '6px 16px', fontSize: '12px', borderRadius: '20px' }}
               disabled={loadingLeads}
             >
               Search
             </button>
             {activeSearch && (
               <button 
+                onClick={handleClearClick} 
                 className="btn-secondary" 
-                style={{ height: '30px', fontSize: '12px', padding: '0 10px' }} 
-                onClick={handleClearClick}
+                style={{ padding: '6px 12px', fontSize: '12px', borderRadius: '20px' }}
               >
                 Clear
               </button>
@@ -648,109 +640,100 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th style={{ padding: '16px', textAlign: 'left', fontWeight: '500', color: 'var(--text-muted)' }}>NAME & DATE</th>
-                <th style={{ padding: '16px', textAlign: 'left', fontWeight: '500', color: 'var(--text-muted)' }}>PHONE NUMBER</th>
-                <th>Product</th>
-                <th>Status</th>
-                <th>Dispatch Info</th>
-              </tr>
-            </thead>
-            <tbody>
-              {leads.length === 0 ? (
+        <div className="table-container" style={{ height: '600px', display: 'flex', flexDirection: 'column' }}>
+          {leads.length === 0 && !loadingLeads ? (
+            <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '40px' }}>
+              No leads found.
+            </div>
+          ) : (
+            <TableVirtuoso
+              style={{ flex: 1, width: '100%', borderRadius: '12px' }}
+              data={leads}
+              endReached={loadMoreLeads}
+              fixedHeaderContent={() => (
                 <tr>
-                  <td colSpan="5" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '20px' }}>
-                    {loadingLeads ? "Loading leads..." : "No leads found."}
-                  </td>
+                  <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#e4e4e7', background: 'var(--surface)', borderBottom: '1px solid var(--surface-border)' }}>NAME & DATE</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#e4e4e7', background: 'var(--surface)', borderBottom: '1px solid var(--surface-border)' }}>PHONE NUMBER</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#e4e4e7', background: 'var(--surface)', borderBottom: '1px solid var(--surface-border)' }}>PRODUCT</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#e4e4e7', background: 'var(--surface)', borderBottom: '1px solid var(--surface-border)' }}>STATUS</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#e4e4e7', background: 'var(--surface)', borderBottom: '1px solid var(--surface-border)' }}>DISPATCH INFO</th>
                 </tr>
-              ) : (
-                leads.map((lead) => {
-                  // Look up product in catalog to check if it is a combo
-                  const matchingProduct = productsList.find(p => p.name === lead.product);
-                  const isCombo = matchingProduct && matchingProduct.type === 'combo';
-                  
-                  const subProductNames = isCombo && matchingProduct.bundledProducts
-                    ? matchingProduct.bundledProducts.map(item => {
-                        const pr = productsList.find(prod => prod.id === item.productId);
-                        return pr ? `${item.quantity} x ${pr.emojiIcon} ${pr.name}` : null;
-                      }).filter(Boolean).join(" + ")
-                    : null;
+              )}
+              itemContent={(index, lead) => {
+                const matchingProduct = productsList.find(p => p.name === lead.product);
+                const isCombo = matchingProduct && matchingProduct.type === 'combo';
+                const subProductNames = isCombo && matchingProduct.bundledProducts
+                  ? matchingProduct.bundledProducts.map(item => {
+                      const pr = productsList.find(prod => prod.id === item.productId);
+                      return pr ? `${item.quantity} x ${pr.emojiIcon} ${pr.name}` : null;
+                    }).filter(Boolean).join(" + ")
+                  : null;
 
-                  return (
-                    <tr key={lead.id}>
-                      <td style={{ padding: '16px', borderBottom: '1px solid var(--surface-border)' }}>
-                        <div style={{ fontWeight: '500', color: 'var(--text-main)' }}>{lead.name}</div>
-                        <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                          {lead.updatedAt ? (
-                            typeof lead.updatedAt.toDate === 'function' 
-                              ? lead.updatedAt.toDate().toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-                              : new Date(lead.updatedAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-                          ) : 'No Date'}
-                        </div>
-                      </td>
-                      <td style={{ padding: '16px', borderBottom: '1px solid var(--surface-border)', color: 'var(--text-muted)' }}>{lead.phoneNumber || lead.phone}</td>
-                      <td>
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span>{lead.product || '-'}</span>
-                            {isCombo && (
-                              <span className="badge" style={{ background: 'rgba(129, 140, 248, 0.15)', color: '#818cf8', border: '1px solid rgba(129, 140, 248, 0.25)', padding: '0px 4px', fontSize: '9px', lineHeight: '1.2' }}>
-                                Combo
-                              </span>
-                            )}
-                          </div>
-                          {isCombo && subProductNames && (
-                            <div style={{ fontSize: '10px', color: 'var(--primary)', fontWeight: 500, marginTop: '2px' }}>
-                              🎁 Pack: {subProductNames}
-                            </div>
+                return (
+                  <>
+                    <td style={{ padding: '16px', borderBottom: '1px solid var(--surface-border)' }}>
+                      <div style={{ fontWeight: '500', color: 'var(--text-main)' }}>{lead.name}</div>
+                      <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                        {lead.updatedAt ? (
+                          typeof lead.updatedAt.toDate === 'function' 
+                            ? lead.updatedAt.toDate().toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                            : new Date(lead.updatedAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                        ) : 'No Date'}
+                      </div>
+                    </td>
+                    <td style={{ padding: '16px', borderBottom: '1px solid var(--surface-border)', color: 'var(--text-muted)' }}>{lead.phoneNumber || lead.phone}</td>
+                    <td style={{ padding: '16px', borderBottom: '1px solid var(--surface-border)' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span>{lead.product || '-'}</span>
+                          {isCombo && (
+                            <span className="badge" style={{ background: 'rgba(129, 140, 248, 0.15)', color: '#818cf8', border: '1px solid rgba(129, 140, 248, 0.25)', padding: '0px 4px', fontSize: '9px', lineHeight: '1.2' }}>
+                              Combo
+                            </span>
                           )}
                         </div>
-                      </td>
-                      <td>{getStatusBadge(lead.status, lead)}</td>
-                      <td>
-                        {lead.status === 'Order Placed' || lead.status === 'Converted' || lead.status === 'Visited' ? (
-                          <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                            <div><strong>Amt:</strong> ₹{lead.orderAmount || 0} ({lead.paymentMethod || 'Unknown'})</div>
-                            <div><strong>City:</strong> {lead.city || '-'}</div>
-                            {lead.paymentStatus === 'Paid' || lead.paymentStatus === 'Payment Received' ? (
-                              <div style={{ color: '#10b981', fontWeight: 600 }}><strong>Prepaid:</strong> {lead.paymentStatus}</div>
-                            ) : lead.paymentMethod === 'Prepaid' ? (
-                              <button 
-                                onClick={() => handleVerifyPayment(lead)}
-                                style={{ marginTop: '4px', background: '#f59e0b', color: '#fff', border: 'none', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', cursor: 'pointer' }}
-                              >
-                                Verify Payment
-                              </button>
-                            ) : null}
+                        {isCombo && subProductNames && (
+                          <div style={{ fontSize: '10px', color: 'var(--primary)', fontWeight: 500, marginTop: '2px' }}>
+                            🎁 Pack: {subProductNames}
                           </div>
-                        ) : (
-                          <span style={{ color: 'var(--text-muted)' }}>No dispatch info yet</span>
                         )}
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+                      </div>
+                    </td>
+                    <td style={{ padding: '16px', borderBottom: '1px solid var(--surface-border)' }}>{getStatusBadge(lead.status, lead)}</td>
+                    <td style={{ padding: '16px', borderBottom: '1px solid var(--surface-border)' }}>
+                      {lead.status === 'Order Placed' || lead.status === 'Converted' || lead.status === 'Visited' ? (
+                        <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                          <div><strong>Amt:</strong> ₹{lead.orderAmount || 0} ({lead.paymentMethod || 'Unknown'})</div>
+                          <div><strong>City:</strong> {lead.city || '-'}</div>
+                          {lead.paymentStatus === 'Paid' || lead.paymentStatus === 'Payment Received' ? (
+                            <div style={{ color: '#10b981', fontWeight: 600 }}><strong>Prepaid:</strong> {lead.paymentStatus}</div>
+                          ) : lead.paymentMethod === 'Prepaid' ? (
+                            <button 
+                              onClick={() => handleVerifyPayment(lead)}
+                              style={{ marginTop: '4px', background: '#f59e0b', color: '#fff', border: 'none', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', cursor: 'pointer' }}
+                            >
+                              Verify Payment
+                            </button>
+                          ) : null}
+                        </div>
+                      ) : (
+                        <span style={{ color: 'var(--text-muted)' }}>No dispatch info yet</span>
+                      )}
+                    </td>
+                  </>
+                );
+              }}
+              components={{
+                Footer: () => (
+                  <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                    {loadingLeads ? 'Loading more leads...' : !hasMore ? 'End of list' : ''}
+                  </div>
+                )
+              }}
+            />
+          )}
         </div>
 
-        {/* Cursor Pagination Load More Trigger */}
-        {hasMore && leads.length >= 50 && (
-          <div className="load-more-container">
-            <button 
-              className="btn-secondary" 
-              onClick={loadMoreLeads} 
-              disabled={loadingLeads}
-              style={{ fontSize: '12px', padding: '4px 12px' }}
-            >
-              {loadingLeads ? "Loading..." : "Load More"}
-            </button>
-          </div>
-        )}
       </div>
     </>
   );

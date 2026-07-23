@@ -51,6 +51,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        handleIntent(intent)
         androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
         setContent {
             LeadFlowSaaSTheme {
@@ -185,6 +186,34 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onNewIntent(intent: android.content.Intent?) {
+        super.onNewIntent(intent)
+        intent?.let { handleIntent(it) }
+    }
+
+    private fun handleIntent(intent: android.content.Intent) {
+        if (intent.action == android.content.Intent.ACTION_SEND && intent.type == "text/plain") {
+            val sharedText = intent.getStringExtra(android.content.Intent.EXTRA_TEXT)
+            if (!sharedText.isNullOrEmpty()) {
+                val extractedNumber = extractPhoneNumber(sharedText)
+                if (extractedNumber != null) {
+                    com.nexaleads.app.utils.SharedState.sharedWhatsAppNumber = extractedNumber
+                } else {
+                    // If no number found, assume it might be a name
+                    com.nexaleads.app.utils.SharedState.sharedWhatsAppName = sharedText.take(50) 
+                }
+                com.nexaleads.app.utils.SharedState.onNewSharedLead.value = true
+            }
+        }
+    }
+
+    private fun extractPhoneNumber(text: String): String? {
+        // Find 10 to 15 digit numbers, optionally starting with +
+        val regex = Regex("""\+?\d[\d\-\s]{8,15}\d""")
+        val match = regex.find(text)
+        return match?.value?.replace(Regex("""[^\d+]"""), "")
     }
 }
 

@@ -106,6 +106,13 @@ fun DashboardScreen(
         }
     }
 
+    val onNewSharedLead by com.nexaleads.app.utils.SharedState.onNewSharedLead.collectAsStateWithLifecycle()
+    LaunchedEffect(onNewSharedLead) {
+        if (onNewSharedLead) {
+            showCreateLeadSheet = true
+        }
+    }
+
     // Metrics
     val metrics by viewModel.dashboardMetrics.collectAsStateWithLifecycle()
     val orgName by viewModel.orgName.collectAsStateWithLifecycle()
@@ -200,7 +207,8 @@ fun DashboardScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(bottom = 40.dp) // Extra breathing room for the fade out
         ) {
-            
+
+
             // ULTRA PREMIUM SILICON VALLEY HEADER
             val firstName = callerName.split(" ").firstOrNull()?.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() } ?: callerName
             

@@ -16,14 +16,17 @@ export default function Layout() {
   const navLinkStyle = ({ isActive }) => ({
     display: 'flex',
     alignItems: 'center',
-    justifyContent: 'space-between', // Changed to space-between for badge
-    padding: '8px 10px',
-    borderRadius: '6px',
+    justifyContent: 'space-between',
+    padding: '10px 14px',
+    borderRadius: '8px',
     textDecoration: 'none',
-    color: isActive ? 'var(--primary)' : 'var(--text-muted)',
-    background: isActive ? 'rgba(79, 70, 229, 0.1)' : 'transparent',
-    fontWeight: isActive ? 500 : 400,
-    fontSize: '13px',
+    color: isActive ? '#ffffff' : 'var(--text-muted)',
+    background: isActive ? 'linear-gradient(90deg, rgba(99, 102, 241, 0.15) 0%, transparent 100%)' : 'transparent',
+    borderLeft: isActive ? '3px solid var(--primary)' : '3px solid transparent',
+    fontWeight: isActive ? 600 : 500,
+    fontSize: '14px',
+    transition: 'all 0.2s ease',
+    marginBottom: '2px'
   });
 
   const innerContentStyle = {
@@ -61,8 +64,8 @@ export default function Layout() {
       <div className="sidebar glass-panel" style={{ borderRadius: 0, borderTop: 0, borderBottom: 0, borderLeft: 0 }}>
         <h2 className="auth-title" style={{ 
           textAlign: 'left', 
-          marginBottom: '20px', 
-          fontSize: '18px',
+          marginBottom: '32px', 
+          fontSize: '22px',
           whiteSpace: 'nowrap',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
@@ -70,8 +73,8 @@ export default function Layout() {
           color: 'transparent',
           backgroundClip: 'text',
           WebkitBackgroundClip: 'text',
-          backgroundImage: 'linear-gradient(90deg, var(--primary) 0%, #a855f7 100%)',
-          letterSpacing: '0.5px',
+          backgroundImage: 'linear-gradient(90deg, #ffffff 0%, #a1a1aa 100%)',
+          letterSpacing: '-0.03em',
           fontWeight: 800
         }} title={orgName || 'NexaLeads'}>
           {orgName || 'NexaLeads'}

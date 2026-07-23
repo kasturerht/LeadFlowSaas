@@ -337,15 +337,15 @@ export default function CallHistory() {
             <label style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Date Range</label>
             <select 
               className="input-field" 
-              style={{ width: '140px', height: '36px', padding: '0 12px', fontSize: '13px', background: 'var(--primary)', color: 'white', border: 'none', fontWeight: 500 }}
+              style={{ width: '140px', height: '32px', fontSize: '13px', background: 'rgba(255, 255, 255, 0.05)', color: 'white', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '16px', padding: '0 12px', outline: 'none', appearance: 'none', cursor: 'pointer' }}
               value={dateRange}
               onChange={(e) => setDateRange(e.target.value)}
             >
-              <option value="today">Today</option>
-              <option value="yesterday">Yesterday</option>
-              <option value="7d">Last 7 Days</option>
-              <option value="30d">Last 30 Days</option>
-              <option value="all">All Time</option>
+              <option value="today" style={{ background: '#141414' }}>Today</option>
+              <option value="yesterday" style={{ background: '#141414' }}>Yesterday</option>
+              <option value="7d" style={{ background: '#141414' }}>Last 7 Days</option>
+              <option value="30d" style={{ background: '#141414' }}>Last 30 Days</option>
+              <option value="all" style={{ background: '#141414' }}>All Time</option>
             </select>
           </div>
 
@@ -354,11 +354,10 @@ export default function CallHistory() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <label style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Search</label>
             <div style={{ position: 'relative', width: '180px' }}>
-              <Search style={{ position: 'absolute', top: '11px', left: '12px', color: 'var(--text-muted)' }} size={14} />
+              <Search style={{ position: 'absolute', top: '9px', left: '12px', color: 'var(--text-muted)' }} size={14} />
               <input 
                 type="text" 
-                className="input-field" 
-                style={{ paddingLeft: '34px', height: '36px', fontSize: '13px' }}
+                style={{ background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.08)', color: 'white', padding: '0 12px 0 32px', height: '32px', borderRadius: '16px', fontSize: '13px', width: '100%', outline: 'none' }}
                 placeholder="Name or Phone..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -368,27 +367,27 @@ export default function CallHistory() {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <label style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Telecaller</label>
-            <select className="input-field" style={{ height: '36px', fontSize: '13px', minWidth: '140px' }} value={selectedCaller} onChange={(e) => setSelectedCaller(e.target.value)}>
-              <option value="">All Callers</option>
-              {telecallers.map(tc => <option key={tc.id} value={tc.id}>{tc.name}</option>)}
+            <select style={{ height: '32px', fontSize: '13px', minWidth: '140px', background: 'rgba(255, 255, 255, 0.05)', color: 'white', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '16px', padding: '0 12px', outline: 'none', appearance: 'none', cursor: 'pointer' }} value={selectedCaller} onChange={(e) => setSelectedCaller(e.target.value)}>
+              <option value="" style={{ background: '#141414' }}>All Callers</option>
+              {telecallers.map(tc => <option key={tc.id} value={tc.id} style={{ background: '#141414' }}>{tc.name}</option>)}
             </select>
           </div>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <label style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Disposition</label>
-            <select className="input-field" style={{ height: '36px', fontSize: '13px', minWidth: '140px' }} value={selectedDisposition} onChange={(e) => setSelectedDisposition(e.target.value)}>
-              <option value="all">All Outcomes</option>
-              <option value="converted">Converted Only</option>
-              <option value="failed">Failed/Rejected</option>
+            <select style={{ height: '32px', fontSize: '13px', minWidth: '140px', background: 'rgba(255, 255, 255, 0.05)', color: 'white', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '16px', padding: '0 12px', outline: 'none', appearance: 'none', cursor: 'pointer' }} value={selectedDisposition} onChange={(e) => setSelectedDisposition(e.target.value)}>
+              <option value="all" style={{ background: '#141414' }}>All Outcomes</option>
+              <option value="converted" style={{ background: '#141414' }}>Converted Only</option>
+              <option value="failed" style={{ background: '#141414' }}>Failed/Rejected</option>
             </select>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <label style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>QA Status</label>
-            <select className="input-field" style={{ height: '36px', fontSize: '13px', minWidth: '130px' }} value={auditStatusFilter} onChange={(e) => setAuditStatusFilter(e.target.value)}>
-              <option value="all">All Audits</option>
-              <option value="unreviewed">Pending QA</option>
-              <option value="reviewed">Reviewed</option>
+            <select style={{ height: '32px', fontSize: '13px', minWidth: '130px', background: 'rgba(255, 255, 255, 0.05)', color: 'white', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '16px', padding: '0 12px', outline: 'none', appearance: 'none', cursor: 'pointer' }} value={auditStatusFilter} onChange={(e) => setAuditStatusFilter(e.target.value)}>
+              <option value="all" style={{ background: '#141414' }}>All Audits</option>
+              <option value="unreviewed" style={{ background: '#141414' }}>Pending QA</option>
+              <option value="reviewed" style={{ background: '#141414' }}>Reviewed</option>
             </select>
           </div>
         </div>
@@ -396,33 +395,33 @@ export default function CallHistory() {
 
       {/* Audit QA KPIs Header Grid */}
       <div className="stats-grid" style={{ marginBottom: '20px' }}>
-        <div className="stat-card glass-panel" style={{ borderTopColor: 'var(--primary)' }}>
-          <span className="stat-title" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <div className="stat-card">
+          <span className="stat-title">
             <PhoneCall size={14} /> Connect Rate
           </span>
-          <span className="stat-value" style={{ fontSize: '24px' }}>{connectRate}%</span>
-          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{connectedCalls} / {totalCallsCount} calls connected</span>
+          <span className="stat-value">{connectRate}%</span>
+          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{connectedCalls} / {totalCallsCount} connected</span>
         </div>
-        <div className="stat-card glass-panel" style={{ borderTopColor: 'var(--success)' }}>
-          <span className="stat-title" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <TrendingUp size={14} style={{ color: 'var(--success)' }} /> Conversion Rate
+        <div className="stat-card">
+          <span className="stat-title">
+            <TrendingUp size={14} /> Conversion Rate
           </span>
-          <span className="stat-value" style={{ fontSize: '24px', color: 'var(--success)' }}>{conversionRate}%</span>
+          <span className="stat-value">{conversionRate}%</span>
           <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{convertedCalls} orders placed</span>
         </div>
-        <div className="stat-card glass-panel" style={{ borderTopColor: '#f59e0b' }}>
-          <span className="stat-title" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <div className="stat-card">
+          <span className="stat-title">
             <Clock size={14} /> Avg Handle Time
           </span>
-          <span className="stat-value" style={{ fontSize: '24px' }}>{avgTalkDuration}s</span>
+          <span className="stat-value">{avgTalkDuration}s</span>
           <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Total: {formatDuration(totalTalkSeconds)}</span>
         </div>
-        <div className="stat-card glass-panel" style={{ borderTopColor: '#8b5cf6' }}>
-          <span className="stat-title" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Star size={14} style={{ color: '#8b5cf6' }} /> QA Avg Score
+        <div className="stat-card">
+          <span className="stat-title">
+            <Star size={14} /> QA Avg Score
           </span>
-          <span className="stat-value" style={{ fontSize: '24px', color: '#8b5cf6' }}>{avgQaScore}%</span>
-          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Based on {gradedCalls.length} reviewed calls</span>
+          <span className="stat-value">{avgQaScore}%</span>
+          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Based on {gradedCalls.length} reviewed</span>
         </div>
       </div>
 
@@ -459,7 +458,7 @@ export default function CallHistory() {
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-        <button className={`tab-btn ${activeTab === 'all' ? 'active' : ''}`} onClick={() => setActiveTab('all')} style={{ padding: '8px 20px', borderRadius: '100px', fontSize: '13px', fontWeight: 600, background: activeTab === 'all' ? 'var(--primary)' : 'rgba(255,255,255,0.05)', color: activeTab === 'all' ? 'white' : 'var(--text-main)', border: '1px solid', borderColor: activeTab === 'all' ? 'var(--primary)' : 'rgba(255,255,255,0.1)', cursor: 'pointer', transition: 'all 0.2s' }}>All Logs</button>
+        <button className={`tab-btn ${activeTab === 'all' ? 'active' : ''}`} onClick={() => setActiveTab('all')} style={{ padding: '8px 20px', borderRadius: '100px', fontSize: '13px', fontWeight: 600, background: activeTab === 'all' ? 'var(--primary)' : 'rgba(255,255,255,0.05)', color: activeTab === 'all' ? '#000000' : 'var(--text-main)', border: '1px solid', borderColor: activeTab === 'all' ? 'var(--primary)' : 'rgba(255,255,255,0.1)', cursor: 'pointer', transition: 'all 0.2s' }}>All Logs</button>
         <button className={`tab-btn ${activeTab === 'flagged' ? 'active' : ''}`} onClick={() => setActiveTab('flagged')} style={{ padding: '8px 20px', borderRadius: '100px', fontSize: '13px', fontWeight: 600, background: activeTab === 'flagged' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(255,255,255,0.05)', color: activeTab === 'flagged' ? '#fca5a5' : 'var(--text-main)', border: '1px solid', borderColor: activeTab === 'flagged' ? 'rgba(239, 68, 68, 0.4)' : 'rgba(255,255,255,0.1)', cursor: 'pointer', transition: 'all 0.2s' }}>Risk Inbox</button>
         <button className={`tab-btn ${activeTab === 'converted' ? 'active' : ''}`} onClick={() => setActiveTab('converted')} style={{ padding: '8px 20px', borderRadius: '100px', fontSize: '13px', fontWeight: 600, background: activeTab === 'converted' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(255,255,255,0.05)', color: activeTab === 'converted' ? '#86efac' : 'var(--text-main)', border: '1px solid', borderColor: activeTab === 'converted' ? 'rgba(34, 197, 94, 0.4)' : 'rgba(255,255,255,0.1)', cursor: 'pointer', transition: 'all 0.2s' }}>High Intent (Orders)</button>
       </div>

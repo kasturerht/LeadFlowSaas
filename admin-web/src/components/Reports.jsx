@@ -513,15 +513,15 @@ export default function Reports() {
           <table>
             <thead>
               <tr>
-                <th>Telecaller Name</th>
-                <th>Total Calls</th>
-                <th>Connected %</th>
-                <th>Total Talk Time</th>
-                <th>Orders</th>
-                <th>Revenue Generated</th>
-                <th>AOV</th>
-                <th>Suspicious Calls</th>
-                <th style={{ width: '40px' }}></th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#e4e4e7', background: 'var(--surface)', borderBottom: '1px solid var(--surface-border)' }}>TELECALLER NAME</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#e4e4e7', background: 'var(--surface)', borderBottom: '1px solid var(--surface-border)' }}>TOTAL CALLS</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#e4e4e7', background: 'var(--surface)', borderBottom: '1px solid var(--surface-border)' }}>CONNECTED %</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#e4e4e7', background: 'var(--surface)', borderBottom: '1px solid var(--surface-border)' }}>TOTAL TALK TIME</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#e4e4e7', background: 'var(--surface)', borderBottom: '1px solid var(--surface-border)' }}>ORDERS</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#e4e4e7', background: 'var(--surface)', borderBottom: '1px solid var(--surface-border)' }}>REVENUE GENERATED</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#e4e4e7', background: 'var(--surface)', borderBottom: '1px solid var(--surface-border)' }}>AOV</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#e4e4e7', background: 'var(--surface)', borderBottom: '1px solid var(--surface-border)' }}>SUSPICIOUS CALLS</th>
+                <th style={{ width: '40px', background: 'var(--surface)', borderBottom: '1px solid var(--surface-border)' }}></th>
               </tr>
             </thead>
             <tbody>
@@ -549,11 +549,11 @@ export default function Reports() {
                       onClick={() => setSelectedCallerId(tc.id)}
                       style={{ 
                         cursor: 'pointer', 
-                        background: isSelected ? 'rgba(79, 70, 229, 0.08)' : 'transparent',
+                        background: isSelected ? 'rgba(255, 255, 255, 0.05)' : 'transparent',
                         borderLeft: isSelected ? '3px solid var(--primary)' : 'none'
                       }}
                     >
-                      <td style={{ fontWeight: 600 }}>{tc.name}</td>
+                      <td style={{ fontWeight: 600, color: 'white' }}>{tc.name}</td>
                       <td>{tc.totalCalls}</td>
                       <td>
                         <span style={{ color: connectionRate > 60 ? 'var(--secondary)' : 'var(--text-muted)', fontWeight: 500 }}>
@@ -566,15 +566,15 @@ export default function Reports() {
                       <td>₹{aov.toLocaleString()}</td>
                       <td>
                         {tc.suspiciousCalls > 0 ? (
-                          <span style={{ color: 'var(--danger)', fontWeight: 'bold' }}>
-                            ⚠️ {tc.suspiciousCalls} Short Calls
+                          <span style={{ color: 'var(--danger)', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}>
+                            <AlertTriangle size={14} /> {tc.suspiciousCalls} Short Calls
                           </span>
                         ) : (
                           <span style={{ color: 'var(--text-muted)' }}>0</span>
                         )}
                       </td>
                       <td style={{ textAlign: 'center' }}>
-                        <ChevronRight size={14} style={{ color: isSelected ? 'var(--primary)' : 'var(--text-muted)' }} />
+                        <ChevronRight size={14} style={{ color: isSelected ? 'white' : 'var(--text-muted)' }} />
                       </td>
                     </tr>
                   );
