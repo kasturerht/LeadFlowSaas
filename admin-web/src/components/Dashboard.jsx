@@ -15,9 +15,10 @@ import {
   where,
   updateDoc,
   doc,
-  arrayUnion
+  arrayUnion,
+  Timestamp
 } from 'firebase/firestore';
-import { RefreshCw, Search } from 'lucide-react';
+import { RefreshCw, Search, Calendar } from 'lucide-react';
 
 export default function Dashboard() {
   const { orgId } = useAuth();
@@ -43,24 +44,65 @@ export default function Dashboard() {
     evening: 0
   });
   const [statsLoading, setStatsLoading] = useState(false);
+  const [dateFilter, setDateFilter] = useState('Today'); // 'Today', 'Yesterday', 'This Week', 'This Month', 'All Time'
 
   // Fetch aggregate statistics from server (scalable for 100k+ records)
   const fetchStats = async () => {
     if (!orgId) return;
     setStatsLoading(true);
     try {
+      let qTotal = collection(db, 'organizations', orgId, 'leads');
+      let qOrders = query(collection(db, 'organizations', orgId, 'leads'), where('status', 'in', ['Order Placed', 'Converted', 'Visited']));
+      let qRevenue = query(collection(db, 'organizations', orgId, 'leads'), where('status', 'in', ['Order Placed', 'Converted', 'Visited']));
+      let qRinging = query(collection(db, 'organizations', orgId, 'leads'), where('subStatus', '==', '🔔 Ringing'));
+      let qBusy = query(collection(db, 'organizations', orgId, 'leads'), where('subStatus', '==', '🔴 Busy'));
+      let qOff = query(collection(db, 'organizations', orgId, 'leads'), where('subStatus', '==', '📵 Switched Off'));
+      let qMorning = query(collection(db, 'organizations', orgId, 'leads'), where('followUpTimeSlot', '==', '🌅 Morning'));
+      let qAfternoon = query(collection(db, 'organizations', orgId, 'leads'), where('followUpTimeSlot', '==', '☀️ Afternoon'));
+      let qEvening = query(collection(db, 'organizations', orgId, 'leads'), where('followUpTimeSlot', '==', '🌙 Evening'));
+
+      if (dateFilter !== 'All Time') {
+        const now = new Date();
+        let start = new Date();
+        start.setHours(0, 0, 0, 0);
+
+        if (dateFilter === 'Yesterday') {
+          start.setDate(start.getDate() - 1);
+          now.setHours(0, 0, 0, 0);
+        } else if (dateFilter === 'This Week') {
+          start.setDate(start.getDate() - start.getDay());
+        } else if (dateFilter === 'This Month') {
+          start.setDate(1);
+        }
+
+        const startTimestamp = start.getTime();
+        const endTimestamp = now.getTime();
+
+        const addDateFilter = (baseQuery) => {
+          return query(baseQuery, where('updatedAt', '>=', startTimestamp), where('updatedAt', '<=', endTimestamp));
+        };
+
+        qTotal = addDateFilter(qTotal);
+        qOrders = addDateFilter(qOrders);
+        qRevenue = addDateFilter(qRevenue);
+        qRinging = addDateFilter(qRinging);
+        qBusy = addDateFilter(qBusy);
+        qOff = addDateFilter(qOff);
+        qMorning = addDateFilter(qMorning);
+        qAfternoon = addDateFilter(qAfternoon);
+        qEvening = addDateFilter(qEvening);
+      }
+
       const results = await Promise.allSettled([
-        getCountFromServer(collection(db, 'organizations', orgId, 'leads')),
-        getCountFromServer(query(collection(db, 'organizations', orgId, 'leads'), where('status', 'in', ['Order Placed', 'Converted', 'Visited']))),
-        getAggregateFromServer(query(collection(db, 'organizations', orgId, 'leads'), where('status', 'in', ['Order Placed', 'Converted', 'Visited'])), {
-          totalRevenue: sum('orderAmount')
-        }),
-        getCountFromServer(query(collection(db, 'organizations', orgId, 'leads'), where('subStatus', '==', '🔔 Ringing'))),
-        getCountFromServer(query(collection(db, 'organizations', orgId, 'leads'), where('subStatus', '==', '🔴 Busy'))),
-        getCountFromServer(query(collection(db, 'organizations', orgId, 'leads'), where('subStatus', '==', '📵 Switched Off'))),
-        getCountFromServer(query(collection(db, 'organizations', orgId, 'leads'), where('followUpTimeSlot', '==', '🌅 Morning'))),
-        getCountFromServer(query(collection(db, 'organizations', orgId, 'leads'), where('followUpTimeSlot', '==', '☀️ Afternoon'))),
-        getCountFromServer(query(collection(db, 'organizations', orgId, 'leads'), where('followUpTimeSlot', '==', '🌙 Evening')))
+        getCountFromServer(qTotal),
+        getCountFromServer(qOrders),
+        getAggregateFromServer(qRevenue, { totalRevenue: sum('orderAmount') }),
+        getCountFromServer(qRinging),
+        getCountFromServer(qBusy),
+        getCountFromServer(qOff),
+        getCountFromServer(qMorning),
+        getCountFromServer(qAfternoon),
+        getCountFromServer(qEvening)
       ]);
 
       const getVal = (res, key = 'count') => res.status === 'fulfilled' ? (res.value.data()[key] || 0) : 0;
@@ -85,18 +127,18 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchStats();
-  }, [orgId]);
+  }, [orgId, dateFilter]);
 
-  useEffect(() => {
+  const fetchLeads = async () => {
     if (!orgId || activeSearch) return;
-
     setLoadingLeads(true);
-    const q = query(
-      collection(db, 'organizations', orgId, 'leads'),
-      limit(50)
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    try {
+      const q = query(
+        collection(db, 'organizations', orgId, 'leads'),
+        orderBy('updatedAt', 'desc'),
+        limit(50)
+      );
+      const snapshot = await getDocs(q);
       const leadsData = [];
       snapshot.forEach((doc) => {
         leadsData.push({ id: doc.id, ...doc.data() });
@@ -104,13 +146,15 @@ export default function Dashboard() {
       setLeads(leadsData);
       setLastDoc(snapshot.docs[snapshot.docs.length - 1] || null);
       setHasMore(snapshot.docs.length === 50);
+    } catch (error) {
+      console.error("Error fetching leads:", error);
+    } finally {
       setLoadingLeads(false);
-    }, (error) => {
-      console.error("Error listening to leads:", error);
-      setLoadingLeads(false);
-    });
+    }
+  };
 
-    return () => unsubscribe();
+  useEffect(() => {
+    fetchLeads();
   }, [activeSearch, orgId]);
 
   // Real-time listener for Pending Payments
@@ -228,6 +272,7 @@ export default function Dashboard() {
     } else {
       q = query(
         collection(db, 'organizations', orgId, 'leads'),
+        orderBy('updatedAt', 'desc'),
         startAfter(lastDoc),
         limit(50)
       );
@@ -315,12 +360,28 @@ export default function Dashboard() {
           <h2 className="page-title" style={{ fontSize: '24px', letterSpacing: '-0.5px' }}>Welcome back, Admin</h2>
           <p className="page-subtitle" style={{ color: 'var(--text-muted)' }}>Here's what's happening with your leads today.</p>
         </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', background: 'var(--surface)', border: '1px solid var(--surface-border)', borderRadius: '8px', padding: '0 12px', height: '36px' }}>
+            <Calendar size={14} style={{ color: 'var(--text-muted)', marginRight: '8px' }} />
+            <select 
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+              style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', fontSize: '13px', outline: 'none', cursor: 'pointer' }}
+            >
+              <option value="Today">Today</option>
+              <option value="Yesterday">Yesterday</option>
+              <option value="This Week">This Week</option>
+              <option value="This Month">This Month</option>
+              <option value="All Time">All Time</option>
+            </select>
+          </div>
+
           <button 
             onClick={fetchStats} 
             className="btn-primary" 
             disabled={statsLoading}
-            style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', padding: '8px 16px', background: 'rgba(79, 70, 229, 0.1)', color: 'var(--primary)', border: '1px solid rgba(79, 70, 229, 0.2)' }}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', height: '36px', padding: '0 16px', background: 'rgba(79, 70, 229, 0.1)', color: 'var(--primary)', border: '1px solid rgba(79, 70, 229, 0.2)' }}
           >
             <RefreshCw size={14} style={{ animation: statsLoading ? 'spin 1s linear infinite' : 'none' }} />
             {statsLoading ? "Refreshing..." : "Refresh Stats"}
@@ -448,9 +509,22 @@ export default function Dashboard() {
 
       <div className="glass-panel" style={{ padding: '16px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '14px' }}>
-          <h3 className="section-title" style={{ margin: 0 }}>
-            {activeSearch ? `Search Results for "${activeSearch}"` : "Recent Leads & Dispatches"}
-          </h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <h3 className="section-title" style={{ margin: 0 }}>
+              {activeSearch ? `Search Results for "${activeSearch}"` : "Recent Leads & Dispatches"}
+            </h3>
+            {!activeSearch && (
+              <button 
+                onClick={fetchLeads} 
+                className="btn-secondary"
+                disabled={loadingLeads}
+                style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', padding: '4px 8px' }}
+              >
+                <RefreshCw size={10} style={{ animation: loadingLeads ? 'spin 1s linear infinite' : 'none' }} />
+                Refresh Table
+              </button>
+            )}
+          </div>
           
           {/* Database Level Search Bar */}
           <div style={{ display: 'flex', gap: '6px', alignItems: 'center', width: '100%', maxWidth: '320px' }}>
