@@ -689,6 +689,12 @@ class LeadRepository @Inject constructor(
             
             val leadRef = leadsCol().document(lead.id)
             batch.set(leadRef, lead)
+            
+            // Fix: Add Firestore Timestamps for both createdAt and updatedAt when a new lead is created
+            batch.update(leadRef, 
+                "updatedAt", com.google.firebase.firestore.FieldValue.serverTimestamp(),
+                "createdAt", com.google.firebase.firestore.FieldValue.serverTimestamp()
+            )
 
             val interactionRef = interactionsCol().document(interaction.id)
             batch.set(interactionRef, interaction)
