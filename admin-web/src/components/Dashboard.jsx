@@ -55,12 +55,12 @@ export default function Dashboard() {
         getAggregateFromServer(query(collection(db, 'organizations', orgId, 'leads'), where('status', 'in', ['Order Placed', 'Converted', 'Visited'])), {
           totalRevenue: sum('orderAmount')
         }),
-        getCountFromServer(query(collection(db, 'organizations', orgId, 'leads'), where('subStatus', '==', 'Ringing'))),
-        getCountFromServer(query(collection(db, 'organizations', orgId, 'leads'), where('subStatus', '==', 'Busy'))),
-        getCountFromServer(query(collection(db, 'organizations', orgId, 'leads'), where('subStatus', '==', 'Switched Off'))),
-        getCountFromServer(query(collection(db, 'organizations', orgId, 'leads'), where('followUpTimeSlot', '==', 'Morning (10-1)'))),
-        getCountFromServer(query(collection(db, 'organizations', orgId, 'leads'), where('followUpTimeSlot', '==', 'Afternoon (2-5)'))),
-        getCountFromServer(query(collection(db, 'organizations', orgId, 'leads'), where('followUpTimeSlot', '==', 'Evening (5-8)')))
+        getCountFromServer(query(collection(db, 'organizations', orgId, 'leads'), where('subStatus', '==', '🔔 Ringing'))),
+        getCountFromServer(query(collection(db, 'organizations', orgId, 'leads'), where('subStatus', '==', '🔴 Busy'))),
+        getCountFromServer(query(collection(db, 'organizations', orgId, 'leads'), where('subStatus', '==', '📵 Switched Off'))),
+        getCountFromServer(query(collection(db, 'organizations', orgId, 'leads'), where('followUpTimeSlot', '==', '🌅 Morning'))),
+        getCountFromServer(query(collection(db, 'organizations', orgId, 'leads'), where('followUpTimeSlot', '==', '☀️ Afternoon'))),
+        getCountFromServer(query(collection(db, 'organizations', orgId, 'leads'), where('followUpTimeSlot', '==', '🌙 Evening')))
       ]);
 
       const getVal = (res, key = 'count') => res.status === 'fulfilled' ? (res.value.data()[key] || 0) : 0;
