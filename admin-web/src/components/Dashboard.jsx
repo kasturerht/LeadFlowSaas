@@ -184,7 +184,16 @@ export default function Dashboard() {
         const data = docSnap.data();
         let dateObj = null;
 
-        if (typeof data.updatedAt === 'string') {
+        if (!data.updatedAt) {
+          // If missing, fallback to createdAt or current time
+          if (data.createdAt) {
+            dateObj = typeof data.createdAt === 'string' ? new Date(data.createdAt) 
+                    : (typeof data.createdAt === 'number' ? new Date(data.createdAt) 
+                    : (data.createdAt.toDate ? data.createdAt.toDate() : new Date()));
+          } else {
+            dateObj = new Date();
+          }
+        } else if (typeof data.updatedAt === 'string') {
           dateObj = new Date(data.updatedAt);
         } else if (typeof data.updatedAt === 'number') {
           dateObj = new Date(data.updatedAt);
@@ -199,7 +208,7 @@ export default function Dashboard() {
       });
       
       await Promise.all(promises);
-      alert(`Successfully fixed ${fixedCount} leads with invalid timestamps to Firestore Timestamps!`);
+      alert(`Successfully fixed ${fixedCount} leads with invalid/missing timestamps!`);
       fetchStats();
       fetchLeads();
     } catch (error) {
