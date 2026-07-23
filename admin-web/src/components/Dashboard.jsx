@@ -182,19 +182,24 @@ export default function Dashboard() {
       const promises = [];
       snapshot.forEach((docSnap) => {
         const data = docSnap.data();
+        let dateObj = null;
+
         if (typeof data.updatedAt === 'string') {
-          const dateObj = new Date(data.updatedAt);
-          if (!isNaN(dateObj.getTime())) {
-            promises.push(updateDoc(doc(db, 'organizations', orgId, 'leads', docSnap.id), {
-              updatedAt: Timestamp.fromDate(dateObj)
-            }));
-            fixedCount++;
-          }
+          dateObj = new Date(data.updatedAt);
+        } else if (typeof data.updatedAt === 'number') {
+          dateObj = new Date(data.updatedAt);
+        }
+
+        if (dateObj && !isNaN(dateObj.getTime())) {
+          promises.push(updateDoc(doc(db, 'organizations', orgId, 'leads', docSnap.id), {
+            updatedAt: Timestamp.fromDate(dateObj)
+          }));
+          fixedCount++;
         }
       });
       
       await Promise.all(promises);
-      alert(`Successfully fixed ${fixedCount} leads with String timestamps to Firestore Timestamps!`);
+      alert(`Successfully fixed ${fixedCount} leads with invalid timestamps to Firestore Timestamps!`);
       fetchStats();
       fetchLeads();
     } catch (error) {
