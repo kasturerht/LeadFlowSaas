@@ -97,7 +97,7 @@ export default function Dashboard() {
       const results = await Promise.allSettled([
         getCountFromServer(qTotal),
         getCountFromServer(qOrders),
-        getAggregateFromServer(qRevenue, { totalRevenue: sum('orderAmount') }),
+        getAggregateFromServer(qRevenue, { totalRevenue: sum('orderAmountNum') }),
         getCountFromServer(qRinging),
         getCountFromServer(qBusy),
         getCountFromServer(qOff),
