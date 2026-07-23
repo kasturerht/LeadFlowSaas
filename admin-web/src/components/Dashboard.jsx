@@ -45,6 +45,7 @@ export default function Dashboard() {
   });
   const [statsLoading, setStatsLoading] = useState(false);
   const [dateFilter, setDateFilter] = useState('Today'); // 'Today', 'Yesterday', 'This Week', 'This Month', 'All Time'
+  const [indexErrors, setIndexErrors] = useState([]);
 
   // Fetch aggregate statistics from server (scalable for 100k+ records)
   const fetchStats = async () => {
@@ -104,6 +105,17 @@ export default function Dashboard() {
         getCountFromServer(qAfternoon),
         getCountFromServer(qEvening)
       ]);
+
+      const errors = [];
+      results.forEach(res => {
+        if (res.status === 'rejected' && res.reason && res.reason.message && res.reason.message.includes('https://console.firebase.google.com')) {
+          const match = res.reason.message.match(/(https:\/\/console\.firebase\.google\.com[^\s]+)/);
+          if (match && !errors.includes(match[1])) {
+            errors.push(match[1]);
+          }
+        }
+      });
+      setIndexErrors(errors);
 
       const getVal = (res, key = 'count') => res.status === 'fulfilled' ? (res.value.data()[key] || 0) : 0;
 
@@ -388,6 +400,24 @@ export default function Dashboard() {
           </button>
         </div>
       </div>
+
+      {indexErrors.length > 0 && (
+        <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', padding: '16px', borderRadius: '12px', marginBottom: '24px' }}>
+          <h3 style={{ color: '#ef4444', margin: '0 0 12px 0', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            ⚠️ Firebase Indexes Required
+          </h3>
+          <p style={{ color: 'var(--text-main)', fontSize: '14px', marginBottom: '12px' }}>
+            To filter stats by date, you need to create "Composite Indexes" in Firebase. Click the links below to auto-create them. (The stats will be 0 until they finish building).
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {indexErrors.map((link, i) => (
+              <a key={i} href={link} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6', textDecoration: 'underline', fontSize: '13px', wordBreak: 'break-all' }}>
+                👉 Create Index {i + 1}
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Injecting CSS animation inline for spin */}
       <style>{`
