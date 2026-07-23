@@ -17,6 +17,7 @@ const COURIERS = [
   { name: 'Bluedart', regex: /^\d{11}$/, example: '11 digits' },
   { name: 'Shiprocket', regex: /^SR\d{7,10}$/, example: 'SR followed by 7-10 digits' },
   { name: 'EcomExpress', regex: /^\d{10}$/, example: '10 digits' },
+  { name: 'India Post', regex: /^[A-Za-z]{2}\d{9}[A-Za-z]{2}$/, example: 'e.g. EB123456789IN' },
   { name: 'Other', regex: /.+/, example: 'Any format' }
 ];
 
@@ -611,7 +612,7 @@ export default function DispatchCenter() {
             <div style={{ marginBottom: '15px' }}>
               <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '6px' }}>Courier Partner</label>
               <select 
-                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--background)' }}
+                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)', background: 'var(--background)', color: 'var(--text-main)' }}
                 value={courier}
                 onChange={(e) => { setCourier(e.target.value); setAwbError(''); }}
               >
@@ -623,7 +624,7 @@ export default function DispatchCenter() {
               <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '6px' }}>AWB / Tracking Number</label>
               <input 
                 type="text" 
-                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: `1px solid ${awbError ? '#ef4444' : 'var(--border)'}`, background: 'var(--background)' }}
+                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: `1px solid ${awbError ? 'var(--danger)' : 'var(--surface-border)'}`, background: 'var(--background)', color: 'var(--text-main)' }}
                 placeholder="Scan or type AWB..."
                 value={awb}
                 onChange={(e) => { setAwb(e.target.value); validateAwb(courier, e.target.value); }}
