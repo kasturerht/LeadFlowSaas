@@ -46,6 +46,7 @@ export default function Dashboard() {
   const [statsLoading, setStatsLoading] = useState(false);
   const [dateFilter, setDateFilter] = useState('Today'); // 'Today', 'Yesterday', 'This Week', 'This Month', 'All Time'
   const [indexErrors, setIndexErrors] = useState([]);
+  const [fixingDb, setFixingDb] = useState(false);
 
   // Fetch aggregate statistics from server (scalable for 100k+ records)
   const fetchStats = async () => {
@@ -168,6 +169,41 @@ export default function Dashboard() {
   useEffect(() => {
     fetchLeads();
   }, [activeSearch, orgId]);
+
+  // Temporary Data Normalization Tool
+  const fixDatabaseTimestamps = async () => {
+    if (!orgId) return;
+    setFixingDb(true);
+    try {
+      const q = query(collection(db, 'organizations', orgId, 'leads'));
+      const snapshot = await getDocs(q);
+      let fixedCount = 0;
+      
+      const promises = [];
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        if (typeof data.updatedAt === 'string') {
+          const dateObj = new Date(data.updatedAt);
+          if (!isNaN(dateObj.getTime())) {
+            promises.push(updateDoc(doc(db, 'organizations', orgId, 'leads', docSnap.id), {
+              updatedAt: Timestamp.fromDate(dateObj)
+            }));
+            fixedCount++;
+          }
+        }
+      });
+      
+      await Promise.all(promises);
+      alert(`Successfully fixed ${fixedCount} leads with String timestamps to Firestore Timestamps!`);
+      fetchStats();
+      fetchLeads();
+    } catch (error) {
+      console.error("Error fixing database:", error);
+      alert("Error fixing database. Check console.");
+    } finally {
+      setFixingDb(false);
+    }
+  };
 
   // Real-time listener for Pending Payments
   useEffect(() => {
@@ -374,6 +410,14 @@ export default function Dashboard() {
         </div>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
           
+          <button 
+            onClick={fixDatabaseTimestamps} 
+            disabled={fixingDb}
+            style={{ fontSize: '11px', padding: '4px 8px', background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.2)', borderRadius: '6px', cursor: 'pointer' }}
+          >
+            {fixingDb ? 'Fixing...' : 'Fix DB Timestamps'}
+          </button>
+
           <div style={{ position: 'relative', display: 'flex', alignItems: 'center', background: 'var(--surface)', border: '1px solid var(--surface-border)', borderRadius: '8px', padding: '0 12px', height: '36px' }}>
             <Calendar size={14} style={{ color: 'var(--text-muted)', marginRight: '8px' }} />
             <select 
