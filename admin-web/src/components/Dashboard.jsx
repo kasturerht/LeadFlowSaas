@@ -49,17 +49,7 @@ export default function Dashboard() {
     if (!orgId) return;
     setStatsLoading(true);
     try {
-      const [
-        totalSnap,
-        ordersSnap,
-        revenueSnap,
-        ringingSnap,
-        busySnap,
-        offSnap,
-        morningSnap,
-        afternoonSnap,
-        eveningSnap
-      ] = await Promise.all([
+      const results = await Promise.allSettled([
         getCountFromServer(collection(db, 'organizations', orgId, 'leads')),
         getCountFromServer(query(collection(db, 'organizations', orgId, 'leads'), where('status', 'in', ['Order Placed', 'Converted', 'Visited']))),
         getAggregateFromServer(query(collection(db, 'organizations', orgId, 'leads'), where('status', 'in', ['Order Placed', 'Converted', 'Visited'])), {
@@ -73,16 +63,18 @@ export default function Dashboard() {
         getCountFromServer(query(collection(db, 'organizations', orgId, 'leads'), where('followUpTimeSlot', '==', 'Evening (5-8)')))
       ]);
 
+      const getVal = (res, key = 'count') => res.status === 'fulfilled' ? (res.value.data()[key] || 0) : 0;
+
       setStats({
-        total: totalSnap.data().count,
-        orders: ordersSnap.data().count,
-        revenue: revenueSnap.data().totalRevenue || 0,
-        ringing: ringingSnap.data().count,
-        busy: busySnap.data().count,
-        off: offSnap.data().count,
-        morning: morningSnap.data().count,
-        afternoon: afternoonSnap.data().count,
-        evening: eveningSnap.data().count
+        total: getVal(results[0]),
+        orders: getVal(results[1]),
+        revenue: getVal(results[2], 'totalRevenue'),
+        ringing: getVal(results[3]),
+        busy: getVal(results[4]),
+        off: getVal(results[5]),
+        morning: getVal(results[6]),
+        afternoon: getVal(results[7]),
+        evening: getVal(results[8])
       });
     } catch (err) {
       console.error("Error fetching stats:", err);
@@ -316,55 +308,21 @@ export default function Dashboard() {
     );
   };
 
-  const handleFixOldPaymentStatuses = async () => {
-    if (!orgId) return;
-    if (!window.confirm("Are you sure you want to fix all old Payment Statuses (Emojis)?")) return;
-    try {
-      const leadsSnap = await getDocs(collection(db, 'organizations', orgId, 'leads'));
-      let updatedCount = 0;
-      const promises = [];
-      leadsSnap.forEach((docSnap) => {
-        const data = docSnap.data();
-        let newStatus = null;
-        if (data.paymentStatus === "✅ Payment Verified") newStatus = "Paid";
-        else if (data.paymentStatus === "⏳ UPI Link Sent") newStatus = "Link Sent";
-        
-        if (newStatus) {
-          promises.push(updateDoc(doc(db, 'organizations', orgId, 'leads', docSnap.id), { paymentStatus: newStatus }));
-          updatedCount++;
-        }
-      });
-      await Promise.all(promises);
-      alert(`Successfully fixed ${updatedCount} old leads!`);
-      fetchStats();
-    } catch (err) {
-      console.error("Error fixing old statuses:", err);
-      alert("Failed to fix old statuses.");
-    }
-  };
-
   return (
     <>
-      <div className="page-header">
+      <div className="page-header" style={{ marginBottom: '24px' }}>
         <div className="page-title-group">
-          <h2 className="page-title">Welcome back, Admin</h2>
-          <p className="page-subtitle">Here's what's happening with your leads today.</p>
+          <h2 className="page-title" style={{ fontSize: '24px', letterSpacing: '-0.5px' }}>Welcome back, Admin</h2>
+          <p className="page-subtitle" style={{ color: 'var(--text-muted)' }}>Here's what's happening with your leads today.</p>
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
           <button 
-            onClick={handleFixOldPaymentStatuses} 
-            className="btn-secondary"
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', padding: '5px 10px', borderColor: '#ef4444', color: '#ef4444' }}
-          >
-            Fix Emoji Bug
-          </button>
-          <button 
             onClick={fetchStats} 
-            className="btn-secondary" 
+            className="btn-primary" 
             disabled={statsLoading}
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', padding: '5px 10px' }}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', padding: '8px 16px', background: 'rgba(79, 70, 229, 0.1)', color: 'var(--primary)', border: '1px solid rgba(79, 70, 229, 0.2)' }}
           >
-            <RefreshCw size={12} style={{ animation: statsLoading ? 'spin 1s linear infinite' : 'none' }} />
+            <RefreshCw size={14} style={{ animation: statsLoading ? 'spin 1s linear infinite' : 'none' }} />
             {statsLoading ? "Refreshing..." : "Refresh Stats"}
           </button>
         </div>
@@ -378,36 +336,60 @@ export default function Dashboard() {
         }
       `}</style>
 
-      <div className="stats-grid">
-        <div className="stat-card glass-panel">
-          <span className="stat-title">Total Leads</span>
-          <span className="stat-value">{statsLoading ? "..." : stats.total.toLocaleString()}</span>
+      {/* Bento Grid layout */}
+      <div className="bento-grid">
+        <div className="bento-card" style={{ borderTop: '2px solid rgba(79, 70, 229, 0.5)' }}>
+          <div className="bento-header">👥 Total Leads</div>
+          {statsLoading ? <div className="skeleton-text"></div> : <div className="bento-value">{stats.total.toLocaleString()}</div>}
         </div>
-        <div className="stat-card glass-panel" style={{ borderTopColor: 'var(--secondary)' }}>
-          <span className="stat-title">Orders Placed</span>
-          <span className="stat-value">{statsLoading ? "..." : stats.orders.toLocaleString()}</span>
+        
+        <div className="bento-card" style={{ borderTop: '2px solid rgba(16, 185, 129, 0.5)' }}>
+          <div className="bento-header">📦 Orders Placed</div>
+          {statsLoading ? <div className="skeleton-text"></div> : <div className="bento-value">{stats.orders.toLocaleString()}</div>}
         </div>
-        <div className="stat-card glass-panel" style={{ borderTopColor: '#10b981' }}>
-          <span className="stat-title">Total Revenue</span>
-          <span className="stat-value">{statsLoading ? "..." : `₹${stats.revenue.toLocaleString()}`}</span>
-        </div>
-      </div>
 
-      <div className="stats-grid" style={{ marginBottom: '20px' }}>
-        <div className="stat-card glass-panel" style={{ borderTopColor: '#fb7185' }}>
-          <span className="stat-title">Unanswered Breakdown</span>
-          <div style={{ display: 'flex', gap: '10px', marginTop: '4px', fontSize: '12px', fontWeight: 500 }}>
-            <span style={{ color: '#fb7185' }}>🔔 Ringing: <strong>{statsLoading ? "..." : stats.ringing}</strong></span>
-            <span style={{ color: '#f43f5e' }}>🔴 Busy: <strong>{statsLoading ? "..." : stats.busy}</strong></span>
-            <span style={{ color: '#94a3b8' }}>📵 Off: <strong>{statsLoading ? "..." : stats.off}</strong></span>
+        <div className="bento-card" style={{ borderTop: '2px solid rgba(245, 158, 11, 0.5)' }}>
+          <div className="bento-header">💰 Total Revenue</div>
+          {statsLoading ? <div className="skeleton-text"></div> : <div className="bento-value">₹{stats.revenue.toLocaleString()}</div>}
+        </div>
+
+        <div className="bento-card bento-span-2" style={{ borderTop: '2px solid rgba(244, 63, 94, 0.4)' }}>
+          <div className="bento-header">📞 Unanswered Breakdown</div>
+          <div style={{ display: 'flex', gap: '20px', marginTop: '8px', fontSize: '14px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>🔔 Ringing</span>
+              {statsLoading ? <div className="skeleton-small"></div> : <strong style={{ color: '#fb7185', fontSize: '18px' }}>{stats.ringing}</strong>}
+            </div>
+            <div style={{ width: '1px', background: 'rgba(255,255,255,0.1)' }}></div>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>🔴 Busy</span>
+              {statsLoading ? <div className="skeleton-small"></div> : <strong style={{ color: '#f43f5e', fontSize: '18px' }}>{stats.busy}</strong>}
+            </div>
+            <div style={{ width: '1px', background: 'rgba(255,255,255,0.1)' }}></div>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>📵 Off</span>
+              {statsLoading ? <div className="skeleton-small"></div> : <strong style={{ color: '#94a3b8', fontSize: '18px' }}>{stats.off}</strong>}
+            </div>
           </div>
         </div>
-        <div className="stat-card glass-panel" style={{ borderTopColor: '#f59e0b', gridColumn: 'span 2' }}>
-          <span className="stat-title">Follow-up Time Slot Distribution</span>
-          <div style={{ display: 'flex', gap: '14px', marginTop: '4px', fontSize: '12px', fontWeight: 500 }}>
-            <span style={{ color: '#f59e0b' }}>🌅 Morning: <strong>{statsLoading ? "..." : stats.morning}</strong></span>
-            <span style={{ color: '#fbbf24' }}>☀️ Afternoon: <strong>{statsLoading ? "..." : stats.afternoon}</strong></span>
-            <span style={{ color: '#818cf8' }}>🌙 Evening: <strong>{statsLoading ? "..." : stats.evening}</strong></span>
+
+        <div className="bento-card bento-span-2" style={{ borderTop: '2px solid rgba(129, 140, 248, 0.4)' }}>
+          <div className="bento-header">⏰ Follow-up Slots</div>
+          <div style={{ display: 'flex', gap: '20px', marginTop: '8px', fontSize: '14px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>🌅 Morning</span>
+              {statsLoading ? <div className="skeleton-small"></div> : <strong style={{ color: '#f59e0b', fontSize: '18px' }}>{stats.morning}</strong>}
+            </div>
+            <div style={{ width: '1px', background: 'rgba(255,255,255,0.1)' }}></div>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>☀️ Afternoon</span>
+              {statsLoading ? <div className="skeleton-small"></div> : <strong style={{ color: '#fbbf24', fontSize: '18px' }}>{stats.afternoon}</strong>}
+            </div>
+            <div style={{ width: '1px', background: 'rgba(255,255,255,0.1)' }}></div>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>🌙 Evening</span>
+              {statsLoading ? <div className="skeleton-small"></div> : <strong style={{ color: '#818cf8', fontSize: '18px' }}>{stats.evening}</strong>}
+            </div>
           </div>
         </div>
       </div>
@@ -574,7 +556,7 @@ export default function Dashboard() {
                             ) : null}
                           </div>
                         ) : (
-                          <span style={{ color: 'var(--text-muted)' }}>-</span>
+                          <span style={{ color: 'var(--text-muted)' }}>No dispatch info yet</span>
                         )}
                       </td>
                     </tr>
