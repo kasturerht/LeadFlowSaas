@@ -70,11 +70,11 @@ fun CreateLeadBottomSheet(
     val shippingFeesMap = remember(productsList) { productsList.associate { it.name to it.shippingFee } }
 
     var callLogs by remember { mutableStateOf<List<CallLogEntry>>(emptyList()) }
-    var selectedNumber by remember { mutableStateOf(leadToEdit?.phone ?: com.nexaleads.app.utils.SharedState.sharedWhatsAppNumber ?: draft.selectedNumber) }
-    var manualMode by remember { mutableStateOf(leadToEdit != null || draft.manualMode || com.nexaleads.app.utils.SharedState.sharedWhatsAppNumber != null || com.nexaleads.app.utils.SharedState.sharedWhatsAppName != null) }
+    var selectedNumber by remember { mutableStateOf(leadToEdit?.phone ?: draft.selectedNumber) }
+    var manualMode by remember { mutableStateOf(leadToEdit != null || draft.manualMode) }
 
     // Form State
-    var clientName by remember { mutableStateOf(leadToEdit?.name ?: com.nexaleads.app.utils.SharedState.sharedWhatsAppName ?: draft.clientName) }
+    var clientName by remember { mutableStateOf(leadToEdit?.name ?: draft.clientName) }
     var source by remember { mutableStateOf(leadToEdit?.source ?: draft.source) }
     var selectedProduct by remember { mutableStateOf(leadToEdit?.product ?: draft.selectedProduct) }
     var selectedStatus by remember { mutableStateOf(leadToEdit?.status ?: draft.selectedStatus) }
@@ -376,10 +376,7 @@ fun CreateLeadBottomSheet(
     }
 
     ModalBottomSheet(
-        onDismissRequest = {
-            com.nexaleads.app.utils.SharedState.clear()
-            onDismiss()
-        },
+        onDismissRequest = onDismiss,
         sheetState = sheetState,
         containerColor = SurfaceLight,
         dragHandle = { BottomSheetDefaults.DragHandle(color = BorderSubtle) }

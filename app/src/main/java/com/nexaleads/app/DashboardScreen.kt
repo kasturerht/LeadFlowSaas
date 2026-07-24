@@ -106,13 +106,6 @@ fun DashboardScreen(
         }
     }
 
-    val onNewSharedLead by com.nexaleads.app.utils.SharedState.onNewSharedLead.collectAsStateWithLifecycle()
-    LaunchedEffect(onNewSharedLead) {
-        if (onNewSharedLead) {
-            showCreateLeadSheet = true
-        }
-    }
-
     // Metrics
     val metrics by viewModel.dashboardMetrics.collectAsStateWithLifecycle()
     val orgName by viewModel.orgName.collectAsStateWithLifecycle()
