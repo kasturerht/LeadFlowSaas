@@ -3,6 +3,7 @@ import { collection, getDocs, doc, setDoc, deleteDoc, query, limit, writeBatch }
 import { db } from '../firebase';
 import { useAuth } from '../AuthContext';
 import { Database, CheckCircle, Loader, ArrowRight } from 'lucide-react';
+import BackfillDispatch from './BackfillDispatch';
 
 export default function MigrationTool() {
   const { user } = useAuth();
@@ -208,6 +209,11 @@ export default function MigrationTool() {
           ))}
         </div>
       </div>
+
+      <hr style={{ borderColor: '#334155', margin: '40px 0' }} />
+      
+      {/* Backfill Dispatch Status Tool for old leads */}
+      <BackfillDispatch />
     </div>
   );
 }

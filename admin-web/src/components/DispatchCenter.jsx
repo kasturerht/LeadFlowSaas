@@ -452,8 +452,13 @@ export default function DispatchCenter() {
                   return (
                     <tr key={lead.id} style={{ background: isUrgentCancel ? 'rgba(239, 68, 68, 0.1)' : 'transparent' }}>
                       <td>
-                        <div style={{ fontWeight: 500, fontSize: '13px', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '160px' }}>{lead.name}</div>
+                        <div style={{ fontWeight: 500, fontSize: '13px', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '180px' }}>{lead.name}</div>
                         <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>{lead.phone}</div>
+                        <div style={{ marginTop: '6px' }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 6px', background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)', borderRadius: '4px', fontSize: '9px', color: '#60a5fa', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '170px' }}>
+                            👤 {lead.assignedToName || 'UNKNOWN'}
+                          </span>
+                        </div>
                       </td>
                       <td>
                         <div style={{ display: 'inline-block', background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.1)', color: 'var(--text-main)', padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 500, whiteSpace: 'nowrap' }}>
