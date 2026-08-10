@@ -115,6 +115,8 @@ class MainActivity : ComponentActivity() {
                                 
                                 DashboardScreen(
                                     callerName = authStateFlow.userName,
+                                    orgName = authStateFlow.orgName,
+                                    messagingProfile = authStateFlow.messagingProfile,
                                     viewModel = callingViewModel,
                                     leads = leads,
                                     onSelectCategory = { filter ->
@@ -145,6 +147,8 @@ class MainActivity : ComponentActivity() {
                                 TodayCallingListScreen(
                                     currentUserId = authStateFlow.userId,
                                     callerName = authStateFlow.userName,
+                                    orgName = authStateFlow.orgName,
+                                    messagingProfile = authStateFlow.messagingProfile,
                                     filter = filter,
                                     fullLeadsList = leads,
                                     onBack = { navController.popBackStack() },

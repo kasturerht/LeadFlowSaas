@@ -5,10 +5,8 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.widget.Toast
-import androidx.core.content.FileProvider
 import com.nexaleads.app.data.model.Lead
-import java.io.File
-import java.io.FileOutputStream
+import com.nexaleads.app.data.model.MessagingProfile
 import java.net.URLEncoder
 
 object WhatsAppSender {
@@ -31,34 +29,12 @@ object WhatsAppSender {
         }
     }
 
-    private fun copyAssetToCache(context: Context, assetName: String): File? {
-        return try {
-            val cacheDir = File(context.cacheDir, "templates")
-            if (!cacheDir.exists()) cacheDir.mkdirs()
-            
-            val outFile = File(cacheDir, assetName)
-            context.assets.open(assetName).use { inputStream ->
-                FileOutputStream(outFile).use { outputStream ->
-                    inputStream.copyTo(outputStream)
-                }
-            }
-            outFile
-        } catch (e: Exception) {
-            e.printStackTrace()
-            null
-        }
-    }
-
-    private fun getUriForFile(context: Context, file: File): Uri {
-        return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
-    }
-
     fun sendTemplates(
         context: Context,
         lead: Lead,
         sendText: Boolean,
-        sendImage: Boolean,
-        sendPdf: Boolean
+        orgName: String,
+        messagingProfile: MessagingProfile?
     ) {
         val waPackage = getWhatsAppPackage(context)
         if (waPackage == null) {
@@ -68,83 +44,54 @@ object WhatsAppSender {
 
         val waPhone = "91" + PhoneUtils.sanitizePhoneNumber(lead.phone).takeLast(10)
         
+        // Fallbacks if messaging profile is null
+        val safeOrgName = if (orgName.isNotBlank() && orgName != "ORGANIZATION") orgName else "Our Team"
+        val addressStr = if (!messagingProfile?.officeAddress.isNullOrBlank()) {
+            "\n📍 *Visit Our Office:*\n_${messagingProfile?.officeAddress}_\n"
+        } else ""
+        
+        val hoursStr = if (!messagingProfile?.officeHours.isNullOrBlank()) {
+            "\n🕒 *Office Hours:* \n${messagingProfile?.officeHours}\n"
+        } else ""
+        
+        val contactStr = if (!messagingProfile?.supportPhone.isNullOrBlank()) {
+            "\n📞 *Contact:* ${messagingProfile?.supportPhone}"
+        } else ""
+        
+        val emailStr = if (!messagingProfile?.supportEmail.isNullOrBlank()) {
+            "\n📧 *Email:* ${messagingProfile?.supportEmail}"
+        } else ""
+        
+        val webStr = if (!messagingProfile?.website.isNullOrBlank()) {
+            "\n🌐 *Website:* ${messagingProfile?.website}"
+        } else ""
+        
+        val footerContact = listOf(contactStr, emailStr, webStr).filter { it.isNotBlank() }.joinToString("")
+
         val messageText = if (sendText) {
             """
 Hello *${lead.name}*, 👋
 
-Thank you for connecting with *Finesse Overseas Education*, Kolhapur's trusted consultancy with over 25 years of expertise in Study Abroad guidance. 🎓✈️
+Thank you for connecting with *$safeOrgName*. 
 
-We would love to invite you to our office to discuss your career and higher education plans in detail.
-
-📍 *Visit Our Office:*
-_Samarth Sakshi Plaza, First Floor,_
-_Above Sohala Showroom, Beside Lenskart,_
-_4th Lane, Rajarampuri, Kolhapur, Maharashtra (416008)_
-
-🕒 *Office Hours:* 
-Monday – Saturday: 10:30 AM to 6:30 PM
-
-📞 *Contact:* +91 98347 83503
-📧 *Email:* finesseoverseaseducation@gmail.com
-🌐 *Website:* www.finesseoverseas.com
+We would love to invite you to our office or schedule a call to discuss your requirements in detail.
+$addressStr$hoursStr$footerContact
 
 Please let us know what time works best for you so we can schedule an appointment. We look forward to meeting you! ✨
 
 Best Regards,
-*Finesse Overseas Education Team, Kolhapur.*
+*$safeOrgName Team*
             """.trimIndent()
         } else {
             ""
         }
 
-        val uris = ArrayList<Uri>()
-        if (sendImage) {
-            val imgFile = copyAssetToCache(context, "visiting_card.png")
-            if (imgFile != null) uris.add(getUriForFile(context, imgFile))
-        }
-        if (sendPdf) {
-            val pdfFile = copyAssetToCache(context, "brochure.pdf")
-            if (pdfFile != null) uris.add(getUriForFile(context, pdfFile))
-        }
-
         try {
-            val intent = if (uris.isEmpty()) {
-                // Text only
-                Intent(Intent.ACTION_VIEW).apply {
-                    data = Uri.parse("https://api.whatsapp.com/send?phone=$waPhone&text=${URLEncoder.encode(messageText, "UTF-8")}")
-                    setPackage(waPackage)
-                }
-            } else if (uris.size == 1) {
-                // Single Media (Image or PDF)
-                Intent(Intent.ACTION_SEND).apply {
-                    type = if (sendImage) "image/*" else "application/pdf"
-                    putExtra(Intent.EXTRA_STREAM, uris.first())
-                    putExtra("jid", "$waPhone@s.whatsapp.net") // Direct to chat in ACTION_SEND
-                    if (messageText.isNotEmpty()) {
-                        putExtra(Intent.EXTRA_TEXT, messageText)
-                    }
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    setPackage(waPackage)
-                }
-            } else {
-                // Multiple Media (Image AND PDF)
-                Intent(Intent.ACTION_SEND_MULTIPLE).apply {
-                    type = "*/*"
-                    putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
-                    putExtra("jid", "$waPhone@s.whatsapp.net")
-                    if (messageText.isNotEmpty()) {
-                        putExtra(Intent.EXTRA_TEXT, messageText)
-                        // In case WhatsApp drops it for */*, we can copy to clipboard for convenience
-                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Template Text", messageText))
-                        Toast.makeText(context, "Text copied to clipboard just in case!", Toast.LENGTH_SHORT).show()
-                    }
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    setPackage(waPackage)
-                }
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                data = Uri.parse("https://api.whatsapp.com/send?phone=$waPhone&text=${URLEncoder.encode(messageText, "UTF-8")}")
+                setPackage(waPackage)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
-
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(intent)
 
         } catch (e: Exception) {
@@ -166,7 +113,8 @@ Best Regards,
         discountAmount: String = "",
         customPaymentLink: String = "upi://pay?pa=merchant@icici&pn=Order%20Payment",
         language: String = "English",
-        supportNumber: String = "+91 98347 83503"
+        orgName: String,
+        messagingProfile: MessagingProfile?
     ): String {
         val cleanName = customerName.trim()
         val isGenericName = cleanName.isBlank() || 
@@ -187,6 +135,8 @@ Best Regards,
         } else {
             "• [No products specified]"
         }
+
+        val supportNumber = messagingProfile?.supportPhone.takeIf { !it.isNullOrBlank() } ?: "our support team"
 
         val sb = StringBuilder()
         val lang = language.trim().lowercase()
@@ -434,7 +384,8 @@ Best Regards,
         discountAmount: String = "",
         customPaymentLink: String = "upi://pay?pa=merchant@icici&pn=Order%20Payment",
         language: String = "English",
-        supportNumber: String = "+91 98347 83503"
+        orgName: String,
+        messagingProfile: MessagingProfile?
     ) {
         val cleanDigits = phone.filter { it.isDigit() }
         if (cleanDigits.length < 10) {
@@ -445,7 +396,7 @@ Best Regards,
         val messageText = generateOrderMessage(
             customerName, products, address, paymentMode,
             includeAddress, includePaymentLink, includeDispatchNote, includeSupportPhone,
-            originalTotal, discountAmount, customPaymentLink, language, supportNumber
+            originalTotal, discountAmount, customPaymentLink, language, orgName, messagingProfile
         )
         
         val waPackage = getWhatsAppPackage(context)
@@ -469,7 +420,8 @@ Best Regards,
         status: String,
         customerName: String,
         productName: String = "",
-        language: String = "English"
+        language: String = "English",
+        orgName: String
     ): String {
         val cleanName = customerName.trim()
         val isGenericName = cleanName.isBlank() || 
@@ -477,6 +429,7 @@ Best Regards,
                             cleanName.equals("Client", ignoreCase = true) || 
                             cleanName.equals("Lead", ignoreCase = true)
         
+        val safeOrgName = if (orgName.isNotBlank() && orgName != "ORGANIZATION") orgName else "our company"
         val lang = language.trim().lowercase()
         val sb = StringBuilder()
 
@@ -485,17 +438,17 @@ Best Regards,
                 when {
                     lang == "marathi" || lang == "मराठी" -> {
                         if (isGenericName) sb.append("नमस्कार! 👋\n\n") else sb.append("नमस्कार *").append(cleanName).append("* जी! 👋\n\n")
-                        sb.append("आम्ही तुम्हाला Finesse Overseas कडून संपर्क करण्याचा प्रयत्न केला, परंतु होऊ शकला नाही.\n\n")
+                        sb.append("आम्ही तुम्हाला $safeOrgName कडून संपर्क करण्याचा प्रयत्न केला, परंतु होऊ शकला नाही.\n\n")
                         sb.append("कृपया तुम्हाला सोयीस्कर अशी वेळ सांगा, म्हणजे आम्ही तुम्हाला पुन्हा कॉल करू शकू. 🙏")
                     }
                     lang == "hindi" || lang == "हिंदी" -> {
                         if (isGenericName) sb.append("नमस्ते! 👋\n\n") else sb.append("नमस्ते *").append(cleanName).append("* जी! 👋\n\n")
-                        sb.append("हमने आपको Finesse Overseas से संपर्क करने का प्रयास किया, लेकिन बात नहीं हो पाई।\n\n")
+                        sb.append("हमने आपको $safeOrgName से संपर्क करने का प्रयास किया, लेकिन बात नहीं हो पाई।\n\n")
                         sb.append("कृपया अपना सुविधाजनक समय बताएं, ताकि हम आपको फिर से कॉल कर सकें। 🙏")
                     }
                     else -> {
                         if (isGenericName) sb.append("Hi there! 👋\n\n") else sb.append("Hi *").append(cleanName).append("*! 👋\n\n")
-                        sb.append("We tried calling you from Finesse Overseas but couldn't reach you.\n\n")
+                        sb.append("We tried calling you from $safeOrgName but couldn't reach you.\n\n")
                         sb.append("Please let us know a good time to connect so we can call you back. 🙏")
                     }
                 }
@@ -586,7 +539,8 @@ Best Regards,
         status: String,
         customerName: String,
         productName: String = "",
-        language: String = "English"
+        language: String = "English",
+        orgName: String
     ) {
         val cleanDigits = phone.filter { it.isDigit() }
         if (cleanDigits.length < 10) {
@@ -595,7 +549,7 @@ Best Regards,
         }
         val waPhone = "91" + cleanDigits.takeLast(10)
         
-        val messageText = generateDispositionMessage(status, customerName, productName, language)
+        val messageText = generateDispositionMessage(status, customerName, productName, language, orgName)
         val waPackage = getWhatsAppPackage(context)
         
         try {
@@ -614,4 +568,3 @@ Best Regards,
         }
     }
 }
-

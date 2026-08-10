@@ -44,6 +44,8 @@ fun DispositionBottomSheet(
     sheetState: SheetState,
     snackbarHostState: SnackbarHostState,
     callStartTimestamp: Long?,
+    orgName: String,
+    messagingProfile: com.nexaleads.app.data.model.MessagingProfile?,
     onDismiss: () -> Unit,
     onSaveSuccess: (String) -> Unit
 ) {
@@ -234,8 +236,9 @@ fun DispositionBottomSheet(
                             includePaymentLink = includePaymentLink,
                             includeDispatchNote = includeDispatchNote,
                             includeSupportPhone = includeSupportPhone,
-                            supportNumber = telecallerContact,
-                            language = selectedLanguage
+                            language = selectedLanguage,
+                            orgName = orgName,
+                            messagingProfile = messagingProfile
                         )
                     }
                     onSaveSuccess(selectedStatus)
@@ -653,7 +656,9 @@ fun DispositionBottomSheet(
                             includeSupportPhone = includeSupportPhone,
                             onIncludeSupportPhoneChange = { includeSupportPhone = it },
                             selectedLanguage = selectedLanguage,
-                            onLanguageChange = { selectedLanguage = it }
+                            onLanguageChange = { selectedLanguage = it },
+                            orgName = orgName,
+                            messagingProfile = messagingProfile
                         )
                     }
                 }

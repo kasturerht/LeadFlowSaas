@@ -22,6 +22,8 @@ import com.nexaleads.app.utils.WhatsAppSender
 fun WhatsAppTemplateBottomSheet(
     lead: Lead,
     sheetState: SheetState,
+    orgName: String,
+    messagingProfile: com.nexaleads.app.data.model.MessagingProfile?,
     onLogAction: (String, String) -> Unit = { _, _ -> },
     onDismiss: () -> Unit
 ) {
@@ -102,7 +104,7 @@ fun WhatsAppTemplateBottomSheet(
                     if (sendPdf) items.add("Brochure")
                     onLogAction("WhatsApp Initiated", "Telecaller initiated sending: ${items.joinToString(", ")}")
 
-                    WhatsAppSender.sendTemplates(context, lead, sendText, sendImage, sendPdf)
+                    WhatsAppSender.sendTemplates(context, lead, sendText, orgName, messagingProfile)
                     onDismiss()
                 }
             ) {

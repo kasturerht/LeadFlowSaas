@@ -102,12 +102,16 @@ export default function SaasAdminDashboard() {
 
   const handleCreateTenant = async (tenantData) => {
     try {
-      const { orgName, adminEmail, adminPassword, adminName, adminPhone, planType, maxUsers, billingCycle, mrr } = tenantData;
+      const { 
+        orgName, adminEmail, adminPassword, adminName, adminPhone, 
+        planType, maxUsers, billingCycle, mrr,
+        supportPhone, supportEmail, website, officeAddress, officeHours
+      } = tenantData;
       
       // 1. Generate new Org ID
       const newOrgId = `ORG_${orgName.toUpperCase().replace(/[^A-Z0-9]/g, '_')}_${Date.now().toString().slice(-4)}`;
       
-      // 2. Create the Organization Document with Billing details
+      // 2. Create the Organization Document with Billing & Messaging details
       const nextRenewal = new Date();
       nextRenewal.setMonth(nextRenewal.getMonth() + (billingCycle === 'yearly' ? 12 : 1));
 
@@ -120,7 +124,14 @@ export default function SaasAdminDashboard() {
         maxUsers: parseInt(maxUsers) || 5,
         billingCycle: billingCycle || 'monthly',
         nextRenewalDate: nextRenewal,
-        mrr: mrr || 0
+        mrr: mrr || 0,
+        messagingProfile: {
+          supportPhone: supportPhone || '',
+          supportEmail: supportEmail || '',
+          website: website || '',
+          officeAddress: officeAddress || '',
+          officeHours: officeHours || ''
+        }
       });
 
       // 3. Create the Admin User in Firebase Auth (using secondaryAuth to not log out superadmin)

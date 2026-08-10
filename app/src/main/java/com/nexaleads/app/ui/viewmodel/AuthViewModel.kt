@@ -14,7 +14,14 @@ import javax.inject.Inject
 sealed class AuthState {
     object Idle : AuthState()
     object Loading : AuthState()
-    data class Authenticated(val userId: String, val userName: String, val contactNumber: String, val orgId: String, val orgName: String) : AuthState()
+    data class Authenticated(
+        val userId: String, 
+        val userName: String, 
+        val contactNumber: String, 
+        val orgId: String, 
+        val orgName: String,
+        val messagingProfile: com.nexaleads.app.data.model.MessagingProfile?
+    ) : AuthState()
     data class Unauthenticated(val error: String? = null) : AuthState()
 }
 
@@ -43,6 +50,20 @@ class AuthViewModel @Inject constructor(
                         
                         val orgBaseDoc = db.collection("organizations").document(orgId).get().await()
                         val orgName = if (orgBaseDoc.exists()) orgBaseDoc.getString("name")?.takeIf { it.isNotBlank() } ?: "ORGANIZATION" else "ORGANIZATION"
+                        
+                        var messagingProfile: com.nexaleads.app.data.model.MessagingProfile? = null
+                        if (orgBaseDoc.exists()) {
+                            val map = orgBaseDoc.get("messagingProfile") as? Map<String, Any>
+                            if (map != null) {
+                                messagingProfile = com.nexaleads.app.data.model.MessagingProfile(
+                                    supportPhone = map["supportPhone"] as? String ?: "",
+                                    supportEmail = map["supportEmail"] as? String ?: "",
+                                    website = map["website"] as? String ?: "",
+                                    officeAddress = map["officeAddress"] as? String ?: "",
+                                    officeHours = map["officeHours"] as? String ?: ""
+                                )
+                            }
+                        }
 
                         val doc = db.collection("organizations").document(orgId)
                                     .collection("users").document(currentUser.uid).get().await()
@@ -52,7 +73,7 @@ class AuthViewModel @Inject constructor(
                             if (isActive) {
                                 val name = doc.getString("name") ?: "Agent"
                                 val contactNumber = doc.getString("contactNumber") ?: "+91 98347 83503"
-                                _authState.value = AuthState.Authenticated(currentUser.uid, name, contactNumber, orgId, orgName)
+                                _authState.value = AuthState.Authenticated(currentUser.uid, name, contactNumber, orgId, orgName, messagingProfile)
                             } else {
                                 auth.signOut()
                                 _authState.value = AuthState.Unauthenticated("Your account has been disabled by Admin.")

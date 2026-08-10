@@ -53,7 +53,9 @@ import java.util.*
 @Composable
 fun DashboardScreen(
     callerName: String,
-    viewModel: CallingViewModel,
+    orgName: String,
+    messagingProfile: com.nexaleads.app.data.model.MessagingProfile?,
+    viewModel: com.nexaleads.app.ui.viewmodel.CallingViewModel,
     leads: List<Lead>,
     onSelectCategory: (String) -> Unit,
     onHistoryClick: () -> Unit,
@@ -94,10 +96,6 @@ fun DashboardScreen(
                 if (pendingCallLead != null) {
                     showDispositionSheet = true
                 }
-                if (pendingMediaLead != null) {
-                    showMediaPromptForLead = pendingMediaLead
-                    viewModel.setPendingMediaLead(null)
-                }
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -108,7 +106,6 @@ fun DashboardScreen(
 
     // Metrics
     val metrics by viewModel.dashboardMetrics.collectAsStateWithLifecycle()
-    val orgName by viewModel.orgName.collectAsStateWithLifecycle()
     val pipelineActivityState by viewModel.pipelineActivityState.collectAsStateWithLifecycle()
 
     val currentHour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
@@ -661,62 +658,6 @@ fun DashboardScreen(
         }
     }
 
-    if (showMediaPromptForLead != null) {
-        AlertDialog(
-            onDismissRequest = { showMediaPromptForLead = null },
-            title = { Text("Send Media on WhatsApp") },
-            text = { 
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Text("Select what you want to send to ${showMediaPromptForLead!!.name}:")
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(
-                            checked = sendBrochureChecked,
-                            onCheckedChange = { sendBrochureChecked = it },
-                            colors = CheckboxDefaults.colors(checkedColor = ModernViolet)
-                        )
-                        Text("Brochure (PDF)")
-                    }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(
-                            checked = sendVisitingCardChecked,
-                            onCheckedChange = { sendVisitingCardChecked = it },
-                            colors = CheckboxDefaults.colors(checkedColor = ModernViolet)
-                        )
-                        Text("Visiting Card (Image)")
-                    }
-                }
-            },
-            confirmButton = {
-                Button(
-                    colors = ButtonDefaults.buttonColors(containerColor = ModernViolet),
-                    onClick = {
-                        if (sendBrochureChecked || sendVisitingCardChecked) {
-                            com.nexaleads.app.utils.WhatsAppSender.sendTemplates(
-                                context,
-                                showMediaPromptForLead!!,
-                                sendText = false,
-                                sendImage = sendVisitingCardChecked,
-                                sendPdf = sendBrochureChecked
-                            )
-                        }
-                        showMediaPromptForLead = null
-                    }
-                ) {
-                    Text("Send Now")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showMediaPromptForLead = null }) {
-                    Text("Skip", color = TextSecondary)
-                }
-            },
-            containerColor = CleanWhite,
-            titleContentColor = TextPrimary,
-            textContentColor = TextSecondary
-        )
-    }
-
     if (showDispositionSheet && pendingCallLead != null) {
         DispositionBottomSheet(
             lead = pendingCallLead!!,
@@ -724,6 +665,8 @@ fun DashboardScreen(
             sheetState = sheetState,
             snackbarHostState = snackbarHostState,
             callStartTimestamp = callStartTimestamp,
+            orgName = orgName,
+            messagingProfile = messagingProfile,
             onDismiss = {
                 showDispositionSheet = false
                 viewModel.clearPendingCall()
@@ -735,13 +678,12 @@ fun DashboardScreen(
                 
                 // Business Logic Filter: Don't send WhatsApp for Invalid or Not Interested
                 if (newStatus != "Invalid" && newStatus != "Not Interested" && newStatus != "Deleted") {
-                    viewModel.setPendingMediaLead(savedLead)
                     com.nexaleads.app.utils.WhatsAppSender.sendTemplates(
                         context,
                         savedLead,
                         sendText = true,
-                        sendImage = false,
-                        sendPdf = false
+                        orgName = orgName,
+                        messagingProfile = messagingProfile
                     )
                 }
             }
@@ -953,6 +895,8 @@ fun DashboardScreen(
         CreateLeadBottomSheet(
             viewModel = viewModel,
             sheetState = createLeadSheetState,
+            orgName = orgName,
+            messagingProfile = messagingProfile,
             onDismiss = { showCreateLeadSheet = false },
             onExistingLeadFound = { existingLead ->
                 showCreateLeadSheet = false

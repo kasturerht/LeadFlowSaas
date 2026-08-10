@@ -45,6 +45,8 @@ fun SmartWhatsAppOrderCard(
     originalTotalValue: String = "",
     discountAmount: String = "",
     supportNumber: String = "+91 98347 83503",
+    orgName: String,
+    messagingProfile: com.nexaleads.app.data.model.MessagingProfile?,
     onLanguageChange: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
@@ -67,7 +69,7 @@ fun SmartWhatsAppOrderCard(
 
     val livePreviewText = remember(
         status, customerName, products, address, paymentMode,
-        includeAddress, includePaymentLink, includeDispatchNote, includeSupportPhone, currentLanguage, originalTotalValue, discountAmount, supportNumber
+        includeAddress, includePaymentLink, includeDispatchNote, includeSupportPhone, currentLanguage, originalTotalValue, discountAmount, supportNumber, orgName, messagingProfile
     ) {
         if (status == "Order Placed") {
             WhatsAppSender.generateOrderMessage(
@@ -82,14 +84,16 @@ fun SmartWhatsAppOrderCard(
                 originalTotal = originalTotalValue,
                 discountAmount = discountAmount,
                 language = currentLanguage,
-                supportNumber = supportNumber
+                orgName = orgName,
+                messagingProfile = messagingProfile
             )
         } else {
             WhatsAppSender.generateDispositionMessage(
                 status = status,
                 customerName = customerName,
                 productName = products,
-                language = currentLanguage
+                language = currentLanguage,
+                orgName = orgName
             )
         }
     }

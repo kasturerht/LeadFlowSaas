@@ -55,6 +55,8 @@ fun CreateLeadBottomSheet(
     viewModel: CallingViewModel,
     sheetState: SheetState,
     leadToEdit: Lead? = null,
+    orgName: String,
+    messagingProfile: com.nexaleads.app.data.model.MessagingProfile?,
     onDismiss: () -> Unit,
     onExistingLeadFound: (Lead) -> Unit
 ) {
@@ -987,7 +989,9 @@ fun CreateLeadBottomSheet(
                                 selectedLanguage = selectedLanguage,
                                 onLanguageChange = { selectedLanguage = it },
                                 originalTotalValue = originalTotalValue,
-                                discountAmount = discountAmount
+                                discountAmount = discountAmount,
+                                orgName = orgName,
+                                messagingProfile = messagingProfile
                             )
                         }
                     }
@@ -1160,7 +1164,9 @@ fun CreateLeadBottomSheet(
                                             includeSupportPhone = includeSupportPhone,
                                             originalTotal = finalOriginalTotal,
                                             discountAmount = finalDiscountAmount,
-                                            language = selectedLanguage
+                                            language = selectedLanguage,
+                                            orgName = orgName,
+                                            messagingProfile = messagingProfile
                                         )
                                     }
                                     onDismiss()
@@ -1202,7 +1208,9 @@ fun CreateLeadBottomSheet(
                                                     includeSupportPhone = includeSupportPhone,
                                                     originalTotal = finalOriginalTotal,
                                                     discountAmount = finalDiscountAmount,
-                                                    language = selectedLanguage
+                                                    language = selectedLanguage,
+                                                    orgName = orgName,
+                                                    messagingProfile = messagingProfile
                                                 )
                                             }
                                             onDismiss()
