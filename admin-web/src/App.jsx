@@ -12,6 +12,7 @@ import DispatchCenter from './components/DispatchCenter';
 import SaasAdminDashboard from './components/SaasAdminDashboard';
 import MigrationTool from './components/MigrationTool';
 import Suspended from './components/Suspended';
+import WhatsAppTemplatesManager from './components/WhatsAppTemplatesManager';
 
 function App() {
   const { user, loading, orgStatus, role } = useAuth();
@@ -42,6 +43,7 @@ function App() {
           <Route path="/dispatch" element={<DispatchCenter />} />
           <Route path="/saas-admin" element={<SaasAdminDashboard />} />
           <Route path="/super-migrate" element={<MigrationTool />} />
+          <Route path="/wa-templates" element={<WhatsAppTemplatesManager />} />
         </Route>
 
         <Route path="/suspended" element={user && orgStatus === 'suspended' && role !== 'superadmin' ? <Suspended /> : <Navigate to="/dashboard" />} />

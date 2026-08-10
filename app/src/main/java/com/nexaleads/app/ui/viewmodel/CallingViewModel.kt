@@ -132,6 +132,9 @@ class CallingViewModel @Inject constructor(
     private val _categories = MutableStateFlow<List<Category>>(emptyList())
     val categories: StateFlow<List<Category>> = _categories
 
+    private val _whatsappTemplates = MutableStateFlow<List<com.nexaleads.app.data.model.WhatsAppTemplate>>(emptyList())
+    val whatsappTemplates: StateFlow<List<com.nexaleads.app.data.model.WhatsAppTemplate>> = _whatsappTemplates
+
     private val prefs: SharedPreferences = context.getSharedPreferences("leadflow_prefs", Context.MODE_PRIVATE)
 
     private val _pendingCallLeadId = MutableStateFlow<String?>(prefs.getString("pending_call_lead_id", null))
@@ -392,6 +395,7 @@ class CallingViewModel @Inject constructor(
 
     private var productsJob: kotlinx.coroutines.Job? = null
     private var categoriesJob: kotlinx.coroutines.Job? = null
+    private var whatsappTemplatesJob: kotlinx.coroutines.Job? = null
     private var leadsJob: kotlinx.coroutines.Job? = null
     private var metricsJob: kotlinx.coroutines.Job? = null
     private var salesJob: kotlinx.coroutines.Job? = null
@@ -400,6 +404,7 @@ class CallingViewModel @Inject constructor(
         _currentUserId.value = null
         productsJob?.cancel()
         categoriesJob?.cancel()
+        whatsappTemplatesJob?.cancel()
         leadsJob?.cancel()
         metricsJob?.cancel()
         salesJob?.cancel()
@@ -410,6 +415,7 @@ class CallingViewModel @Inject constructor(
         _salesMetrics.value = SalesMetrics()
         _products.value = emptyList()
         _categories.value = emptyList()
+        _whatsappTemplates.value = emptyList()
     }
 
     fun initialize(userId: String, name: String, contactNumber: String, orgId: String, orgName: String) {
@@ -438,6 +444,14 @@ class CallingViewModel @Inject constructor(
                 .catch { e -> e.printStackTrace() }
                 .collect { fetchedCategories ->
                     _categories.value = fetchedCategories
+                }
+        }
+
+        whatsappTemplatesJob = viewModelScope.launch {
+            repository.getWhatsAppTemplates()
+                .catch { e -> e.printStackTrace() }
+                .collect { fetchedTemplates ->
+                    _whatsappTemplates.value = fetchedTemplates
                 }
         }
 

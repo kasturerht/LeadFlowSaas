@@ -29,6 +29,7 @@ class LeadRepository @Inject constructor(
     private fun interactionsCol() = db.collection("organizations").document(orgId).collection("interactions")
     private fun productsCol() = db.collection("organizations").document(orgId).collection("products")
     private fun categoriesCol() = db.collection("organizations").document(orgId).collection("categories")
+    private fun whatsappTemplatesCol() = db.collection("organizations").document(orgId).collection("whatsapp_templates")
     fun getLeadsForUser(userId: String, limit: Long = 100): Flow<List<Lead>> = callbackFlow {
         val listener = leadsCol()
             .whereEqualTo("assignedTo", userId)
@@ -353,7 +354,32 @@ class LeadRepository @Inject constructor(
         awaitClose { listener.remove() }
     }
 
+    fun getWhatsAppTemplates(): Flow<List<com.nexaleads.app.data.model.WhatsAppTemplate>> = callbackFlow {
+        val listener = whatsappTemplatesCol()
+            .whereEqualTo("isActive", true)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    trySend(emptyList())
+                    return@addSnapshotListener
+                }
+                if (snapshot != null) {
+                    val templates = snapshot.documents.mapNotNull { doc ->
+                        com.nexaleads.app.data.model.WhatsAppTemplate(
+                            id = doc.id,
+                            statusTrigger = doc.getString("statusTrigger") ?: "",
+                            language = doc.getString("language") ?: "",
+                            templateText = doc.getString("templateText") ?: "",
+                            isActive = doc.getBoolean("isActive") ?: false,
+                            updatedAt = doc.getString("updatedAt") ?: ""
+                        )
+                    }
+                    trySend(templates)
+                }
+            }
+        awaitClose { listener.remove() }
+    }
     
+
     suspend fun forceSeedProducts() {
         try {
             val batch = db.batch()

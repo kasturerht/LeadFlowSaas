@@ -1,6 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
+import { getFunctions } from "firebase/functions";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCYFB7XDtK_l4WgLS3gPgBp4Jufv7Xkb1o",
@@ -16,6 +17,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
+export const functions = getFunctions(app, 'asia-south1');
 
 // Initialize Secondary Firebase (Used exclusively for creating users without logging out admin)
 const secondaryApp = initializeApp(firebaseConfig, "Secondary");

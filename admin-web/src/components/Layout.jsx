@@ -3,7 +3,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebase';
 import { useAuth } from '../AuthContext';
-import { Users, PhoneCall, TrendingUp, LogOut, Tag, BarChart3, Package, ShieldAlert } from 'lucide-react';
+import { Users, PhoneCall, TrendingUp, LogOut, Tag, BarChart3, Package, ShieldAlert, MessageSquare } from 'lucide-react';
 export default function Layout() {
   const { role, orgId, impersonatingOrgId, orgName } = useAuth();
   const navigate = useNavigate();
@@ -136,6 +136,13 @@ export default function Layout() {
                 <div style={innerContentStyle}>
                   <Tag size={16} />
                   <span>Products</span>
+                </div>
+              </NavLink>
+
+              <NavLink to="/wa-templates" style={navLinkStyle}>
+                <div style={innerContentStyle}>
+                  <MessageSquare size={16} />
+                  <span>WA Templates</span>
                 </div>
               </NavLink>
 

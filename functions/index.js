@@ -123,3 +123,70 @@ exports.onLeadWritten = functions.region('asia-south1').firestore
 
         return null;
     });
+
+exports.generateWhatsAppTemplate = functions.region('asia-south1')
+    .runWith({ secrets: ["GEMINI_API_KEY"] })
+    .https.onCall(async (data, context) => {
+    // 1. Verify Authentication
+    if (!context.auth) {
+        throw new functions.https.HttpsError(
+            'unauthenticated', 
+            'You must be logged in to generate templates.'
+        );
+    }
+
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+        throw new functions.https.HttpsError(
+            'failed-precondition', 
+            'GEMINI_API_KEY environment variable is missing.'
+        );
+    }
+
+    const { status, language, orgName, products } = data;
+    
+    if (!status || !language) {
+        throw new functions.https.HttpsError(
+            'invalid-argument', 
+            'Status and Language are required fields.'
+        );
+    }
+
+    const prompt = `You are an expert Silicon Valley level copywriter for high-converting sales WhatsApp messages.
+Write a highly converting, professional, and concise WhatsApp message for a customer whose lead status is '${status}'.
+The message MUST be in ${language}.
+The organization sending the message is '${orgName || 'our company'}'.
+Their available products might be related to: '${products || 'our catalog'}'.
+
+CRITICAL RULES:
+1. You MUST include these exact placeholder tags where appropriate: {{customer_name}}, {{product_list}}, {{org_name}}, {{support_number}}.
+2. Do NOT write any conversational filler (e.g. "Here is your template", "Sure!"). 
+3. Output ONLY the raw template text that will be directly sent to the customer.
+4. Use polite emojis naturally.
+5. If the status is "Order Placed", ensure the tone is celebratory and reassuring. If it's a "Follow-up", ensure the tone is polite but creates slight urgency.`;
+
+    try {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: { temperature: 0.3 }
+            })
+        });
+
+        if (!response.ok) {
+            const err = await response.text();
+            console.error("Gemini API Error:", err);
+            throw new functions.https.HttpsError('internal', 'AI generation failed from Gemini API.');
+        }
+
+        const json = await response.json();
+        const generatedText = json.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        
+        return { text: generatedText.trim() };
+    } catch (e) {
+        console.error("Error calling Gemini API:", e);
+        throw new functions.https.HttpsError('internal', 'An error occurred during AI generation.');
+    }
+});

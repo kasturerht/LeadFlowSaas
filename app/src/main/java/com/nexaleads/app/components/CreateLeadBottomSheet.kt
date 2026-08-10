@@ -190,6 +190,7 @@ fun CreateLeadBottomSheet(
     }
 
     val saveToContactsPref by viewModel.saveToContactsPreference.collectAsStateWithLifecycle()
+    val whatsappTemplates by viewModel.whatsappTemplates.collectAsStateWithLifecycle()
     var isSaveToContactsToggleOn by remember(saveToContactsPref) { mutableStateOf(saveToContactsPref) }
 
     LaunchedEffect(isSaveToContactsToggleOn) {
@@ -995,6 +996,31 @@ fun CreateLeadBottomSheet(
                             )
                         }
                     }
+                } else {
+                    val hasTemplate = whatsappTemplates.any { it.isActive && it.statusTrigger.equals(selectedStatus, ignoreCase = true) }
+                    if (hasTemplate) {
+                        item {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            SmartWhatsAppTemplateCard(
+                                status = selectedStatus,
+                                autoLaunch = autoLaunchWhatsApp,
+                                onAutoLaunchChange = { autoLaunchWhatsApp = it },
+                                selectedLanguage = selectedLanguage,
+                                onLanguageChange = { selectedLanguage = it },
+                                templates = whatsappTemplates,
+                                mockLead = com.nexaleads.app.data.model.Lead(
+                                    id = "",
+                                    name = clientName.trim().ifEmpty { "Client Name" },
+                                    phone = selectedNumber,
+                                    product = selectedProduct,
+                                    status = selectedStatus,
+                                    subStatus = selectedSubStatus
+                                ),
+                                orgName = orgName,
+                                messagingProfile = messagingProfile
+                            )
+                        }
+                    }
                 }
 
                 item {
@@ -1168,6 +1194,25 @@ fun CreateLeadBottomSheet(
                                             orgName = orgName,
                                             messagingProfile = messagingProfile
                                         )
+                                    } else if (autoLaunchWhatsApp) {
+                                        val template = whatsappTemplates.firstOrNull { 
+                                            it.isActive && it.statusTrigger.equals(selectedStatus, ignoreCase = true) && 
+                                            it.language.equals(selectedLanguage, ignoreCase = true) 
+                                        } ?: whatsappTemplates.firstOrNull { it.isActive && it.statusTrigger.equals(selectedStatus, ignoreCase = true) }
+                                        
+                                        if (template != null) {
+                                            val messageText = com.nexaleads.app.utils.WhatsAppSender.parseDynamicTemplate(
+                                                templateText = template.templateText,
+                                                lead = updatedLead,
+                                                orgName = orgName,
+                                                messagingProfile = messagingProfile
+                                            )
+                                            com.nexaleads.app.utils.WhatsAppSender.sendCustomMessage(
+                                                context = context,
+                                                phone = purePhone,
+                                                messageText = messageText
+                                            )
+                                        }
                                     }
                                     onDismiss()
                                 } else {
@@ -1212,6 +1257,25 @@ fun CreateLeadBottomSheet(
                                                     orgName = orgName,
                                                     messagingProfile = messagingProfile
                                                 )
+                                            } else if (autoLaunchWhatsApp) {
+                                                val template = whatsappTemplates.firstOrNull { 
+                                                    it.isActive && it.statusTrigger.equals(selectedStatus, ignoreCase = true) && 
+                                                    it.language.equals(selectedLanguage, ignoreCase = true) 
+                                                } ?: whatsappTemplates.firstOrNull { it.isActive && it.statusTrigger.equals(selectedStatus, ignoreCase = true) }
+                                                
+                                                if (template != null) {
+                                                    val messageText = com.nexaleads.app.utils.WhatsAppSender.parseDynamicTemplate(
+                                                        templateText = template.templateText,
+                                                        lead = newLead,
+                                                        orgName = orgName,
+                                                        messagingProfile = messagingProfile
+                                                    )
+                                                    com.nexaleads.app.utils.WhatsAppSender.sendCustomMessage(
+                                                        context = context,
+                                                        phone = purePhone,
+                                                        messageText = messageText
+                                                    )
+                                                }
                                             }
                                             onDismiss()
                                         },

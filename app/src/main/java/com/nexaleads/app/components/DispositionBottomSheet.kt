@@ -91,6 +91,7 @@ fun DispositionBottomSheet(
     var includeSupportPhone by remember { mutableStateOf(true) }
     var selectedLanguage by remember { mutableStateOf("Marathi") }
     val telecallerContact by viewModel.telecallerContact.collectAsStateWithLifecycle()
+    val whatsappTemplates by viewModel.whatsappTemplates.collectAsStateWithLifecycle()
 
     var originalTotalValue by remember { mutableStateOf(lead.originalTotalValue ?: "") }
     var discountAmount by remember { mutableStateOf(lead.discountAmount ?: "") }
@@ -240,6 +241,25 @@ fun DispositionBottomSheet(
                             orgName = orgName,
                             messagingProfile = messagingProfile
                         )
+                    } else if (autoLaunchWhatsApp) {
+                        val template = whatsappTemplates.firstOrNull { 
+                            it.isActive && it.statusTrigger.equals(selectedStatus, ignoreCase = true) && 
+                            it.language.equals(selectedLanguage, ignoreCase = true) 
+                        } ?: whatsappTemplates.firstOrNull { it.isActive && it.statusTrigger.equals(selectedStatus, ignoreCase = true) }
+                        
+                        if (template != null) {
+                            val messageText = com.nexaleads.app.utils.WhatsAppSender.parseDynamicTemplate(
+                                templateText = template.templateText,
+                                lead = updatedLead,
+                                orgName = orgName,
+                                messagingProfile = messagingProfile
+                            )
+                            com.nexaleads.app.utils.WhatsAppSender.sendCustomMessage(
+                                context = context,
+                                phone = currentLead.phone,
+                                messageText = messageText
+                            )
+                        }
                     }
                     onSaveSuccess(selectedStatus)
                     isSaving = false
@@ -657,6 +677,28 @@ fun DispositionBottomSheet(
                             onIncludeSupportPhoneChange = { includeSupportPhone = it },
                             selectedLanguage = selectedLanguage,
                             onLanguageChange = { selectedLanguage = it },
+                            orgName = orgName,
+                            messagingProfile = messagingProfile
+                        )
+                    }
+                }
+            } else {
+                val hasTemplate = whatsappTemplates.any { it.isActive && it.statusTrigger.equals(selectedStatus, ignoreCase = true) }
+                if (hasTemplate) {
+                    item {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        SmartWhatsAppTemplateCard(
+                            status = selectedStatus,
+                            autoLaunch = autoLaunchWhatsApp,
+                            onAutoLaunchChange = { autoLaunchWhatsApp = it },
+                            selectedLanguage = selectedLanguage,
+                            onLanguageChange = { selectedLanguage = it },
+                            templates = whatsappTemplates,
+                            mockLead = lead.copy(
+                                status = selectedStatus,
+                                subStatus = selectedSubStatus,
+                                product = selectedProduct
+                            ),
                             orgName = orgName,
                             messagingProfile = messagingProfile
                         )

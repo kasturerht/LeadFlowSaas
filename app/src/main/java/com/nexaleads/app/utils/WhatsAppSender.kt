@@ -29,6 +29,58 @@ object WhatsAppSender {
         }
     }
 
+    fun parseDynamicTemplate(
+        templateText: String,
+        lead: Lead,
+        orgName: String,
+        messagingProfile: MessagingProfile?
+    ): String {
+        var parsed = templateText
+        
+        val safeOrgName = if (orgName.isNotBlank() && orgName != "ORGANIZATION") orgName else "our company"
+        
+        val productStr = if (lead.product.isNotBlank()) {
+            lead.product.split(",").joinToString("\n") { "• ${it.trim()}" }
+        } else ""
+
+        parsed = parsed.replace("{{customer_name}}", lead.name, ignoreCase = true)
+        parsed = parsed.replace("{{product_list}}", productStr, ignoreCase = true)
+        parsed = parsed.replace("{{org_name}}", safeOrgName, ignoreCase = true)
+        parsed = parsed.replace("{{support_number}}", messagingProfile?.supportPhone ?: "", ignoreCase = true)
+        
+        return parsed.trim()
+    }
+
+    fun sendCustomMessage(
+        context: Context,
+        phone: String,
+        messageText: String
+    ) {
+        val cleanDigits = phone.filter { it.isDigit() }
+        if (cleanDigits.length < 10) {
+            Toast.makeText(context, "Invalid phone number.", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val waPhone = "91" + cleanDigits.takeLast(10)
+        
+        val waPackage = getWhatsAppPackage(context)
+        try {
+            val encodedMsg = Uri.encode(messageText)
+            val uri = Uri.parse("https://api.whatsapp.com/send?phone=$waPhone&text=$encodedMsg")
+            val intent = Intent(Intent.ACTION_VIEW, uri).apply {
+                if (waPackage != null) {
+                    setPackage(waPackage)
+                }
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Toast.makeText(context, "WhatsApp is not installed or failed to launch.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+
     fun sendTemplates(
         context: Context,
         lead: Lead,
@@ -88,7 +140,7 @@ Best Regards,
 
         try {
             val intent = Intent(Intent.ACTION_VIEW).apply {
-                data = Uri.parse("https://api.whatsapp.com/send?phone=$waPhone&text=${URLEncoder.encode(messageText, "UTF-8")}")
+                data = Uri.parse("https://api.whatsapp.com/send?phone=$waPhone&text=${Uri.encode(messageText)}")
                 setPackage(waPackage)
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
@@ -401,7 +453,7 @@ Best Regards,
         
         val waPackage = getWhatsAppPackage(context)
         try {
-            val encodedMsg = URLEncoder.encode(messageText, "UTF-8")
+            val encodedMsg = Uri.encode(messageText)
             val uri = Uri.parse("https://api.whatsapp.com/send?phone=$waPhone&text=$encodedMsg")
             val intent = Intent(Intent.ACTION_VIEW, uri).apply {
                 if (waPackage != null) {
@@ -553,7 +605,7 @@ Best Regards,
         val waPackage = getWhatsAppPackage(context)
         
         try {
-            val encodedMsg = URLEncoder.encode(messageText, "UTF-8")
+            val encodedMsg = Uri.encode(messageText)
             val uri = Uri.parse("https://api.whatsapp.com/send?phone=$waPhone&text=$encodedMsg")
             val intent = Intent(Intent.ACTION_VIEW, uri).apply {
                 if (waPackage != null) {
