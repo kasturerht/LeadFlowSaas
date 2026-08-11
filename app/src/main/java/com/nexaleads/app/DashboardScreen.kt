@@ -78,10 +78,15 @@ fun DashboardScreen(
         lead
     }
     var showDispositionSheet by remember { mutableStateOf(false) }
+    var contextLeadForDisposition by remember { mutableStateOf<Lead?>(null) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     
     var showCreateLeadSheet by remember { mutableStateOf(false) }
+    var selectedLeadToEdit by remember { mutableStateOf<Lead?>(null) }
     val createLeadSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    var showCustomer360 by remember { mutableStateOf(false) }
+    var selectedLeadFor360 by remember { mutableStateOf<Lead?>(null) }
 
     val lifecycleOwner = LocalLifecycleOwner.current
     val pendingMediaLead by viewModel.pendingMediaLead.collectAsStateWithLifecycle()
@@ -658,9 +663,42 @@ fun DashboardScreen(
         }
     }
 
-    if (showDispositionSheet && pendingCallLead != null) {
+    if (showCustomer360 && selectedLeadFor360 != null) {
+        val customer360ViewModel: com.nexaleads.app.ui.viewmodel.Customer360ViewModel = androidx.hilt.navigation.compose.hiltViewModel()
+        val c360SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        com.nexaleads.app.components.Customer360BottomSheet(
+            initialLead = selectedLeadFor360!!,
+            viewModel = customer360ViewModel,
+            sheetState = c360SheetState,
+            onDismiss = { showCustomer360 = false; selectedLeadFor360 = null },
+            onLogActivityClick = { contextLead ->
+                showCustomer360 = false
+                viewModel.setPendingCall(contextLead.id)
+                contextLeadForDisposition = contextLead
+                showDispositionSheet = true
+            },
+            onPlaceOrderClick = { contextLead ->
+                showCustomer360 = false
+                viewModel.createReorder(
+                    parentLead = contextLead,
+                    onSuccess = { newLead ->
+                        selectedLeadToEdit = newLead
+                        showCreateLeadSheet = true
+                    },
+                    onError = { }
+                )
+            },
+            onOrderCardClick = { contextLead ->
+                showCustomer360 = false
+                // Dashboard doesn't show order details. Let's just close for now.
+            }
+        )
+    }
+
+    if (showDispositionSheet && (pendingCallLead != null || contextLeadForDisposition != null)) {
+        val activeLead = contextLeadForDisposition ?: pendingCallLead!!
         DispositionBottomSheet(
-            lead = pendingCallLead!!,
+            lead = activeLead,
             viewModel = viewModel,
             sheetState = sheetState,
             snackbarHostState = snackbarHostState,
@@ -670,17 +708,18 @@ fun DashboardScreen(
             onDismiss = {
                 showDispositionSheet = false
                 viewModel.clearPendingCall()
+                contextLeadForDisposition = null
             },
             onSaveSuccess = { newStatus ->
-                val savedLead = pendingCallLead!!
                 showDispositionSheet = false
                 viewModel.clearPendingCall()
+                contextLeadForDisposition = null
                 
                 // Business Logic Filter: Don't send WhatsApp for Invalid or Not Interested
                 if (newStatus != "Invalid" && newStatus != "Not Interested" && newStatus != "Deleted") {
                     com.nexaleads.app.utils.WhatsAppSender.sendTemplates(
                         context,
-                        savedLead,
+                        activeLead,
                         sendText = true,
                         orgName = orgName,
                         messagingProfile = messagingProfile
@@ -895,13 +934,17 @@ fun DashboardScreen(
         CreateLeadBottomSheet(
             viewModel = viewModel,
             sheetState = createLeadSheetState,
+            leadToEdit = selectedLeadToEdit,
             orgName = orgName,
             messagingProfile = messagingProfile,
-            onDismiss = { showCreateLeadSheet = false },
+            onDismiss = { 
+                showCreateLeadSheet = false 
+                selectedLeadToEdit = null
+            },
             onExistingLeadFound = { existingLead ->
                 showCreateLeadSheet = false
-                viewModel.setPendingCall(existingLead.id)
-                showDispositionSheet = true
+                selectedLeadFor360 = existingLead
+                showCustomer360 = true
             }
         )
     }

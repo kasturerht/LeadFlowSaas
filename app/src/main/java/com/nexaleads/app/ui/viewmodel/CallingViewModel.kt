@@ -658,7 +658,7 @@ class CallingViewModel @Inject constructor(
 
     fun createReorder(
         parentLead: Lead,
-        onSuccess: () -> Unit,
+        onSuccess: (Lead) -> Unit,
         onError: (String) -> Unit
     ) {
         viewModelScope.launch {
@@ -710,7 +710,7 @@ class CallingViewModel @Inject constructor(
                     updateMetricsOptimistically(oldStatus = null, newStatus = "Order Placed")
                     val isRev = isRevenue("Order Placed", parentLead.paymentMethod, parentLead.paymentStatus)
                     updateSalesMetricsOptimistically(if (isRev) amtNum else 0L, if (isRev) 1 else 0)
-                    onSuccess()
+                    onSuccess(newLead)
                 } else {
                     onError(errorMsg)
                 }

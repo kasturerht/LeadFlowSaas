@@ -90,6 +90,12 @@ fun CreateLeadBottomSheet(
     var userModifiedProducts by remember { mutableStateOf(false) }
     var showCancellationReasonDialog by remember { mutableStateOf(false) }
     
+    val customTagsPrefKey = "custom_tags_fmcg"
+    val sharedPrefs = context.getSharedPreferences("LeadFlowPrefs", Context.MODE_PRIVATE)
+    var userCustomTags by remember { mutableStateOf(sharedPrefs.getStringSet(customTagsPrefKey, setOf())?.toList() ?: emptyList()) }
+    var showCustomTagDialog by remember { mutableStateOf(false) }
+    var newCustomTagText by remember { mutableStateOf("") }
+    
     // Order Dispatch Fields
     var shippingAddress by remember { mutableStateOf(leadToEdit?.address ?: draft.shippingAddress) }
     var shippingCity by remember { mutableStateOf(leadToEdit?.city ?: draft.shippingCity) }
@@ -230,7 +236,7 @@ fun CreateLeadBottomSheet(
         val isProductRelevant = selectedStatus in listOf(Constants.STATUS_INQUIRY, "Product Inquiry Only", "Product Inquiry", Constants.STATUS_ORDER_PLACED, "Order Placed", Constants.STATUS_FOLLOW_UP, "Follow-up")
         val isFollowUpRelevant = selectedStatus in listOf(
             Constants.STATUS_FOLLOW_UP, "Follow-up",
-            Constants.STATUS_INQUIRY, "Product Enquiry",
+            Constants.STATUS_INQUIRY, "Product Enquiry", "Product Inquiry", "Product Inquiry Only",
             Constants.STATUS_CALL_NOT_ANSWERED, "Call Not Answered",
             "Call Back", "No answer"
         )
@@ -696,7 +702,7 @@ fun CreateLeadBottomSheet(
                                                     } else {
                                                         selectedStatus = option
                                                         val productRequiredStatuses = listOf(Constants.STATUS_INQUIRY, "Product Inquiry Only", "Product Inquiry", Constants.STATUS_ORDER_PLACED, "Order Placed", Constants.STATUS_FOLLOW_UP, "Follow-up")
-                                                        if (option in productRequiredStatuses && selectedProduct.isEmpty()) {
+                                                        if (option in productRequiredStatuses) {
                                                             showProductPopup = true
                                                         }
                                                     }
@@ -833,7 +839,7 @@ fun CreateLeadBottomSheet(
                     }
                 }
 
-                if (selectedStatus == "Follow-up") {
+                if (selectedStatus in listOf(Constants.STATUS_FOLLOW_UP, "Follow-up", Constants.STATUS_INQUIRY, "Product Enquiry", "Product Inquiry", "Product Inquiry Only", Constants.STATUS_CALL_NOT_ANSWERED, "Call Not Answered", "Call Back", "No answer")) {
                     item {
                         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             Text("FOLLOW-UP DATE", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextSecondary, letterSpacing = 1.2.sp)
@@ -1044,6 +1050,77 @@ fun CreateLeadBottomSheet(
                     )
                 }
                 
+                // SECTION: AI PREDICTIVE CHIPS
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text("✨ QUICK RESPONSE TAGS", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = ModernViolet, letterSpacing = 1.2.sp)
+                        val quickTags = listOf(
+                            "🎯 Interested", "💰 Price Too High", "📦 Order Confirmed", 
+                            "⏳ Will order next month", "❌ Not interested", "👨‍⚕️ Asking for doctor advice",
+                            "📱 Sent details on WhatsApp", "📞 Did not pick up", "🗓️ Call later"
+                        )
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            quickTags.forEach { tag ->
+                                Box(modifier = Modifier
+                                    .clip(RoundedCornerShape(100.dp))
+                                    .background(AccentSurface)
+                                    .border(1.dp, Color.Transparent, RoundedCornerShape(100.dp))
+                                    .clickable(enabled = !isLocked) { 
+                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                        remarkNotes = if (remarkNotes.isEmpty()) tag else "$remarkNotes | $tag" 
+                                    }
+                                    .padding(horizontal = 14.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
+                                    Text(tag, fontSize = 12.sp, color = TextPrimary, fontWeight = FontWeight.Medium)
+                                }
+                            }
+                            
+                            userCustomTags.forEach { tag ->
+                                Box(modifier = Modifier
+                                    .clip(RoundedCornerShape(100.dp))
+                                    .background(ModernViolet.copy(alpha=0.08f))
+                                    .border(1.dp, ModernViolet.copy(alpha=0.2f), RoundedCornerShape(100.dp))
+                                    .clickable(enabled = !isLocked) { 
+                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                        remarkNotes = if (remarkNotes.isEmpty()) tag else "$remarkNotes | $tag" 
+                                    }
+                                    .padding(start = 14.dp, end = 10.dp, top = 8.dp, bottom = 8.dp), contentAlignment = Alignment.Center) {
+                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        Text(tag, fontSize = 12.sp, color = ModernViolet, fontWeight = FontWeight.Bold)
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(CircleShape)
+                                                .background(ModernViolet.copy(alpha=0.15f))
+                                                .clickable(enabled = !isLocked) {
+                                                    val updatedList = userCustomTags.toMutableList().apply { remove(tag) }
+                                                    userCustomTags = updatedList
+                                                    sharedPrefs.edit().putStringSet(customTagsPrefKey, updatedList.toSet()).apply()
+                                                }
+                                                .padding(4.dp)
+                                        ) {
+                                            Text("✕", fontSize = 10.sp, color = ModernViolet, fontWeight = FontWeight.Black)
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            Box(modifier = Modifier
+                                .clip(RoundedCornerShape(100.dp))
+                                .border(1.dp, ModernViolet.copy(alpha=0.5f), RoundedCornerShape(100.dp))
+                                .clickable(enabled = !isLocked) { 
+                                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                    newCustomTagText = ""; showCustomTagDialog = true 
+                                }
+                                .padding(horizontal = 14.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
+                                Text("+ Add Note", fontSize = 12.sp, color = ModernViolet, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+                
                 item {
                     val buttonGradient = androidx.compose.ui.graphics.Brush.horizontalGradient(
                         colors = listOf(ModernViolet, ModernVioletDark)
@@ -1100,8 +1177,8 @@ fun CreateLeadBottomSheet(
                                 Toast.makeText(context, "Please select a Product", Toast.LENGTH_SHORT).show()
                                 return@Button
                             }
-                            if (selectedStatus == "Follow-up" && followUpDate.isEmpty()) {
-                                Toast.makeText(context, "Please select a date", Toast.LENGTH_SHORT).show()
+                            if ((selectedStatus == "Follow-up" || selectedStatus == Constants.STATUS_FOLLOW_UP || selectedStatus == Constants.STATUS_INQUIRY || selectedStatus == "Product Inquiry Only" || selectedStatus == "Product Inquiry") && followUpDate.isEmpty()) {
+                                Toast.makeText(context, "Please select a follow-up date", Toast.LENGTH_SHORT).show()
                                 return@Button
                             }
                             
@@ -1146,7 +1223,7 @@ fun CreateLeadBottomSheet(
                                 val isProductRelevant = selectedStatus in listOf(Constants.STATUS_INQUIRY, "Product Inquiry Only", "Product Inquiry", Constants.STATUS_ORDER_PLACED, "Order Placed", Constants.STATUS_FOLLOW_UP, "Follow-up")
                                 val isFollowUpRelevant = selectedStatus in listOf(
                                     Constants.STATUS_FOLLOW_UP, "Follow-up",
-                                    Constants.STATUS_INQUIRY, "Product Enquiry",
+                                    Constants.STATUS_INQUIRY, "Product Enquiry", "Product Inquiry", "Product Inquiry Only",
                                     Constants.STATUS_CALL_NOT_ANSWERED, "Call Not Answered",
                                     "Call Back", "No answer"
                                 )
@@ -1513,6 +1590,47 @@ fun CreateLeadBottomSheet(
                 }
             },
             containerColor = SurfaceLight
+        )
+    }
+
+    if (showCustomTagDialog) {
+        AlertDialog(
+            onDismissRequest = { showCustomTagDialog = false },
+            title = { Text("Add Custom Tag", fontWeight = FontWeight.Bold, color = TextPrimary) },
+            text = {
+                OutlinedTextField(
+                    value = newCustomTagText,
+                    onValueChange = { newCustomTagText = it },
+                    label = { Text("Tag Name") },
+                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = ModernViolet, unfocusedBorderColor = BorderSubtle),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+            },
+            containerColor = SurfaceLight,
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val trimmed = newCustomTagText.trim()
+                        if (trimmed.isNotEmpty() && !userCustomTags.contains(trimmed)) {
+                            val updatedList = userCustomTags + trimmed
+                            userCustomTags = updatedList
+                            sharedPrefs.edit().putStringSet(customTagsPrefKey, updatedList.toSet()).apply()
+                        }
+                        showCustomTagDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = ModernViolet),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text("Save", color = CleanWhite, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCustomTagDialog = false }) {
+                    Text("Cancel", color = TextSecondary, fontWeight = FontWeight.Medium)
+                }
+            }
         )
     }
 }

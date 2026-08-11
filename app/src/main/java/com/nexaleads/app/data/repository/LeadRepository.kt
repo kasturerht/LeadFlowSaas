@@ -12,10 +12,13 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.async
+import javax.inject.Singleton
 import javax.inject.Inject
 import com.nexaleads.app.data.models.Product
 import com.nexaleads.app.data.models.Category
+import com.google.firebase.auth.FirebaseAuth
 
+@Singleton
 class LeadRepository @Inject constructor(
     private val db: FirebaseFirestore
 ) {
@@ -379,6 +382,57 @@ class LeadRepository @Inject constructor(
         awaitClose { listener.remove() }
     }
     
+    suspend fun getCustomerLeads(phone: String): List<Lead> {
+        return try {
+            val sanitized = PhoneUtils.sanitizePhoneNumber(phone)
+            val purePhone = if (sanitized.length >= 10) sanitized else phone.replace(Regex("[^0-9+]"), "").trim()
+            val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+            
+            val query1 = leadsCol().whereEqualTo("phone", purePhone).whereEqualTo("assignedTo", userId).get().await()
+            val query2 = leadsCol().whereEqualTo("phone", sanitized).whereEqualTo("assignedTo", userId).get().await()
+            val query3 = leadsCol().whereEqualTo("phone", "+91$sanitized").whereEqualTo("assignedTo", userId).get().await()
+            val query4 = leadsCol().whereEqualTo("phone", "0$sanitized").whereEqualTo("assignedTo", userId).get().await()
+            
+            val allDocs = query1.documents + query2.documents + query3.documents + query4.documents
+            val uniqueDocs = allDocs.distinctBy { it.id }
+            
+            uniqueDocs.mapNotNull { parseLead(it) }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    suspend fun getCustomerInteractions(leadIds: List<String>): List<Interaction> {
+        if (leadIds.isEmpty()) return emptyList()
+
+        return try {
+            val chunked = leadIds.chunked(10)
+            val allInteractions = mutableListOf<Interaction>()
+            val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+            
+            for (chunk in chunked) {
+                val snapshot = interactionsCol()
+                    .whereIn("leadId", chunk)
+                    .whereEqualTo("callerId", userId)
+                    .get()
+                    .await()
+                
+                snapshot.documents.forEach { doc ->
+                    try {
+                        val interaction = doc.toObject(Interaction::class.java)
+                        if (interaction != null) {
+                            allInteractions.add(interaction.copy(id = doc.id))
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+            }
+            allInteractions.sortedByDescending { it.timestamp }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
 
     suspend fun forceSeedProducts() {
         try {
@@ -533,124 +587,200 @@ class LeadRepository @Inject constructor(
     }
 
     suspend fun recalculateLeadStateAndBatch(leadId: String, interactionIdToDelete: String): Boolean {
-        return try {
-            val leadSnapshot = leadsCol().document(leadId).get().await()
-            val currentNotes = leadSnapshot.getString("notes") ?: ""
-            val safeMetaDump = if (currentNotes.contains("\n\n📞 ")) {
-                currentNotes.substringBefore("\n\n📞 ")
-            } else {
-                if (currentNotes.isNotEmpty() && !currentNotes.contains("📞 ")) currentNotes else ""
-            }
-
-            val interactionDoc = interactionsCol().document(interactionIdToDelete).get().await()
-            val callerId = interactionDoc.getString("callerId") ?: return false
-
-            val interactionsSnapshot = interactionsCol()
-                .whereEqualTo("leadId", leadId)
-                .whereEqualTo("callerId", callerId)
-                .get()
-                .await()
-            
-            val remainingInteractions = interactionsSnapshot.documents
-                .filter { it.id != interactionIdToDelete && it.getBoolean("isReverted") != true }
-                .mapNotNull { doc ->
-                    Interaction(
-                        id = doc.id,
-                        leadId = doc.getString("leadId") ?: "",
-                        callerId = doc.getString("callerId") ?: "",
-                        callerName = doc.getString("callerName") ?: "",
-                        statusBefore = doc.getString("statusBefore") ?: "",
-                        statusAfter = doc.getString("statusAfter") ?: "",
-                        notes = doc.getString("notes") ?: "",
-                        timestamp = doc.getString("timestamp") ?: "",
-                        duration = doc.getLong("duration")?.toInt() ?: 0,
-                    followUpDate = doc.getString("followUpDate"),
-                    isVisitLog = doc.getBoolean("isVisitLog") ?: false,
-                    subStatus = doc.getString("subStatus"),
-                    followUpTimeSlot = doc.getString("followUpTimeSlot"),
-                    paymentStatus = doc.getString("paymentStatus"),
-                    isSuspiciousShortCall = doc.getBoolean("isSuspiciousShortCall") ?: false,
-                    product = doc.getString("product"),
-                    address = doc.getString("address"),
-                    city = doc.getString("city"),
-                    pincode = doc.getString("pincode"),
-                    paymentMethod = doc.getString("paymentMethod"),
-                    orderAmount = doc.getString("orderAmount"),
-                    orderAmountNum = doc.getLong("orderAmountNum") ?: 0L,
-                    isReverted = doc.getBoolean("isReverted") ?: false
-                )
-            }
-            .sortedBy { it.timestamp }
-
-        var rebuiltNotes = safeMetaDump
-        remainingInteractions.forEach { interaction ->
-            if (interaction.notes.trim().isNotEmpty()) {
-                if (rebuiltNotes.isEmpty()) {
-                    rebuiltNotes = interaction.notes.trim()
+        var retries = 3
+        while (retries > 0) {
+            try {
+                android.util.Log.e("RevertDebug", "Attempt $retries for lead: $leadId, interaction: $interactionIdToDelete")
+                // 1. Fetch current Lead state for optimistic locking
+                val leadRef = leadsCol().document(leadId)
+                val initialLeadSnapshot = leadRef.get().await()
+                if (!initialLeadSnapshot.exists()) {
+                    android.util.Log.e("RevertDebug", "Lead does not exist!")
+                    return false
+                }
+                val initialUpdatedAt = initialLeadSnapshot.get("updatedAt") // Can be Timestamp or Long
+                
+                val currentNotes = initialLeadSnapshot.getString("notes") ?: ""
+                val safeMetaDump = if (currentNotes.contains("\n\ndY\"z ")) {
+                    currentNotes.substringBefore("\n\ndY\"z ")
                 } else {
-                    rebuiltNotes += "\n\n📞 ${interaction.notes.trim()}"
+                    if (currentNotes.isNotEmpty() && !currentNotes.contains("dY\"z ")) currentNotes else ""
+                }
+    
+                // 2. Fetch ALL Interactions for this lead (Filtered by callerId to satisfy Security Rules)
+                val userId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+                if (userId == null) {
+                    android.util.Log.e("RevertDebug", "User ID is null!")
+                    return false
+                }
+                val interactionsSnapshot = interactionsCol()
+                    .whereEqualTo("leadId", leadId)
+                    .whereEqualTo("callerId", userId)
+                    .get()
+                    .await()
+                
+                android.util.Log.e("RevertDebug", "Fetched ${interactionsSnapshot.size()} interactions")
+                val remainingInteractions = interactionsSnapshot.documents
+                    .filter { it.id != interactionIdToDelete && it.getBoolean("isReverted") != true }
+                    .mapNotNull { doc ->
+                        Interaction(
+                            id = doc.id,
+                            leadId = doc.getString("leadId") ?: "",
+                            callerId = doc.getString("callerId") ?: "",
+                            callerName = doc.getString("callerName") ?: "",
+                            statusBefore = doc.getString("statusBefore") ?: "",
+                            statusAfter = doc.getString("statusAfter") ?: "",
+                            notes = doc.getString("notes") ?: "",
+                            timestamp = doc.getString("timestamp") ?: "",
+                            duration = doc.getLong("duration")?.toInt() ?: 0,
+                            followUpDate = doc.getString("followUpDate"),
+                            isVisitLog = doc.getBoolean("isVisitLog") ?: false,
+                            subStatus = doc.getString("subStatus"),
+                            followUpTimeSlot = doc.getString("followUpTimeSlot"),
+                            paymentStatus = doc.getString("paymentStatus"),
+                            isSuspiciousShortCall = doc.getBoolean("isSuspiciousShortCall") ?: false,
+                            product = doc.getString("product"),
+                            address = doc.getString("address"),
+                            city = doc.getString("city"),
+                            pincode = doc.getString("pincode"),
+                            paymentMethod = doc.getString("paymentMethod"),
+                            orderAmount = doc.getString("orderAmount"),
+                            orderAmountNum = doc.getLong("orderAmountNum") ?: 0L,
+                            isReverted = doc.getBoolean("isReverted") ?: false
+                        )
+                    }
+                    .sortedBy { it.timestamp }
+    
+                // 3. Rebuild Notes chronologically
+                var rebuiltNotes = safeMetaDump
+                remainingInteractions.forEach { interaction ->
+                    if (interaction.notes.trim().isNotEmpty()) {
+                        if (rebuiltNotes.isEmpty()) {
+                            rebuiltNotes = interaction.notes.trim()
+                        } else {
+                            rebuiltNotes += "\n\ndY\"z ${interaction.notes.trim()}"
+                        }
+                    }
+                }
+    
+                // 4. Determine True Status & State
+                val latestInteraction = remainingInteractions.lastOrNull()
+                var finalStatus = latestInteraction?.statusAfter ?: "New"
+                val rawNormalizedStatus = Constants.normalizeStatus(finalStatus)
+                
+                val latestOrderInteraction = remainingInteractions.lastOrNull { 
+                    Constants.normalizeStatus(it.statusAfter) == Constants.STATUS_ORDER_PLACED || !it.product.isNullOrEmpty() 
+                }
+                
+                // Anti-Ghost Order Logic
+                if (rawNormalizedStatus == Constants.STATUS_ORDER_PLACED || rawNormalizedStatus == Constants.STATUS_DISPATCHED || rawNormalizedStatus == Constants.STATUS_DELIVERED) {
+                    if (latestOrderInteraction == null || latestOrderInteraction.product.isNullOrEmpty()) {
+                        // The order was reverted, rollback to previous valid status!
+                        val fallbackInteraction = remainingInteractions.lastOrNull { 
+                            val s = Constants.normalizeStatus(it.statusAfter)
+                            s != Constants.STATUS_ORDER_PLACED && s != Constants.STATUS_DISPATCHED && s != Constants.STATUS_DELIVERED 
+                        }
+                        finalStatus = fallbackInteraction?.statusAfter ?: "New"
+                    }
+                }
+    
+                var finalFollowUpDate = remainingInteractions.lastOrNull { it.followUpDate != null }?.followUpDate
+                var finalSubStatus = remainingInteractions.lastOrNull { it.subStatus != null }?.subStatus
+                var finalTimeSlot = remainingInteractions.lastOrNull { it.followUpTimeSlot != null }?.followUpTimeSlot
+                val finalPaymentStatus = remainingInteractions.lastOrNull { it.paymentStatus != null }?.paymentStatus
+                
+                // State Clearing Bug Fix: Terminal statuses should clear follow-up state
+                val normFinalStatus = Constants.normalizeStatus(finalStatus)
+                val isTerminalStatus = normFinalStatus == Constants.STATUS_NOT_INTERESTED || 
+                                       normFinalStatus == Constants.STATUS_INVALID || 
+                                       normFinalStatus == Constants.STATUS_ORDER_PLACED ||
+                                       normFinalStatus == Constants.STATUS_ORDER_CANCELLED ||
+                                       normFinalStatus == Constants.STATUS_DELIVERED
+                
+                if (isTerminalStatus) {
+                    finalFollowUpDate = null
+                    finalSubStatus = null
+                    finalTimeSlot = null
+                }
+    
+                val updateMap = mutableMapOf<String, Any?>(
+                    "status" to finalStatus,
+                    "notes" to rebuiltNotes,
+                    "followUpDate" to finalFollowUpDate,
+                    "subStatus" to finalSubStatus,
+                    "followUpTimeSlot" to finalTimeSlot,
+                    "paymentStatus" to finalPaymentStatus
+                )
+    
+                if (normFinalStatus == Constants.STATUS_ORDER_PLACED || normFinalStatus == Constants.STATUS_DISPATCHED || normFinalStatus == Constants.STATUS_DELIVERED) {
+                    updateMap["product"] = latestOrderInteraction?.product ?: ""
+                    updateMap["address"] = latestOrderInteraction?.address ?: ""
+                    updateMap["city"] = latestOrderInteraction?.city ?: ""
+                    updateMap["pincode"] = latestOrderInteraction?.pincode ?: ""
+                    updateMap["paymentMethod"] = latestOrderInteraction?.paymentMethod ?: ""
+                    updateMap["orderAmount"] = latestOrderInteraction?.orderAmount ?: ""
+                    updateMap["orderAmountNum"] = latestOrderInteraction?.orderAmountNum ?: 0L
+                    
+                    val pm = latestOrderInteraction?.paymentMethod
+                    val ps = latestOrderInteraction?.paymentStatus
+                    val isRev = !(pm == "Prepaid" && ps == "Link Sent")
+                    updateMap["convertedAt"] = if (isRev) latestOrderInteraction?.timestamp else null
+                } else {
+                    updateMap["product"] = ""
+                    updateMap["address"] = ""
+                    updateMap["city"] = ""
+                    updateMap["pincode"] = ""
+                    updateMap["paymentMethod"] = ""
+                    updateMap["orderAmount"] = ""
+                    updateMap["orderAmountNum"] = 0L
+                    updateMap["convertedAt"] = null
+                }
+                
+                updateMap["updatedAt"] = com.google.firebase.firestore.FieldValue.serverTimestamp()
+    
+                android.util.Log.e("RevertDebug", "Starting transaction...")
+                // 5. Transaction Commit (Optimistic Lock)
+                var transactionSuccess = false
+                db.runTransaction { transaction ->
+                    val currentLeadSnapshot = transaction.get(leadRef)
+                    val currentUpdatedAt = currentLeadSnapshot.get("updatedAt")
+                    
+                    // Allow transaction if timestamps match OR if this is the first interaction (null)
+                    val safeToProceed = (initialUpdatedAt == null && currentUpdatedAt == null) || 
+                                        (initialUpdatedAt?.toString() == currentUpdatedAt?.toString())
+                    
+                    if (safeToProceed) {
+                        transaction.update(leadRef, updateMap)
+                        val interactionRef = interactionsCol().document(interactionIdToDelete)
+                        transaction.update(interactionRef, "isReverted", true, "serverCreatedAt", com.google.firebase.firestore.FieldValue.serverTimestamp())
+                        transactionSuccess = true
+                        android.util.Log.e("RevertDebug", "Transaction successful inside block")
+                    } else {
+                        android.util.Log.e("RevertDebug", "Concurrency issue! initialUpdatedAt: $initialUpdatedAt, currentUpdatedAt: $currentUpdatedAt")
+                        // Throw exception to abort transaction gracefully, will be caught outside
+                        throw com.google.firebase.firestore.FirebaseFirestoreException(
+                            "Concurrent modification detected", 
+                            com.google.firebase.firestore.FirebaseFirestoreException.Code.ABORTED
+                        )
+                    }
+                }.await()
+                
+                if (transactionSuccess) {
+                    android.util.Log.e("RevertDebug", "Final return true")
+                    return true
+                }
+                
+            } catch (e: Exception) {
+                android.util.Log.e("RevertDebug", "Exception caught: ${e.message}", e)
+                // If it's our ABORTED exception, the loop will retry
+                if (e is com.google.firebase.firestore.FirebaseFirestoreException && e.code != com.google.firebase.firestore.FirebaseFirestoreException.Code.ABORTED) {
+                    return false
                 }
             }
+            retries--
         }
-
-        val latestInteraction = remainingInteractions.lastOrNull()
-        val finalStatus = latestInteraction?.statusAfter ?: "Pending"
-        val finalFollowUpDate = latestInteraction?.followUpDate
-        val finalSubStatus = latestInteraction?.subStatus
-        val finalTimeSlot = latestInteraction?.followUpTimeSlot
-        val finalPaymentStatus = latestInteraction?.paymentStatus
-
-        val latestOrderInteraction = remainingInteractions.lastOrNull { 
-            Constants.normalizeStatus(it.statusAfter) == Constants.STATUS_ORDER_PLACED || !it.product.isNullOrEmpty() 
-        }
-
-        val updateMap = mutableMapOf<String, Any?>(
-            "status" to finalStatus,
-            "notes" to rebuiltNotes,
-            "followUpDate" to finalFollowUpDate,
-            "subStatus" to finalSubStatus,
-            "followUpTimeSlot" to finalTimeSlot,
-            "paymentStatus" to finalPaymentStatus
-        )
-
-        if (Constants.normalizeStatus(finalStatus) == Constants.STATUS_ORDER_PLACED && latestOrderInteraction != null) {
-            updateMap["product"] = latestOrderInteraction.product ?: ""
-            updateMap["address"] = latestOrderInteraction.address ?: ""
-            updateMap["city"] = latestOrderInteraction.city ?: ""
-            updateMap["pincode"] = latestOrderInteraction.pincode ?: ""
-            updateMap["paymentMethod"] = latestOrderInteraction.paymentMethod ?: ""
-            updateMap["orderAmount"] = latestOrderInteraction.orderAmount ?: ""
-            updateMap["orderAmountNum"] = latestOrderInteraction.orderAmountNum
-            
-            val pm = latestOrderInteraction.paymentMethod
-            val ps = latestOrderInteraction.paymentStatus
-            val isRev = (finalStatus == "Order Placed" || finalStatus == "Dispatched" || finalStatus == "Delivered") && !(pm == "Prepaid" && ps == "Link Sent")
-            updateMap["convertedAt"] = if (isRev) latestOrderInteraction.timestamp else null
-        } else if (Constants.normalizeStatus(finalStatus) != Constants.STATUS_ORDER_PLACED) {
-            // Wipe ghost order data when reverting from an order status!
-            updateMap["product"] = ""
-            updateMap["address"] = ""
-            updateMap["city"] = ""
-            updateMap["pincode"] = ""
-            updateMap["paymentMethod"] = ""
-            updateMap["orderAmount"] = ""
-            updateMap["orderAmountNum"] = 0L
-            updateMap["convertedAt"] = null
-        }
-
-        val batch = db.batch()
-        val leadRef = leadsCol().document(leadId)
-        batch.update(leadRef, updateMap)
-            
-            val interactionRef = interactionsCol().document(interactionIdToDelete)
-            batch.update(interactionRef, "isReverted", true, "serverCreatedAt", com.google.firebase.firestore.FieldValue.serverTimestamp())
-            
-            batch.commit().await()
-            true
-        } catch (e: Exception) {
-            e.printStackTrace()
-            false
-        }
+        android.util.Log.e("RevertDebug", "Retries exhausted, returning false")
+        return false
     }
 
     suspend fun checkDuplicateLead(phone: String): Lead? {
@@ -905,5 +1035,35 @@ class LeadRepository @Inject constructor(
                 null
             }
         )
+    }
+    
+    suspend fun diagnoseRawData(targetPhone: String): String {
+        return try {
+            val sanitized = com.nexaleads.app.utils.PhoneUtils.sanitizePhoneNumber(targetPhone)
+            val pure = if (sanitized.length >= 10) sanitized else targetPhone.replace(Regex("[^0-9+]"), "").trim()
+            val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+            
+            val result = java.lang.StringBuilder("=== DIAGNOSTICS FOR ($targetPhone) ===\n")
+            result.append("purePhone: '$pure'\n")
+            result.append("sanitized: '$sanitized'\n\n")
+            
+            val allLeads = leadsCol().whereEqualTo("assignedTo", userId).get().await()
+            val exactMatches = allLeads.documents.filter { doc ->
+                val p = doc.getString("phone") ?: ""
+                p.contains(pure) || p.contains(sanitized) || p.contains(targetPhone)
+            }
+            
+            result.append("Found ${exactMatches.size} leads containing this phone number in DB:\n")
+            exactMatches.forEach { doc ->
+                result.append("ID: ${doc.id}\n")
+                result.append("  phone: '${doc.getString("phone")}'\n")
+                result.append("  name: '${doc.getString("name")}'\n")
+                result.append("  status: '${doc.getString("status")}'\n")
+                result.append("  orderAmount: '${doc.getString("orderAmount")}'\n")
+            }
+            result.toString()
+        } catch (e: Exception) {
+            "Error diagnosing: ${e.message}"
+        }
     }
 }

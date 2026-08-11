@@ -69,7 +69,10 @@ fun PremiumProductSelector(
     }
 
     val totalItems = qtyMap.values.sum()
-    val totalPrice = productsList.sumOf { (qtyMap[it.name] ?: 0) * it.getEffectiveOfferPrice() }
+    val totalPrice = productsList.sumOf { product -> 
+        val qty = qtyMap.entries.find { it.key.equals(product.name.trim(), ignoreCase = true) }?.value ?: 0
+        qty * product.getEffectiveOfferPrice() 
+    }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -178,7 +181,8 @@ fun PremiumProductSelector(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(filteredProducts) { product ->
-                        val qty = qtyMap[product.name] ?: 0
+                        val trimmedName = product.name.trim()
+                        val qty = qtyMap.entries.find { it.key.equals(trimmedName, ignoreCase = true) }?.value ?: 0
                         ProductCard(
                             product = product,
                             masterProducts = productsList,
@@ -186,14 +190,16 @@ fun PremiumProductSelector(
                             onIncrement = {
                                 view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                                 val newMap = qtyMap.toMutableMap()
-                                newMap[product.name] = qty + 1
+                                newMap[trimmedName] = qty + 1
                                 qtyMap = newMap
                             },
                             onDecrement = {
                                 if (qty > 0) {
                                     view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                                     val newMap = qtyMap.toMutableMap()
-                                    if (qty == 1) newMap.remove(product.name) else newMap[product.name] = qty - 1
+                                    // Remove using case-insensitive match just to be safe
+                                    val existingKey = newMap.keys.find { it.equals(trimmedName, ignoreCase = true) } ?: trimmedName
+                                    if (qty == 1) newMap.remove(existingKey) else newMap[existingKey] = qty - 1
                                     qtyMap = newMap
                                 }
                             }

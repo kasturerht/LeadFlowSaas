@@ -187,10 +187,13 @@ fun TodayCallingListScreen(
     }
 
     var selectedLead by remember { mutableStateOf<Lead?>(null) }
+    var selectedLeadToEdit by remember { mutableStateOf<Lead?>(null) }
+    var contextLeadForDisposition by remember { mutableStateOf<Lead?>(null) }
     var leadForQuickActions by remember { mutableStateOf<Lead?>(null) }
     val quickActionsSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var isVisitToggleOn by remember { mutableStateOf(false) }
     var showBottomSheet by remember { mutableStateOf(false) }
+    var showCustomer360 by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     
     var showWhatsAppSheet by remember { mutableStateOf(false) }
@@ -682,10 +685,43 @@ fun TodayCallingListScreen(
                 }
             )
         }
+
+        if (showCustomer360 && selectedLead != null) {
+            val customer360ViewModel: com.nexaleads.app.ui.viewmodel.Customer360ViewModel = androidx.hilt.navigation.compose.hiltViewModel()
+            val c360SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+            com.nexaleads.app.components.Customer360BottomSheet(
+                initialLead = selectedLead!!,
+                viewModel = customer360ViewModel,
+                sheetState = c360SheetState,
+                onDismiss = { showCustomer360 = false; selectedLead = null },
+                onLogActivityClick = { contextLead ->
+                    showCustomer360 = false
+                    contextLeadForDisposition = contextLead
+                    showBottomSheet = true
+                },
+                onPlaceOrderClick = { contextLead ->
+                    showCustomer360 = false
+                    viewModel.createReorder(
+                        parentLead = contextLead,
+                        onSuccess = { newLead ->
+                            selectedLeadToEdit = newLead
+                        },
+                        onError = { error ->
+                            Toast.makeText(context, "Error: $error", Toast.LENGTH_SHORT).show()
+                        }
+                    )
+                },
+                onOrderCardClick = { contextLead ->
+                    showCustomer360 = false
+                    selectedLeadToEdit = contextLead
+                }
+            )
+        }
         
-        if (showBottomSheet && selectedLead != null) {
+        if (showBottomSheet && (selectedLead != null || contextLeadForDisposition != null)) {
+            val activeLead = contextLeadForDisposition ?: selectedLead!!
             DispositionBottomSheet(
-                lead = selectedLead!!,
+                lead = activeLead,
                 viewModel = viewModel,
                 sheetState = sheetState,
                 snackbarHostState = snackbarHostState,
@@ -695,23 +731,38 @@ fun TodayCallingListScreen(
                 onDismiss = {
                     showBottomSheet = false
                     viewModel.clearPendingCall()
+                    contextLeadForDisposition = null
                 },
                 onSaveSuccess = { newStatus ->
-                    val savedLead = selectedLead!!
                     showBottomSheet = false
-                    selectedLead = null
                     viewModel.clearPendingCall()
+                    contextLeadForDisposition = null
                     
-                    // Business Logic Filter: Don't send WhatsApp for Invalid or Not Interested
                     if (newStatus != "Invalid" && newStatus != "Not Interested" && newStatus != "Deleted") {
                         com.nexaleads.app.utils.WhatsAppSender.sendTemplates(
                             context,
-                            savedLead,
+                            activeLead,
                             sendText = true,
                             orgName = orgName,
                             messagingProfile = messagingProfile
                         )
                     }
+                }
+            )
+        }
+
+        if (selectedLeadToEdit != null) {
+            com.nexaleads.app.components.CreateLeadBottomSheet(
+                viewModel = viewModel,
+                sheetState = sheetState,
+                leadToEdit = selectedLeadToEdit,
+                orgName = orgName,
+                messagingProfile = messagingProfile,
+                onDismiss = { selectedLeadToEdit = null },
+                onExistingLeadFound = { existingLead ->
+                    selectedLeadToEdit = null
+                    selectedLead = existingLead
+                    showCustomer360 = true
                 }
             )
         }
@@ -727,30 +778,6 @@ fun TodayCallingListScreen(
                     selectedLead = null
                 }
             )
-        }
-    }
-
-
-
-    
-    if (selectedOrderIdForDetails != null) {
-        val leadToEdit = leads.find { it.id == selectedOrderIdForDetails }
-        if (leadToEdit != null) {
-            com.nexaleads.app.components.CreateLeadBottomSheet(
-                viewModel = viewModel,
-                sheetState = sheetState,
-                leadToEdit = leadToEdit,
-                orgName = orgName,
-                messagingProfile = messagingProfile,
-                onDismiss = { selectedOrderIdForDetails = null },
-                onExistingLeadFound = { existingLead ->
-                    selectedOrderIdForDetails = null
-                    selectedLead = existingLead
-                    showBottomSheet = true
-                }
-            )
-        } else {
-            selectedOrderIdForDetails = null
         }
     }
     

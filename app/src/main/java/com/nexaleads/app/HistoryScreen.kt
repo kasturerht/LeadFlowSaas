@@ -145,16 +145,16 @@ fun HistoryScreen(
     }
 
     if (showPopup && selectedLead != null && selectedInteraction != null) {
-        RevertDialog(
-            interactions = interactions,
-            selectedInteraction = selectedInteraction!!,
-            onDismiss = { showPopup = false },
-            onConfirm = {
-                viewModel.revertInteraction(selectedInteraction!!)
-                Toast.makeText(context, "Action Reverted.", Toast.LENGTH_SHORT).show()
-                showPopup = false
-            }
-        )
+          RevertDialog(
+              interactions = interactions,
+              selectedInteraction = selectedInteraction!!,
+              onDismiss = { showPopup = false },
+              onConfirm = {
+                  viewModel.revertInteraction(selectedInteraction!!, context)
+                  Toast.makeText(context, "Action Reverted.", Toast.LENGTH_SHORT).show()
+                  showPopup = false
+              }
+          )
     }
 }
 
