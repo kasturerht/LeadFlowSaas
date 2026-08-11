@@ -33,20 +33,79 @@ object WhatsAppSender {
         templateText: String,
         lead: Lead,
         orgName: String,
-        messagingProfile: MessagingProfile?
+        messagingProfile: MessagingProfile?,
+        productsList: List<com.nexaleads.app.data.models.Product> = emptyList(),
+        customPaymentLink: String = "upi://pay?pa=merchant@icici&pn=Order%20Payment"
     ): String {
         var parsed = templateText
         
         val safeOrgName = if (orgName.isNotBlank() && orgName != "ORGANIZATION") orgName else "our company"
         
-        val productStr = if (lead.product.isNotBlank()) {
+        val productListStr = if (lead.product.isNotBlank()) {
             lead.product.split(",").joinToString("\n") { "• ${it.trim()}" }
-        } else ""
+        } else "• N/A"
 
-        parsed = parsed.replace("{{customer_name}}", lead.name, ignoreCase = true)
-        parsed = parsed.replace("{{product_list}}", productStr, ignoreCase = true)
+        val productListWithQtyStr = if (lead.product.isNotBlank()) {
+            lead.product.split(",").joinToString("\n") { 
+                val trimmed = it.trim()
+                if (trimmed.contains(Regex("[0-9]+x", RegexOption.IGNORE_CASE))) "• $trimmed" else "• $trimmed (1x)"
+            }
+        } else "• N/A"
+
+        val addressParts = listOf(lead.address, lead.city, lead.state, lead.pincode)
+            .filter { it.isNotBlank() }
+        val deliveryAddress = if (addressParts.isNotEmpty()) addressParts.joinToString(", ") else "N/A"
+
+        var calculatedOriginalTotal = lead.originalTotalValue.toDoubleOrNull() ?: 0.0
+        var calculatedOrderAmount = lead.orderAmount.toDoubleOrNull() ?: 0.0
+        var calculatedDiscount = lead.discountAmount.toDoubleOrNull() ?: 0.0
+        
+        if (calculatedOriginalTotal == 0.0 && calculatedOrderAmount == 0.0 && productsList.isNotEmpty() && lead.product.isNotBlank()) {
+            val selectedProductItems = lead.product.split(",").map { it.trim() }
+            val regex = Regex("""^(.*?)(?:\s*\((\d+)x\))?$""", RegexOption.IGNORE_CASE)
+            
+            selectedProductItems.forEach { item ->
+                val matchResult = regex.find(item)
+                if (matchResult != null) {
+                    val pName = matchResult.groupValues[1].trim()
+                    val qtyStr = matchResult.groupValues.getOrNull(2) ?: ""
+                    val qty = if (qtyStr.isNotBlank()) qtyStr.toIntOrNull() ?: 1 else 1
+                    
+                    val match = productsList.firstOrNull { it.name.equals(pName, ignoreCase = true) }
+                    if (match != null) {
+                        calculatedOriginalTotal += (match.getEffectiveMrp() * qty)
+                        calculatedOrderAmount += (match.getEffectiveOfferPrice() * qty)
+                    }
+                }
+            }
+            if (calculatedOriginalTotal > 0) {
+                calculatedDiscount = calculatedOriginalTotal - calculatedOrderAmount
+            }
+        }
+
+        val regularPrice = if (calculatedOriginalTotal > 0) "₹${calculatedOriginalTotal.toInt()}" else "N/A"
+        val specialPrice = if (calculatedOrderAmount > 0) "₹${calculatedOrderAmount.toInt()}" else "N/A"
+        val savedAmount = if (calculatedDiscount > 0) "₹${calculatedDiscount.toInt()}" else "N/A"
+        
+        val discountPercentage = if (calculatedOriginalTotal > 0 && calculatedDiscount > 0) "${((calculatedDiscount * 100) / calculatedOriginalTotal).toInt()}%" else "0%"
+
+        val paymentStatus = lead.paymentStatus.takeIf { !it.isNullOrBlank() } 
+            ?: lead.paymentMethod.takeIf { it.isNotBlank() } 
+            ?: "N/A"
+
+        parsed = parsed.replace("{{customer_name}}", lead.name.takeIf { it.isNotBlank() } ?: "Customer", ignoreCase = true)
+        parsed = parsed.replace("{{product_list}}", productListStr, ignoreCase = true)
+        parsed = parsed.replace("{{product_list_with_quantity}}", productListWithQtyStr, ignoreCase = true)
         parsed = parsed.replace("{{org_name}}", safeOrgName, ignoreCase = true)
-        parsed = parsed.replace("{{support_number}}", messagingProfile?.supportPhone ?: "", ignoreCase = true)
+        parsed = parsed.replace("{{support_number}}", messagingProfile?.supportPhone ?: "N/A", ignoreCase = true)
+        
+        parsed = parsed.replace("{{delivery_address}}", deliveryAddress, ignoreCase = true)
+        parsed = parsed.replace("{{regular_price}}", regularPrice, ignoreCase = true)
+        parsed = parsed.replace("{{special_price}}", specialPrice, ignoreCase = true)
+        parsed = parsed.replace("{{saved_amount}}", savedAmount, ignoreCase = true)
+        parsed = parsed.replace("{{discount_percentage}}", discountPercentage, ignoreCase = true)
+        parsed = parsed.replace("{{payment_status}}", paymentStatus, ignoreCase = true)
+        parsed = parsed.replace("{{upi_payment_link}}", customPaymentLink, ignoreCase = true)
         
         return parsed.trim()
     }

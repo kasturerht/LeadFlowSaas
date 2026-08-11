@@ -35,6 +35,7 @@ fun SmartWhatsAppTemplateCard(
     mockLead: Lead,
     orgName: String,
     messagingProfile: com.nexaleads.app.data.model.MessagingProfile?,
+    productsList: List<com.nexaleads.app.data.models.Product> = emptyList(),
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -46,7 +47,7 @@ fun SmartWhatsAppTemplateCard(
     val textSecondary = Color(0xFF64748B)
 
     // Filter templates for current status
-    val availableTemplates = templates.filter { it.isActive && it.statusTrigger.equals(status, ignoreCase = true) }
+    val availableTemplates = templates.filter { it.isActive && com.nexaleads.app.Constants.normalizeStatus(it.statusTrigger).equals(status, ignoreCase = true) }
     
     // Available languages based on available templates
     val availableLanguages = availableTemplates.map { it.language }.distinct()
@@ -63,22 +64,26 @@ fun SmartWhatsAppTemplateCard(
         ?: availableTemplates.firstOrNull()
 
     val livePreviewText = remember(
-        currentTemplate, mockLead, orgName, messagingProfile
+        currentTemplate, mockLead, orgName, messagingProfile, selectedLanguage
     ) {
         if (currentTemplate != null) {
             WhatsAppSender.parseDynamicTemplate(
                 templateText = currentTemplate.templateText,
                 lead = mockLead,
                 orgName = orgName,
-                messagingProfile = messagingProfile
+                messagingProfile = messagingProfile,
+                productsList = productsList
             )
         } else {
-            "No template available for $status in $selectedLanguage."
+            WhatsAppSender.generateDispositionMessage(
+                status = mockLead.status,
+                customerName = mockLead.name,
+                productName = mockLead.product,
+                language = selectedLanguage,
+                orgName = orgName
+            )
         }
     }
-
-    if (availableTemplates.isEmpty()) return // Don't show if no templates
-
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
@@ -162,7 +167,7 @@ fun SmartWhatsAppTemplateCard(
                     ) {
                         val languages = listOf("English" to "English", "Marathi" to "मराठी", "Hindi" to "हिंदी")
                         languages.forEach { (langCode, langLabel) ->
-                            val hasTemplateInLang = availableLanguages.any { it.equals(langCode, ignoreCase = true) }
+                            val hasTemplateInLang = availableTemplates.isEmpty() || availableLanguages.any { it.equals(langCode, ignoreCase = true) }
                             if (hasTemplateInLang) {
                                 val isSelected = selectedLanguage.equals(langCode, ignoreCase = true)
                                 Box(

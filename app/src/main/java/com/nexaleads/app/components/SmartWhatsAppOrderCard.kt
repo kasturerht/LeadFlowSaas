@@ -47,6 +47,7 @@ fun SmartWhatsAppOrderCard(
     supportNumber: String = "+91 98347 83503",
     orgName: String,
     messagingProfile: com.nexaleads.app.data.model.MessagingProfile?,
+    whatsappTemplates: List<com.nexaleads.app.data.model.WhatsAppTemplate> = emptyList(),
     onLanguageChange: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
@@ -69,9 +70,33 @@ fun SmartWhatsAppOrderCard(
 
     val livePreviewText = remember(
         status, customerName, products, address, paymentMode,
-        includeAddress, includePaymentLink, includeDispatchNote, includeSupportPhone, currentLanguage, originalTotalValue, discountAmount, supportNumber, orgName, messagingProfile
+        includeAddress, includePaymentLink, includeDispatchNote, includeSupportPhone, currentLanguage, originalTotalValue, discountAmount, supportNumber, orgName, messagingProfile, whatsappTemplates
     ) {
-        if (status == "Order Placed") {
+        val template = whatsappTemplates.firstOrNull { 
+            it.isActive && it.statusTrigger.equals(status, ignoreCase = true) && 
+            it.language.equals(currentLanguage, ignoreCase = true) 
+        } ?: whatsappTemplates.firstOrNull { it.isActive && it.statusTrigger.equals(status, ignoreCase = true) }
+
+        if (template != null) {
+            val dummyLead = com.nexaleads.app.data.model.Lead(
+                name = customerName,
+                product = products,
+                address = if (includeAddress) address else "",
+                city = "",
+                state = "",
+                pincode = "",
+                paymentMethod = paymentMode,
+                originalTotalValue = originalTotalValue,
+                discountAmount = discountAmount,
+                orderAmount = ""
+            )
+            WhatsAppSender.parseDynamicTemplate(
+                templateText = template.templateText,
+                lead = dummyLead,
+                orgName = orgName,
+                messagingProfile = messagingProfile
+            )
+        } else if (status == "Order Placed") {
             WhatsAppSender.generateOrderMessage(
                 customerName = customerName,
                 products = products,

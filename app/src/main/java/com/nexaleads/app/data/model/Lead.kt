@@ -68,6 +68,9 @@ fun Lead.getPrimaryCategory(): String {
     if (normStatus == Constants.STATUS_DISPATCHED) return "DISPATCHED"
     if (normStatus == Constants.STATUS_ORDER_PLACED) return "CONVERTED"
     if (normStatus == Constants.STATUS_NOT_INTERESTED || normStatus == Constants.STATUS_INVALID || normStatus == Constants.STATUS_ORDER_CANCELLED) return "REJECTED"
+    
+    if (!this.followUpDate.isNullOrEmpty()) return "FOLLOWUP"
+    
     if (normStatus == Constants.STATUS_FOLLOW_UP) return "FOLLOWUP"
     if (normStatus == Constants.STATUS_CALL_NOT_ANSWERED) return "ATTEMPTED"
     if (normStatus == Constants.STATUS_INQUIRY) return "INQUIRY"

@@ -34,6 +34,8 @@ object Constants {
         if (raw == null || raw.trim().isEmpty()) return "Pending"
         val trimmed = raw.trim()
         val lower = trimmed.lowercase(java.util.Locale.ROOT)
+        if (lower.contains("enquiry") || lower.contains("inquiry")) return STATUS_INQUIRY
+        if (lower.contains("wrong number") || lower.contains("invalid")) return STATUS_INVALID
         return when (lower) {
             "no answer", "busy", "busy / cut", STATUS_CALL_NOT_ANSWERED.lowercase(java.util.Locale.ROOT) -> STATUS_CALL_NOT_ANSWERED
             "warm lead", "warm / on hold", STATUS_INQUIRY.lowercase(java.util.Locale.ROOT) -> STATUS_INQUIRY

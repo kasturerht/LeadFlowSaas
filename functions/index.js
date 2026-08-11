@@ -152,6 +152,12 @@ exports.generateWhatsAppTemplate = functions.region('asia-south1')
         );
     }
 
+    const allowedTags = [
+        '{{customer_name}}', '{{delivery_address}}', '{{product_list}}', '{{product_list_with_quantity}}',
+        '{{regular_price}}', '{{special_price}}', '{{saved_amount}}', '{{discount_percentage}}',
+        '{{payment_status}}', '{{upi_payment_link}}', '{{org_name}}', '{{support_number}}'
+    ];
+
     const prompt = `You are an expert Silicon Valley level copywriter for high-converting sales WhatsApp messages.
 Write a highly converting, professional, and concise WhatsApp message for a customer whose lead status is '${status}'.
 The message MUST be in ${language}.
@@ -159,14 +165,16 @@ The organization sending the message is '${orgName || 'our company'}'.
 Their available products might be related to: '${products || 'our catalog'}'.
 
 CRITICAL RULES:
-1. You MUST include these exact placeholder tags where appropriate: {{customer_name}}, {{product_list}}, {{org_name}}, {{support_number}}.
-2. Do NOT write any conversational filler (e.g. "Here is your template", "Sure!"). 
-3. Output ONLY the raw template text that will be directly sent to the customer.
-4. Use polite emojis naturally.
-5. If the status is "Order Placed", ensure the tone is celebratory and reassuring. If it's a "Follow-up", ensure the tone is polite but creates slight urgency.`;
+1. You MUST use placeholder tags from this EXACT list where appropriate: ${allowedTags.join(', ')}.
+2. NEVER invent custom tags. Only use the ones provided in the list above.
+3. If the status is "Order Placed", you MUST prioritize using pricing tags (like {{regular_price}}, {{special_price}}, {{discount_percentage}}) and payment tags ({{payment_status}}, {{upi_payment_link}}) to create a comprehensive order summary. Make the tone celebratory and reassuring.
+4. If the status is NOT related to a placed order (e.g., "Follow-up", "Product Enquiry"), DO NOT spam payment links or saved amounts unless it fits perfectly into a soft sales pitch.
+5. Do NOT write any conversational filler (e.g. "Here is your template", "Sure!"). 
+6. Output ONLY the raw template text that will be directly sent to the customer.
+7. Use polite emojis naturally.`;
 
     try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -178,6 +186,9 @@ CRITICAL RULES:
         if (!response.ok) {
             const err = await response.text();
             console.error("Gemini API Error:", err);
+            if (response.status === 429) {
+                throw new functions.https.HttpsError('resource-exhausted', 'AI is currently busy due to high demand. Please try again in a few moments.');
+            }
             throw new functions.https.HttpsError('internal', 'AI generation failed from Gemini API.');
         }
 

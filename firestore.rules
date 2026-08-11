@@ -5,8 +5,9 @@ service cloud.firestore {
     
     // Global Super Admin Check
     function isSuperAdmin() {
+      let mapping = get(/databases/$(database)/documents/user_mappings/$(request.auth.uid));
       return request.auth != null && (
-        get(/databases/$(database)/documents/user_mappings/$(request.auth.uid)).data.role == 'superadmin'
+        (mapping != null && mapping.data.role == 'superadmin')
         || request.auth.token.email == 'kasturerht@gmail.com'
         || request.auth.token.email == 'admin@nexaleads.com'
       );
@@ -46,7 +47,9 @@ service cloud.firestore {
       }
       
       function isAdmin() {
-        return request.auth != null && getUserDoc() != null && getUserDoc().data.role == 'admin';
+        return request.auth != null && (
+          (getUserDoc() != null && getUserDoc().data.role == 'admin') || isSuperAdmin()
+        );
       }
 
       function isTelecaller() {
