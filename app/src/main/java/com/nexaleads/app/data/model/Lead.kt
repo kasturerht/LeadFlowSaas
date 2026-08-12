@@ -3,8 +3,10 @@ package com.nexaleads.app.data.model
 import com.nexaleads.app.Constants
 
 import androidx.annotation.Keep
+import com.google.firebase.firestore.IgnoreExtraProperties
 
 @Keep
+@IgnoreExtraProperties
 data class Lead(
     val id: String = "",
     val name: String = "",
@@ -48,6 +50,8 @@ data class Lead(
     val parentLeadId: String? = null,
     val isReorder: Boolean = false,
     val searchKeywords: List<String> = emptyList(),
+    val totalOrdersCount: Int = 0,
+    val lifetimeOrderValue: Long = 0L,
     val updatedAt: Long? = null
 )
 

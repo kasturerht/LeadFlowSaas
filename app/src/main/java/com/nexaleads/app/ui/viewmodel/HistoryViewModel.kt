@@ -21,16 +21,27 @@ class HistoryViewModel @Inject constructor(
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
 
+    private val _error = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = _error
+
     fun fetchHistory(userId: String, orgId: String) {
         viewModelScope.launch {
             repository.setOrgId(orgId)
             _isLoading.value = true
+            _error.value = null
             try {
-                _interactions.value = repository.getRecentInteractions(userId)
-            } catch (e: Exception) {
-                // Handle error
-            } finally {
+                val interactionsList = repository.getRecentInteractions(userId)
+                _interactions.value = interactionsList
                 _isLoading.value = false
+            } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e // Don't swallow cancellation
+                _isLoading.value = false
+                android.util.Log.e("HistoryViewModel", "Error fetching history: ${e.message}", e)
+                if (e.message?.contains("INDEX_REQUIRED") == true || e.message?.contains("FAILED_PRECONDITION") == true) {
+                    _error.value = "Database Index Building. Please wait a few minutes."
+                } else {
+                    _error.value = e.message
+                }
             }
         }
     }
@@ -40,7 +51,7 @@ class HistoryViewModel @Inject constructor(
             try {
                 val success = repository.recalculateLeadStateAndBatch(interaction.leadId, interaction.id)
                 if (success) {
-                    _interactions.value = _interactions.value.filter { it.id != interaction.id }
+                    // Flow will automatically update the UI, no need to manually filter here
                     // Toast will be shown by UI
                 } else {
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {

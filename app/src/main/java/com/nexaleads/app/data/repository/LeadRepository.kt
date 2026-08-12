@@ -29,6 +29,7 @@ class LeadRepository @Inject constructor(
     }
 
     private fun leadsCol() = db.collection("organizations").document(orgId).collection("leads")
+    fun ordersCol() = db.collection("organizations").document(orgId).collection("orders_data")
     private fun interactionsCol() = db.collection("organizations").document(orgId).collection("interactions")
     private fun productsCol() = db.collection("organizations").document(orgId).collection("products")
     private fun categoriesCol() = db.collection("organizations").document(orgId).collection("categories")
@@ -169,121 +170,95 @@ class LeadRepository @Inject constructor(
     }
 
     fun getDashboardMetricsFlow(userId: String): Flow<Map<String, Long>> = callbackFlow {
-        val baseQuery = leadsCol().whereEqualTo("assignedTo", userId).whereEqualTo("archived", false)
-        
-        val listener = baseQuery.addSnapshotListener { snapshot, error ->
-            if (error != null) {
-                trySend(mapOf(
-                    "freshLeads" to 0L, "dueFollowups" to 0L, "confirmedOrders" to 0L,
-                    "pendingPayments" to 0L, "attempted" to 0L, "rejected" to 0L,
-                    "dispatched" to 0L, "delivered" to 0L, "rto" to 0L, "inquiries" to 0L
-                ))
-                return@addSnapshotListener
-            }
-            
-            if (snapshot != null) {
-                var freshLeads = 0L
-                var dueFollowups = 0L
-                var confirmedOrders = 0L
-                var pendingPayments = 0L
-                var attempted = 0L
-                var rejected = 0L
-                var dispatched = 0L
-                var delivered = 0L
-                var rto = 0L
-                var inquiries = 0L
-                
-                for (doc in snapshot.documents) {
-                    val lead = parseLead(doc) ?: continue
-                    val category = lead.getPrimaryCategory()
-                    
-                    when (category) {
-                        "PENDING" -> freshLeads++
-                        "FOLLOWUP" -> dueFollowups++
-                        "INQUIRY" -> inquiries++
-                        "ATTEMPTED" -> attempted++
-                        "REJECTED" -> rejected++
-                        "DISPATCHED" -> dispatched++
-                        "DELIVERED" -> delivered++
-                        "RTO" -> rto++
-                        "CONVERTED" -> {
-                            val isPending = lead.paymentMethod.equals("Prepaid", ignoreCase = true) && 
-                                            lead.paymentStatus?.equals("Link Sent", ignoreCase = true) == true
-                            if (isPending) pendingPayments++ else confirmedOrders++
-                        }
-                    }
-                }
-                
-                trySend(mapOf(
-                    "freshLeads" to freshLeads,
-                    "dueFollowups" to dueFollowups,
-                    "confirmedOrders" to confirmedOrders,
-                    "pendingPayments" to pendingPayments,
-                    "attempted" to attempted,
-                    "rejected" to rejected,
-                    "dispatched" to dispatched,
-                    "delivered" to delivered,
-                    "rto" to rto,
-                    "inquiries" to inquiries
-                ))
-            }
+        var leadsMetrics = mapOf<String, Long>("freshLeads" to 0L, "dueFollowups" to 0L, "inquiries" to 0L, "attempted" to 0L, "rejected" to 0L)
+        var ordersMetrics = mapOf<String, Long>("confirmedOrders" to 0L, "pendingPayments" to 0L, "dispatched" to 0L, "delivered" to 0L, "rto" to 0L)
+
+        val pushUpdate = {
+            val combined = mutableMapOf<String, Long>()
+            combined.putAll(leadsMetrics)
+            combined.putAll(ordersMetrics)
+            trySend(combined)
         }
-        
-        awaitClose { listener.remove() }
-    }
 
-    fun getSalesMetricsFlow(userId: String): Flow<Map<String, Long>> = callbackFlow {
-        val listener = leadsCol()
-            .whereEqualTo("assignedTo", userId)
-            .whereEqualTo("archived", false)
-            .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    trySend(mapOf("totalActive" to 0L, "todayCount" to 0L, "todayRev" to 0L, "weekRev" to 0L))
-                    return@addSnapshotListener
-                }
+        val leadsListener = leadsCol().whereEqualTo("assignedTo", userId).whereEqualTo("archived", false)
+            .addSnapshotListener { snapshot, _ ->
                 if (snapshot != null) {
-                    val isoFormat = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }
-                    val todayStr = isoFormat.format(java.util.Date())
-                    val cal = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC"))
-                    cal.add(java.util.Calendar.DAY_OF_YEAR, -7)
-                    val lastWeekStr = isoFormat.format(cal.time)
-
-                    var todayCount = 0L
-                    var todayRev = 0L
-                    var weekRev = 0L
-                    var totalActive = 0L
-
+                    var freshLeads = 0L; var dueFollowups = 0L; var inquiries = 0L; var attempted = 0L; var rejected = 0L
                     for (doc in snapshot.documents) {
                         val lead = parseLead(doc) ?: continue
                         val category = lead.getPrimaryCategory()
-                        
-                        if (category != "CONVERTED" && category != "DISPATCHED" && category != "DELIVERED") continue
-                        
-                        val isPending = lead.paymentMethod.equals("Prepaid", ignoreCase = true) && 
-                                        lead.paymentStatus?.equals("Link Sent", ignoreCase = true) == true
-                        if (isPending) continue
-                        
-                        totalActive++
-                        val fallbackCAt = lead.updatedAt?.let {
-                            java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US).apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }.format(java.util.Date(it))
-                        }
-                        val cAt = lead.convertedAt ?: fallbackCAt ?: continue
-                        val amtNum = lead.orderAmountNum
-
-                        if (cAt >= todayStr) {
-                            todayCount++
-                            todayRev += amtNum
-                        }
-                        if (cAt >= lastWeekStr) {
-                            weekRev += amtNum
+                        when (category) {
+                            "PENDING" -> freshLeads++
+                            "FOLLOWUP" -> dueFollowups++
+                            "INQUIRY" -> inquiries++
+                            "ATTEMPTED" -> attempted++
+                            "REJECTED" -> rejected++
                         }
                     }
-                    trySend(mapOf(
-                        "totalActive" to totalActive,
-                        "todayCount" to todayCount,
-                        "todayRev" to todayRev,
-                        "weekRev" to weekRev
-                    ))
+                    leadsMetrics = mapOf("freshLeads" to freshLeads, "dueFollowups" to dueFollowups, "inquiries" to inquiries, "attempted" to attempted, "rejected" to rejected)
+                    pushUpdate()
+                }
+            }
+
+        val ordersListener = ordersCol().whereEqualTo("assignedTo", userId)
+            .addSnapshotListener { snapshot, _ ->
+                if (snapshot != null) {
+                    var confirmedOrders = 0L; var pendingPayments = 0L; var dispatched = 0L; var delivered = 0L; var rto = 0L
+                    for (doc in snapshot.documents) {
+                        val order = doc.toObject(com.nexaleads.app.data.model.Order::class.java) ?: continue
+                        when (order.status) {
+                            "Order Placed", "Dispatched", "Delivered" -> {
+                                if (order.status == "Order Placed" && order.paymentMethod.equals("Prepaid", ignoreCase=true) && order.paymentStatus.equals("Link Sent", ignoreCase=true)) {
+                                    pendingPayments++
+                                } else {
+                                    confirmedOrders++
+                                    if (order.status == "Dispatched") dispatched++
+                                    if (order.status == "Delivered") delivered++
+                                }
+                            }
+                            "RTO" -> rto++
+                        }
+                    }
+                    ordersMetrics = mapOf("confirmedOrders" to confirmedOrders, "pendingPayments" to pendingPayments, "dispatched" to dispatched, "delivered" to delivered, "rto" to rto)
+                    pushUpdate()
+                }
+            }
+
+        awaitClose { 
+            leadsListener.remove()
+            ordersListener.remove()
+        }
+    }
+
+    fun getSalesMetricsFlow(userId: String): Flow<Map<String, Long>> = callbackFlow {
+        val isoFormat = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }
+        val cal = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC"))
+        cal.add(java.util.Calendar.DAY_OF_YEAR, -7)
+        val lastWeekStr = isoFormat.format(cal.time)
+
+        val listener = ordersCol()
+            .whereEqualTo("assignedTo", userId)
+            .whereGreaterThanOrEqualTo("createdAt", lastWeekStr)
+            .addSnapshotListener { snapshot, _ ->
+                if (snapshot != null) {
+                    val todayStr = isoFormat.format(java.util.Date())
+                    var todayCount = 0L; var todayRev = 0L; var weekRev = 0L; var weekCount = 0L
+                    for (doc in snapshot.documents) {
+                        val order = doc.toObject(com.nexaleads.app.data.model.Order::class.java) ?: continue
+                        if (order.status == "Order Cancelled" || order.status == "RTO" || order.status == "Cancelled") continue
+                        if (order.paymentMethod.equals("Prepaid", ignoreCase=true) && order.paymentStatus.equals("Link Sent", ignoreCase=true)) continue
+
+                        val cAt = if (order.createdAt.length >= 10) order.createdAt.substring(0, 10) else continue
+                        if (cAt >= todayStr) {
+                            todayCount++
+                            todayRev += order.orderAmountNum
+                        }
+                        if (cAt >= lastWeekStr) {
+                            weekCount++
+                            weekRev += order.orderAmountNum
+                        }
+                    }
+                    trySend(mapOf("todayCount" to todayCount, "todayRev" to todayRev, "weekCount" to weekCount, "weekRev" to weekRev))
                 }
             }
         awaitClose { listener.remove() }
@@ -565,6 +540,46 @@ class LeadRepository @Inject constructor(
         }
     }
     
+    
+    fun getOrdersForCustomer(customerId: String): Flow<List<com.nexaleads.app.data.model.Order>> = callbackFlow {
+        if (orgId.isEmpty()) {
+            trySend(emptyList())
+            close()
+            return@callbackFlow
+        }
+        val listener = ordersCol()
+            .whereEqualTo("customerId", customerId)
+            .orderBy("createdAtMillis", Query.Direction.DESCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    return@addSnapshotListener
+                }
+                if (snapshot != null) {
+                    val orders = snapshot.documents.mapNotNull { it.toObject(com.nexaleads.app.data.model.Order::class.java) }
+                    trySend(orders)
+                }
+            }
+        awaitClose { listener.remove() }
+    }
+
+    suspend fun updateLeadAddOrderAndInteractionBatch(
+        leadId: String,
+        leadUpdates: Map<String, Any?>,
+        order: com.nexaleads.app.data.model.Order,
+        interaction: Interaction
+    ) {
+        kotlinx.coroutines.withTimeoutOrNull(5000) {
+            val batch = db.batch()
+            val leadRef = leadsCol().document(leadId)
+            batch.update(leadRef, leadUpdates)
+            val orderRef = ordersCol().document(order.id)
+            batch.set(orderRef, order)
+            val interactionRef = interactionsCol().document(interaction.id)
+            batch.set(interactionRef, interaction)
+            batch.commit().await()
+        }
+    }
+
     suspend fun updateLeadAndAddInteractionBatch(leadId: String, updates: Map<String, Any?>, interaction: Interaction) {
         kotlinx.coroutines.withTimeoutOrNull(5000) {
             val batch = db.batch()
@@ -591,6 +606,34 @@ class LeadRepository @Inject constructor(
         while (retries > 0) {
             try {
                 android.util.Log.e("RevertDebug", "Attempt $retries for lead: $leadId, interaction: $interactionIdToDelete")
+                
+                // 0. Fetch the Interaction to delete and check for Order Deletion Logic
+                val interactionToDeleteRef = interactionsCol().document(interactionIdToDelete)
+                val interactionToDeleteSnapshot = interactionToDeleteRef.get().await()
+                val interactionToDelete = interactionToDeleteSnapshot.toObject(Interaction::class.java)
+                
+                var orderIdToDelete: String? = null
+                if (interactionToDelete != null) {
+                    val statusAfter = Constants.normalizeStatus(interactionToDelete.statusAfter)
+                    val isOrderRelated = statusAfter == Constants.STATUS_ORDER_PLACED
+                    if (isOrderRelated || interactionToDelete.associatedOrderId != null) {
+                        val associatedOrderId = interactionToDelete.associatedOrderId
+                        if (associatedOrderId != null) {
+                            val orderRef = ordersCol().document(associatedOrderId)
+                            val orderSnapshot = orderRef.get().await()
+                            if (orderSnapshot.exists()) {
+                                val orderStatus = orderSnapshot.getString("status") ?: ""
+                                if (orderStatus != "Order Placed") {
+                                    throw Exception("Cannot Revert: Order has already been processed (Status: $orderStatus). Please cancel manually if needed.")
+                                }
+                                orderIdToDelete = associatedOrderId
+                            }
+                        } else {
+                            throw Exception("Cannot Revert Legacy Order: This is a migrated older order without a direct link. Please cancel it manually from the Orders Dashboard.")
+                        }
+                    }
+                }
+                
                 // 1. Fetch current Lead state for optimistic locking
                 val leadRef = leadsCol().document(leadId)
                 val initialLeadSnapshot = leadRef.get().await()
@@ -598,7 +641,7 @@ class LeadRepository @Inject constructor(
                     android.util.Log.e("RevertDebug", "Lead does not exist!")
                     return false
                 }
-                val initialUpdatedAt = initialLeadSnapshot.get("updatedAt") // Can be Timestamp or Long
+                val initialUpdatedAt = initialLeadSnapshot.get("updatedAt")
                 
                 val currentNotes = initialLeadSnapshot.getString("notes") ?: ""
                 val safeMetaDump = if (currentNotes.contains("\n\ndY\"z ")) {
@@ -607,10 +650,9 @@ class LeadRepository @Inject constructor(
                     if (currentNotes.isNotEmpty() && !currentNotes.contains("dY\"z ")) currentNotes else ""
                 }
     
-                // 2. Fetch ALL Interactions for this lead (Filtered by callerId to satisfy Security Rules)
+                // 2. Fetch ALL Interactions for this lead
                 val userId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
                 if (userId == null) {
-                    android.util.Log.e("RevertDebug", "User ID is null!")
                     return false
                 }
                 val interactionsSnapshot = interactionsCol()
@@ -619,36 +661,9 @@ class LeadRepository @Inject constructor(
                     .get()
                     .await()
                 
-                android.util.Log.e("RevertDebug", "Fetched ${interactionsSnapshot.size()} interactions")
                 val remainingInteractions = interactionsSnapshot.documents
                     .filter { it.id != interactionIdToDelete && it.getBoolean("isReverted") != true }
-                    .mapNotNull { doc ->
-                        Interaction(
-                            id = doc.id,
-                            leadId = doc.getString("leadId") ?: "",
-                            callerId = doc.getString("callerId") ?: "",
-                            callerName = doc.getString("callerName") ?: "",
-                            statusBefore = doc.getString("statusBefore") ?: "",
-                            statusAfter = doc.getString("statusAfter") ?: "",
-                            notes = doc.getString("notes") ?: "",
-                            timestamp = doc.getString("timestamp") ?: "",
-                            duration = doc.getLong("duration")?.toInt() ?: 0,
-                            followUpDate = doc.getString("followUpDate"),
-                            isVisitLog = doc.getBoolean("isVisitLog") ?: false,
-                            subStatus = doc.getString("subStatus"),
-                            followUpTimeSlot = doc.getString("followUpTimeSlot"),
-                            paymentStatus = doc.getString("paymentStatus"),
-                            isSuspiciousShortCall = doc.getBoolean("isSuspiciousShortCall") ?: false,
-                            product = doc.getString("product"),
-                            address = doc.getString("address"),
-                            city = doc.getString("city"),
-                            pincode = doc.getString("pincode"),
-                            paymentMethod = doc.getString("paymentMethod"),
-                            orderAmount = doc.getString("orderAmount"),
-                            orderAmountNum = doc.getLong("orderAmountNum") ?: 0L,
-                            isReverted = doc.getBoolean("isReverted") ?: false
-                        )
-                    }
+                    .mapNotNull { it.toObject(Interaction::class.java)?.copy(id = it.id) }
                     .sortedBy { it.timestamp }
     
                 // 3. Rebuild Notes chronologically
@@ -672,10 +687,8 @@ class LeadRepository @Inject constructor(
                     Constants.normalizeStatus(it.statusAfter) == Constants.STATUS_ORDER_PLACED || !it.product.isNullOrEmpty() 
                 }
                 
-                // Anti-Ghost Order Logic
                 if (rawNormalizedStatus == Constants.STATUS_ORDER_PLACED || rawNormalizedStatus == Constants.STATUS_DISPATCHED || rawNormalizedStatus == Constants.STATUS_DELIVERED) {
                     if (latestOrderInteraction == null || latestOrderInteraction.product.isNullOrEmpty()) {
-                        // The order was reverted, rollback to previous valid status!
                         val fallbackInteraction = remainingInteractions.lastOrNull { 
                             val s = Constants.normalizeStatus(it.statusAfter)
                             s != Constants.STATUS_ORDER_PLACED && s != Constants.STATUS_DISPATCHED && s != Constants.STATUS_DELIVERED 
@@ -689,7 +702,6 @@ class LeadRepository @Inject constructor(
                 var finalTimeSlot = remainingInteractions.lastOrNull { it.followUpTimeSlot != null }?.followUpTimeSlot
                 val finalPaymentStatus = remainingInteractions.lastOrNull { it.paymentStatus != null }?.paymentStatus
                 
-                // State Clearing Bug Fix: Terminal statuses should clear follow-up state
                 val normFinalStatus = Constants.normalizeStatus(finalStatus)
                 val isTerminalStatus = normFinalStatus == Constants.STATUS_NOT_INTERESTED || 
                                        normFinalStatus == Constants.STATUS_INVALID || 
@@ -736,50 +748,55 @@ class LeadRepository @Inject constructor(
                     updateMap["convertedAt"] = null
                 }
                 
+                // 5. Recalculate Orders Count and LTV
+                val ordersSnapshot = ordersCol().whereEqualTo("customerId", leadId).get().await()
+                val remainingOrders = ordersSnapshot.documents.filter { it.id != orderIdToDelete }
+                val newTotalOrdersCount = remainingOrders.size
+                var newLtv = 0L
+                for (doc in remainingOrders) {
+                    val orderAmt = doc.getLong("orderAmountNum") ?: 0L
+                    newLtv += orderAmt
+                }
+                updateMap["totalOrdersCount"] = newTotalOrdersCount
+                updateMap["lifetimeOrderValue"] = newLtv
+                
                 updateMap["updatedAt"] = com.google.firebase.firestore.FieldValue.serverTimestamp()
     
-                android.util.Log.e("RevertDebug", "Starting transaction...")
-                // 5. Transaction Commit (Optimistic Lock)
+                // 6. Transaction Commit
                 var transactionSuccess = false
                 db.runTransaction { transaction ->
                     val currentLeadSnapshot = transaction.get(leadRef)
                     val currentUpdatedAt = currentLeadSnapshot.get("updatedAt")
                     
-                    // Allow transaction if timestamps match OR if this is the first interaction (null)
                     val safeToProceed = (initialUpdatedAt == null && currentUpdatedAt == null) || 
                                         (initialUpdatedAt?.toString() == currentUpdatedAt?.toString())
                     
                     if (safeToProceed) {
                         transaction.update(leadRef, updateMap)
-                        val interactionRef = interactionsCol().document(interactionIdToDelete)
-                        transaction.update(interactionRef, "isReverted", true, "serverCreatedAt", com.google.firebase.firestore.FieldValue.serverTimestamp())
+                        transaction.update(interactionToDeleteRef, "isReverted", true, "serverCreatedAt", com.google.firebase.firestore.FieldValue.serverTimestamp())
+                        if (orderIdToDelete != null) {
+                            transaction.delete(ordersCol().document(orderIdToDelete))
+                        }
                         transactionSuccess = true
-                        android.util.Log.e("RevertDebug", "Transaction successful inside block")
                     } else {
-                        android.util.Log.e("RevertDebug", "Concurrency issue! initialUpdatedAt: $initialUpdatedAt, currentUpdatedAt: $currentUpdatedAt")
-                        // Throw exception to abort transaction gracefully, will be caught outside
-                        throw com.google.firebase.firestore.FirebaseFirestoreException(
-                            "Concurrent modification detected", 
-                            com.google.firebase.firestore.FirebaseFirestoreException.Code.ABORTED
-                        )
+                        throw com.google.firebase.firestore.FirebaseFirestoreException("Concurrent modification detected", com.google.firebase.firestore.FirebaseFirestoreException.Code.ABORTED)
                     }
                 }.await()
                 
                 if (transactionSuccess) {
-                    android.util.Log.e("RevertDebug", "Final return true")
                     return true
                 }
                 
             } catch (e: Exception) {
-                android.util.Log.e("RevertDebug", "Exception caught: ${e.message}", e)
-                // If it's our ABORTED exception, the loop will retry
+                if (e.message?.contains("Cannot Revert") == true) {
+                    throw e // Re-throw custom validation errors so ViewModel can show them
+                }
                 if (e is com.google.firebase.firestore.FirebaseFirestoreException && e.code != com.google.firebase.firestore.FirebaseFirestoreException.Code.ABORTED) {
                     return false
                 }
             }
             retries--
         }
-        android.util.Log.e("RevertDebug", "Retries exhausted, returning false")
         return false
     }
 

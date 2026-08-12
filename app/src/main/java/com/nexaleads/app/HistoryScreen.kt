@@ -46,6 +46,7 @@ fun HistoryScreen(
 ) {
     val interactions by viewModel.interactions.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val errorMsg by viewModel.error.collectAsStateWithLifecycle()
     
     var showPopup by remember { mutableStateOf(false) }
     var selectedLead by remember { mutableStateOf<Lead?>(null) }
@@ -107,6 +108,10 @@ fun HistoryScreen(
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = ModernViolet)
                 }
+            } else if (errorMsg != null) {
+                Box(modifier = Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
+                    Text(text = errorMsg ?: "", color = StatusDanger, fontWeight = FontWeight.Medium)
+                }
             } else if (interactions.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text("No recent activity found.", color = TextSecondary)
@@ -120,16 +125,20 @@ fun HistoryScreen(
                         item {
                             DateHeader(dateHeader)
                         }
-                        itemsIndexed(items) { index, interaction ->
-                            val lead = fullLeadsList.find { it.id == interaction.leadId }
+                        itemsIndexed(
+                            items = items,
+                            key = { _, item -> item.id }
+                        ) { index, interaction ->
+                            val fallbackLead = fullLeadsList.find { it.id == interaction.leadId }
+                            val displayLeadName = interaction.leadName ?: fallbackLead?.name ?: "Unknown Lead"
                             val isLast = index == items.size - 1
                             TimelineHistoryItem(
                                 interaction = interaction,
-                                leadName = lead?.name ?: "Unknown Lead",
+                                leadName = displayLeadName,
                                 isLast = isLast,
                                 onClick = {
-                                    if (lead != null) {
-                                        selectedLead = lead
+                                    if (fallbackLead != null || interaction.leadName != null) {
+                                        selectedLead = fallbackLead ?: Lead(id = interaction.leadId, name = interaction.leadName ?: "Unknown Lead")
                                         selectedInteraction = interaction
                                         showPopup = true
                                     } else {

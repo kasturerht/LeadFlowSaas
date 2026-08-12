@@ -101,6 +101,14 @@ service cloud.firestore {
         allow create: if isTelecaller() && request.resource.data.callerId == request.auth.uid;
       }
 
+      // Orders subcollection
+      match /orders_data/{orderId} {
+        allow read, write: if isAdmin();
+        
+        allow read, update, delete: if isTelecaller() && resource.data.assignedTo == request.auth.uid;
+        allow create: if isTelecaller() && request.resource.data.assignedTo == request.auth.uid;
+      }
+
       // Products subcollection
       match /products/{productId} {
         allow read: if request.auth != null;

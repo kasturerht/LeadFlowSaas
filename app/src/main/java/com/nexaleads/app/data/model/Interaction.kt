@@ -1,13 +1,16 @@
 package com.nexaleads.app.data.model
 
 import androidx.annotation.Keep
+import com.google.firebase.firestore.IgnoreExtraProperties
 
 @Keep
+@IgnoreExtraProperties
 data class Interaction(
     val id: String = "",
     val leadId: String = "",
     val callerId: String = "",
     val callerName: String = "",
+    val leadName: String? = null,
     val statusBefore: String = "",
     val statusAfter: String = "",
     val notes: String = "",
@@ -29,6 +32,7 @@ data class Interaction(
     val originalTotalValue: String? = null,
     val discountAmount: String? = null,
     val isReverted: Boolean = false,
+    val associatedOrderId: String? = null,
     @com.google.firebase.firestore.ServerTimestamp
     val serverCreatedAt: java.util.Date? = null
 )

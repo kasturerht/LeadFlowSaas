@@ -573,7 +573,7 @@ class CallingViewModel @Inject constructor(
                 val updateMap = mutableMapOf<String, Any?>(
                     "status" to status,
                     "notes" to notes,
-                    "updatedAt" to isoTimestamp,
+                    "updatedAt" to com.google.firebase.firestore.FieldValue.serverTimestamp(),
                     "convertedAt" to finalConvertedAt,
                     "followUpDate" to followUpDate,
                     "product" to product,
@@ -593,12 +593,18 @@ class CallingViewModel @Inject constructor(
                     "baseProductsBreakdown" to baseProductsBreakdown
                 )
 
+                // Determine if we need to create a new Order document
+                val isNewOrder = status == "Order Placed" && lead.status != "Order Placed"
+                val orderId = if (isNewOrder) "o-" + UUID.randomUUID().toString() else null
+
                 val logId = "i-" + UUID.randomUUID().toString().take(6)
                 val interaction = Interaction(
                     id = logId,
+                    associatedOrderId = orderId,
                     leadId = lead.id,
                     callerId = _currentUserId.value ?: "",
                     callerName = callerName,
+                    leadName = lead.name,
                     statusBefore = lead.status,
                     statusAfter = status,
                     notes = newInteractionNote,
@@ -620,8 +626,36 @@ class CallingViewModel @Inject constructor(
                     originalTotalValue = originalTotalValue,
                     discountAmount = discountAmount
                 )
-                repository.updateLeadAndAddInteractionBatch(lead.id, updateMap, interaction)
-                val updatedLead = lead.copy(status = status, notes = notes, updatedAt = System.currentTimeMillis(), convertedAt = finalConvertedAt, followUpDate = followUpDate, product = product, address = address, city = city, state = state, pincode = pincode, paymentMethod = paymentMethod, orderAmount = orderAmount, orderAmountNum = amtNum, originalTotalValue = originalTotalValue, discountAmount = discountAmount, subStatus = subStatus, followUpTimeSlot = followUpTimeSlot, paymentStatus = paymentStatus, isSuspiciousShortCall = isSuspiciousShortCall, baseProductsBreakdown = baseProductsBreakdown)
+                
+                if (isNewOrder && orderId != null) {
+                    val order = com.nexaleads.app.data.model.Order(
+                        id = orderId,
+                        customerId = lead.id,
+                        assignedTo = lead.assignedTo,
+                        product = product,
+                        baseProductsBreakdown = baseProductsBreakdown,
+                        originalTotalValue = originalTotalValue,
+                        discountAmount = discountAmount,
+                        orderAmount = orderAmount,
+                        orderAmountNum = amtNum,
+                        paymentMethod = paymentMethod,
+                        paymentStatus = paymentStatus,
+                        status = "Order Placed",
+                        subStatus = subStatus,
+                        createdAt = isoTimestamp,
+                        createdAtMillis = System.currentTimeMillis(),
+                        isReorder = lead.status == "Order Placed" || lead.status == "Delivered" || lead.totalOrdersCount > 0
+                    )
+                    
+                    updateMap["totalOrdersCount"] = lead.totalOrdersCount + 1
+                    updateMap["lifetimeOrderValue"] = lead.lifetimeOrderValue + amtNum
+
+                    repository.updateLeadAddOrderAndInteractionBatch(lead.id, updateMap, order, interaction)
+                } else {
+                    repository.updateLeadAndAddInteractionBatch(lead.id, updateMap, interaction)
+                }
+
+                val updatedLead = lead.copy(status = status, notes = notes, updatedAt = System.currentTimeMillis(), convertedAt = finalConvertedAt, followUpDate = followUpDate, product = product, address = address, city = city, state = state, pincode = pincode, paymentMethod = paymentMethod, orderAmount = orderAmount, orderAmountNum = amtNum, originalTotalValue = originalTotalValue, discountAmount = discountAmount, subStatus = subStatus, followUpTimeSlot = followUpTimeSlot, paymentStatus = paymentStatus, isSuspiciousShortCall = isSuspiciousShortCall, baseProductsBreakdown = baseProductsBreakdown, totalOrdersCount = if (isNewOrder) lead.totalOrdersCount + 1 else lead.totalOrdersCount, lifetimeOrderValue = if (isNewOrder) lead.lifetimeOrderValue + amtNum else lead.lifetimeOrderValue)
                 _leads.value = _leads.value.map { if (it.id == lead.id) updatedLead else it }
                 if (_isSearching.value) {
                     _searchResults.value = _searchResults.value.map { if (it.id == lead.id) updatedLead else it }

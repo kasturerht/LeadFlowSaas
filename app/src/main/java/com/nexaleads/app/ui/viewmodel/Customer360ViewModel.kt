@@ -25,12 +25,17 @@ class Customer360ViewModel @Inject constructor(
 
     private val _interactions = MutableStateFlow<List<Interaction>>(emptyList())
     val interactions: StateFlow<List<Interaction>> = _interactions
+    
+    private val _orders = MutableStateFlow<List<com.nexaleads.app.data.model.Order>>(emptyList())
+    val orders: StateFlow<List<com.nexaleads.app.data.model.Order>> = _orders
 
     private val _lifetimeValue = MutableStateFlow(0L)
     val lifetimeValue: StateFlow<Long> = _lifetimeValue
     
     private val _activeLeadContext = MutableStateFlow<Lead?>(null)
     val activeLeadContext: StateFlow<Lead?> = _activeLeadContext
+    
+    private var ordersJob: kotlinx.coroutines.Job? = null
 
     fun fetchCustomerData(phone: String, initialContextLeadId: String? = null) {
         viewModelScope.launch {
@@ -43,24 +48,32 @@ class Customer360ViewModel @Inject constructor(
                 val sortedLeads = fetchedLeads.sortedByDescending { it.updatedAt ?: 0L }
                 _leads.value = sortedLeads
 
-                // Calculate LTV
-                var ltv = 0L
-                sortedLeads.forEach { lead ->
-                    val normStatus = Constants.normalizeStatus(lead.status)
-                    if (normStatus == Constants.STATUS_DELIVERED || normStatus == Constants.STATUS_ORDER_PLACED || normStatus == Constants.STATUS_DISPATCHED) {
-                        ltv += lead.orderAmountNum
-                    }
-                }
-                _lifetimeValue.value = ltv
+                // Calculate LTV from the parent lead (the one that has totalOrdersCount > 0 or the first one)
+                val parentLead = sortedLeads.maxByOrNull { it.totalOrdersCount } ?: sortedLeads.firstOrNull()
+                _lifetimeValue.value = parentLead?.lifetimeOrderValue ?: 0L
                 
-                // Set the active context lead (either the one they clicked, or the most recent one)
+                // Set the active context lead
                 if (initialContextLeadId != null) {
-                    _activeLeadContext.value = sortedLeads.find { it.id == initialContextLeadId } ?: sortedLeads.firstOrNull()
+                    _activeLeadContext.value = sortedLeads.find { it.id == initialContextLeadId } ?: parentLead
                 } else {
-                    _activeLeadContext.value = sortedLeads.firstOrNull()
+                    _activeLeadContext.value = parentLead
+                }
+                
+                // Cancel previous orders observer
+                ordersJob?.cancel()
+                
+                // Fetch orders for this customer if a parent lead is found
+                if (parentLead != null) {
+                    ordersJob = launch {
+                        repository.getOrdersForCustomer(parentLead.id).collect { customerOrders ->
+                            _orders.value = customerOrders
+                        }
+                    }
+                } else {
+                    _orders.value = emptyList()
                 }
 
-                // Fetch interactions for all these leads
+                // Fetch interactions for all these leads (in case there are still unmerged legacy leads)
                 val leadIds = sortedLeads.map { it.id }
                 if (leadIds.isNotEmpty()) {
                     _interactions.value = repository.getCustomerInteractions(leadIds)

@@ -50,6 +50,7 @@ fun Customer360BottomSheet(
 ) {
     val leads by viewModel.leads.collectAsStateWithLifecycle()
     val interactions by viewModel.interactions.collectAsStateWithLifecycle()
+    val orders by viewModel.orders.collectAsStateWithLifecycle()
     val ltv by viewModel.lifetimeValue.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val activeLeadContext by viewModel.activeLeadContext.collectAsStateWithLifecycle()
@@ -129,7 +130,7 @@ fun Customer360BottomSheet(
                     if (selectedTab == 0) {
                         TimelineTab(interactions = interactions)
                     } else {
-                        OrdersTab(leads = leads, onOrderClick = onOrderCardClick)
+                        OrdersTab(orders = orders)
                     }
                 }
 
@@ -248,10 +249,8 @@ fun TimelineTab(interactions: List<Interaction>) {
 }
 
 @Composable
-fun OrdersTab(leads: List<Lead>, onOrderClick: (Lead) -> Unit) {
-    val orderLeads = leads.filter { it.orderAmountNum > 0 || it.product.isNotEmpty() }
-    
-    if (orderLeads.isEmpty()) {
+fun OrdersTab(orders: List<com.nexaleads.app.data.model.Order>) {
+    if (orders.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text("No orders placed yet.", color = Color.White.copy(alpha = 0.5f))
         }
@@ -263,13 +262,12 @@ fun OrdersTab(leads: List<Lead>, onOrderClick: (Lead) -> Unit) {
         verticalArrangement = Arrangement.spacedBy(12.dp),
         modifier = Modifier.fillMaxSize()
     ) {
-        items(orderLeads) { lead ->
+        items(orders) { order ->
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
                     .background(Color.White.copy(alpha = 0.05f))
-                    .clickable { onOrderClick(lead) }
                     .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -281,10 +279,14 @@ fun OrdersTab(leads: List<Lead>, onOrderClick: (Lead) -> Unit) {
                 }
                 Spacer(modifier = Modifier.width(16.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(lead.product, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text("Status: ${lead.status}", fontSize = 12.sp, color = Color.White.copy(alpha = 0.6f))
+                    Text(order.product, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text("Status: ${order.status}", fontSize = 12.sp, color = Color.White.copy(alpha = 0.6f))
+                    if (order.createdAt.isNotEmpty()) {
+                        val displayDate = if (order.createdAt.length >= 10) order.createdAt.substring(0, 10) else order.createdAt
+                        Text(displayDate, fontSize = 10.sp, color = Color.White.copy(alpha = 0.4f))
+                    }
                 }
-                Text("₹${lead.orderAmountNum}", fontSize = 16.sp, fontWeight = FontWeight.Black, color = ModernViolet)
+                Text("₹${order.orderAmountNum}", fontSize = 16.sp, fontWeight = FontWeight.Black, color = ModernViolet)
             }
         }
     }
