@@ -46,6 +46,9 @@ fun DispositionBottomSheet(
     callStartTimestamp: Long?,
     orgName: String,
     messagingProfile: com.nexaleads.app.data.model.MessagingProfile?,
+    isReorderMode: Boolean = false,
+    onCreateReorder: ((newProduct: String, newAmount: String, newPaymentMethod: String, newPaymentStatus: String, newNotes: String, newBaseProductsBreakdown: String, newOriginalTotal: String, newDiscount: String) -> Unit)? = null,
+    onInitiateReorder: (() -> Unit)? = null,
     onDismiss: () -> Unit,
     onSaveSuccess: (String) -> Unit
 ) {
@@ -58,10 +61,10 @@ fun DispositionBottomSheet(
     val bottomPricesMap = remember(productsList) { productsList.associate { it.name to it.getEffectiveBottomPrice() } }
     val shippingFeesMap = remember(productsList) { productsList.associate { it.name to it.shippingFee } }
 
-    var selectedProduct by remember { mutableStateOf(lead.product) }
+    var selectedProduct by remember { mutableStateOf(if (isReorderMode) "" else lead.product) }
     var showProductPopup by remember { mutableStateOf(false) }
     var userModifiedProducts by remember { mutableStateOf(false) }
-    var selectedStatus by remember { mutableStateOf("") }
+    var selectedStatus by remember { mutableStateOf(if (isReorderMode) "Order Placed" else "") }
     var remarkNotes by remember { mutableStateOf("") }
     var followUpDate by remember { mutableStateOf("") }
     var showDatePicker by remember { mutableStateOf(false) }
@@ -71,7 +74,7 @@ fun DispositionBottomSheet(
     // Part 3: Behavioral & UX tracking state
     var selectedSubStatus by remember { mutableStateOf(lead.subStatus ?: "") }
     var selectedTimeSlot by remember { mutableStateOf(lead.followUpTimeSlot ?: "") }
-    var selectedPaymentStatus by remember { mutableStateOf(lead.paymentStatus ?: "") }
+    var selectedPaymentStatus by remember { mutableStateOf(if (isReorderMode) "" else (lead.paymentStatus ?: "")) }
     var showShortCallWarningDialog by remember { mutableStateOf(false) }
     var hasConfirmedShortCall by remember { mutableStateOf(false) }
     var calculatedDuration by remember { mutableStateOf(0) }
@@ -80,8 +83,8 @@ fun DispositionBottomSheet(
     var shippingAddress by remember { mutableStateOf(lead.address) }
     var shippingCity by remember { mutableStateOf(lead.city) }
     var shippingPincode by remember { mutableStateOf(lead.pincode) }
-    var paymentMethod by remember { mutableStateOf(lead.paymentMethod) }
-    var orderAmount by remember { mutableStateOf(lead.orderAmount) }
+    var paymentMethod by remember { mutableStateOf(if (isReorderMode) "" else lead.paymentMethod) }
+    var orderAmount by remember { mutableStateOf(if (isReorderMode) "" else lead.orderAmount) }
 
     // WhatsApp Automation State
     var autoLaunchWhatsApp by remember { mutableStateOf(true) }
@@ -157,7 +160,7 @@ fun DispositionBottomSheet(
     var showCustomTagDialog by remember { mutableStateOf(false) }
     var newCustomTagText by remember { mutableStateOf("") }
 
-    val executeSave: (Int) -> Unit = { durationSeconds ->
+    val executeSave: (Int) -> Unit = executeSave@{ durationSeconds ->
         isSaving = true
         val currentLead = lead
         val previousStatus = currentLead.status
@@ -200,6 +203,20 @@ fun DispositionBottomSheet(
         val finalOriginalTotal = if (isOrderRelevant) originalTotalValue else ""
         val finalDiscountAmount = if (isOrderRelevant) discountAmount else ""
         
+        if (isReorderMode && onCreateReorder != null) {
+            onCreateReorder(
+                finalProduct,
+                finalOrderAmount,
+                finalPaymentMethod,
+                finalPaymentStatus,
+                remarkNotes.trim(),
+                com.nexaleads.app.utils.ProductUtils.calculateBaseProductsBreakdown(finalProduct, productsList),
+                finalOriginalTotal,
+                finalDiscountAmount
+            )
+            return@executeSave
+        }
+
         viewModel.saveDisposition(
             lead = currentLead,
             status = selectedStatus,
@@ -457,7 +474,7 @@ fun DispositionBottomSheet(
                                             .clip(RoundedCornerShape(16.dp))
                                             .background(if (isSelected) (iconData?.tint ?: ModernViolet).copy(alpha = 0.08f) else SurfaceLight)
                                             .border(1.dp, if (isSelected) (iconData?.tint ?: ModernViolet) else BorderSubtle, RoundedCornerShape(16.dp))
-                                            .clickable(enabled = !isLocked) { 
+                                            .clickable(enabled = !isLocked && !isReorderMode) { 
                                                 haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
                                                 val newStatus = if (selectedStatus == option) "" else option
                                                 selectedStatus = newStatus
@@ -882,20 +899,11 @@ fun DispositionBottomSheet(
                     if (isDelivered) {
                         Button(
                             onClick = {
-                                if (isSaving) return@Button
-                                isSaving = true
-                                viewModel.createReorder(
-                                    parentLead = lead,
-                                    onSuccess = { _ ->
-                                        isSaving = false
-                                        Toast.makeText(context, "Reorder Created successfully!", Toast.LENGTH_SHORT).show()
-                                        onDismiss()
-                                    },
-                                    onError = { err ->
-                                        isSaving = false
-                                        Toast.makeText(context, err, Toast.LENGTH_SHORT).show()
-                                    }
-                                )
+                                if (onInitiateReorder != null) {
+                                    onInitiateReorder()
+                                } else {
+                                    Toast.makeText(context, "Reorder not supported from this screen.", Toast.LENGTH_SHORT).show()
+                                }
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
                             modifier = Modifier.fillMaxWidth().height(50.dp),

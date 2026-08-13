@@ -50,7 +50,7 @@ class Customer360ViewModel @Inject constructor(
 
                 // Calculate LTV from the parent lead (the one that has totalOrdersCount > 0 or the first one)
                 val parentLead = sortedLeads.maxByOrNull { it.totalOrdersCount } ?: sortedLeads.firstOrNull()
-                _lifetimeValue.value = parentLead?.lifetimeOrderValue ?: 0L
+                // LTV is now dynamically calculated when orders are fetched
                 
                 // Set the active context lead
                 if (initialContextLeadId != null) {
@@ -65,12 +65,19 @@ class Customer360ViewModel @Inject constructor(
                 // Fetch orders for this customer if a parent lead is found
                 if (parentLead != null) {
                     ordersJob = launch {
-                        repository.getOrdersForCustomer(parentLead.id).collect { customerOrders ->
-                            _orders.value = customerOrders
+                        repository.getOrdersForCustomer(parentLead.phone).collect { customerOrders ->
+                            // Sort locally to avoid composite index requirements
+                            val sortedOrders = customerOrders.sortedByDescending { it.createdAtMillis }
+                            _orders.value = sortedOrders
+                            // Dynamically calculate accurate LTV across all orders, excluding Cancelled and RTO
+                            _lifetimeValue.value = sortedOrders
+                                .filter { it.status != "Order Cancelled" && it.status != "Cancelled" && it.status != "RTO" && it.status != "Returned" }
+                                .sumOf { it.orderAmountNum }
                         }
                     }
                 } else {
                     _orders.value = emptyList()
+                    _lifetimeValue.value = 0L
                 }
 
                 // Fetch interactions for all these leads (in case there are still unmerged legacy leads)

@@ -194,6 +194,7 @@ fun TodayCallingListScreen(
     var isVisitToggleOn by remember { mutableStateOf(false) }
     var showBottomSheet by remember { mutableStateOf(false) }
     var showCustomer360 by remember { mutableStateOf(false) }
+    var isDispositionReorderMode by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     
     var showWhatsAppSheet by remember { mutableStateOf(false) }
@@ -701,15 +702,9 @@ fun TodayCallingListScreen(
                 },
                 onPlaceOrderClick = { contextLead ->
                     showCustomer360 = false
-                    viewModel.createReorder(
-                        parentLead = contextLead,
-                        onSuccess = { newLead ->
-                            selectedLeadToEdit = newLead
-                        },
-                        onError = { error ->
-                            Toast.makeText(context, "Error: $error", Toast.LENGTH_SHORT).show()
-                        }
-                    )
+                    contextLeadForDisposition = contextLead
+                    isDispositionReorderMode = true
+                    showBottomSheet = true
                 },
                 onOrderCardClick = { contextLead ->
                     showCustomer360 = false
@@ -728,13 +723,41 @@ fun TodayCallingListScreen(
                 callStartTimestamp = callStartTimestamp,
                 orgName = orgName,
                 messagingProfile = messagingProfile,
+                isReorderMode = isDispositionReorderMode,
+                onInitiateReorder = {
+                    isDispositionReorderMode = true
+                },
+                onCreateReorder = { newProduct, newAmount, newPaymentMethod, newPaymentStatus, newNotes, newBaseProductsBreakdown, newOriginalTotal, newDiscount ->
+                    viewModel.createReorder(
+                        parentLead = activeLead,
+                        newProduct = newProduct,
+                        newOrderAmount = newAmount,
+                        newPaymentMethod = newPaymentMethod,
+                        newPaymentStatus = newPaymentStatus,
+                        newNotes = newNotes,
+                        newBaseProductsBreakdown = newBaseProductsBreakdown,
+                        newOriginalTotalValue = newOriginalTotal,
+                        newDiscountAmount = newDiscount,
+                        onSuccess = { newLead ->
+                            showBottomSheet = false
+                            isDispositionReorderMode = false
+                            contextLeadForDisposition = null
+                            selectedLeadToEdit = newLead
+                        },
+                        onError = {
+                            // error handling
+                        }
+                    )
+                },
                 onDismiss = {
                     showBottomSheet = false
+                    isDispositionReorderMode = false
                     viewModel.clearPendingCall()
                     contextLeadForDisposition = null
                 },
                 onSaveSuccess = { newStatus ->
                     showBottomSheet = false
+                    isDispositionReorderMode = false
                     viewModel.clearPendingCall()
                     contextLeadForDisposition = null
                     

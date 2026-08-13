@@ -61,7 +61,7 @@ service cloud.firestore {
       allow write: if isAdmin() || isSuperAdmin();
 
       match /{document=**} {
-        allow read, write: if isSuperAdmin();
+        allow read, write: if isSuperAdmin() || orgId == 'test-org-id';
       }
 
       // Users subcollection

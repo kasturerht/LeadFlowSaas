@@ -631,6 +631,7 @@ class CallingViewModel @Inject constructor(
                     val order = com.nexaleads.app.data.model.Order(
                         id = orderId,
                         customerId = lead.id,
+                        customerPhone = lead.phone,
                         assignedTo = lead.assignedTo,
                         product = product,
                         baseProductsBreakdown = baseProductsBreakdown,
@@ -690,11 +691,23 @@ class CallingViewModel @Inject constructor(
         }
     }
 
+    private var isCreatingReorder = false
+
     fun createReorder(
         parentLead: Lead,
+        newProduct: String,
+        newOrderAmount: String,
+        newPaymentMethod: String,
+        newPaymentStatus: String,
+        newNotes: String,
+        newBaseProductsBreakdown: String = "",
+        newOriginalTotalValue: String = "",
+        newDiscountAmount: String = "",
         onSuccess: (Lead) -> Unit,
         onError: (String) -> Unit
     ) {
+        if (isCreatingReorder) return
+        isCreatingReorder = true
         viewModelScope.launch {
             try {
                 val isoFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
@@ -704,27 +717,35 @@ class CallingViewModel @Inject constructor(
 
                 val newLeadId = "l-" + UUID.randomUUID().toString()
 
-                val amtNum = parentLead.orderAmount.toLongOrNull() ?: 0L
+                val amtNum = newOrderAmount.toLongOrNull() ?: 0L
+                val finalNotes = if (newNotes.isNotBlank()) "📞 Reorder created from ${parentLead.id}\n\n$newNotes" else "📞 Reorder created from ${parentLead.id}"
+                
                 val newLead = Lead(
                     id = newLeadId,
                     name = parentLead.name,
                     phone = parentLead.phone,
                     source = parentLead.source,
                     status = "Order Placed", 
-                    notes = "📞 Reorder created from ${parentLead.id}",
+                    notes = finalNotes,
                     assignedTo = parentLead.assignedTo,
                     address = parentLead.address,
                     city = parentLead.city,
                     pincode = parentLead.pincode,
                     parentLeadId = parentLead.id,
-                    orderAmount = parentLead.orderAmount,
+                    product = newProduct,
+                    orderAmount = newOrderAmount,
                     orderAmountNum = amtNum,
                     convertedAt = isoTimestamp,
-                    paymentMethod = parentLead.paymentMethod,
-                    paymentStatus = parentLead.paymentStatus,
+                    paymentMethod = newPaymentMethod,
+                    paymentStatus = newPaymentStatus,
+                    baseProductsBreakdown = newBaseProductsBreakdown,
+                    originalTotalValue = newOriginalTotalValue,
+                    discountAmount = newDiscountAmount,
                     isReorder = true
                 )
 
+                val orderId = "o-" + UUID.randomUUID().toString()
+                
                 val logId = "i-" + UUID.randomUUID().toString().take(6)
                 val interaction = Interaction(
                     id = logId,
@@ -733,16 +754,36 @@ class CallingViewModel @Inject constructor(
                     callerName = callerName,
                     statusBefore = "New",
                     statusAfter = "Order Placed",
-                    notes = "Reorder created",
+                    notes = finalNotes,
                     timestamp = isoTimestamp,
                     duration = 0,
-                    isVisitLog = false
+                    isVisitLog = false,
+                    associatedOrderId = orderId
                 )
 
-                val errorMsg = repository.createManualLeadBatch(newLead, interaction)
+                val order = com.nexaleads.app.data.model.Order(
+                    id = orderId,
+                    customerId = newLeadId,
+                    customerPhone = newLead.phone,
+                    assignedTo = parentLead.assignedTo,
+                    product = newProduct,
+                    originalTotalValue = newOriginalTotalValue,
+                    discountAmount = newDiscountAmount,
+                    baseProductsBreakdown = newBaseProductsBreakdown,
+                    orderAmount = newOrderAmount,
+                    orderAmountNum = amtNum,
+                    paymentMethod = newPaymentMethod,
+                    paymentStatus = newPaymentStatus,
+                    status = "Order Placed",
+                    createdAt = isoTimestamp,
+                    createdAtMillis = System.currentTimeMillis(),
+                    isReorder = true
+                )
+
+                val errorMsg = repository.createReorderBatch(newLead, order, interaction)
                 if (errorMsg == null) {
                     updateMetricsOptimistically(oldStatus = null, newStatus = "Order Placed")
-                    val isRev = isRevenue("Order Placed", parentLead.paymentMethod, parentLead.paymentStatus)
+                    val isRev = isRevenue("Order Placed", newPaymentMethod, newPaymentStatus)
                     updateSalesMetricsOptimistically(if (isRev) amtNum else 0L, if (isRev) 1 else 0)
                     onSuccess(newLead)
                 } else {
@@ -750,6 +791,8 @@ class CallingViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 onError(e.message ?: "Unknown error")
+            } finally {
+                isCreatingReorder = false
             }
         }
     }
@@ -968,7 +1011,33 @@ class CallingViewModel @Inject constructor(
                     notes = finalNote,
                     timestamp = isoTimestamp
                 )
-                repository.updateLeadAndAddInteractionBatch(lead.id, updateMap, interaction)
+                
+                var orderIdToUpdate: String? = null
+                var orderUpdates: Map<String, Any?>? = null
+                
+                if (lead.status == "Order Placed" || lead.status == Constants.STATUS_ORDER_PLACED) {
+                    val latestOrder = repository.getLatestOrderForCustomer(lead.id)
+                    if (latestOrder != null) {
+                        orderIdToUpdate = latestOrder.id
+                        orderUpdates = mapOf(
+                            "product" to lead.product,
+                            "orderAmount" to lead.orderAmount,
+                            "orderAmountNum" to amtNum,
+                            "paymentMethod" to lead.paymentMethod,
+                            "paymentStatus" to lead.paymentStatus,
+                            "discountAmount" to lead.discountAmount,
+                            "originalTotalValue" to lead.originalTotalValue
+                        )
+                    }
+                }
+                
+                repository.updateLeadAndAddInteractionBatch(
+                    leadId = lead.id, 
+                    updates = updateMap, 
+                    interaction = interaction, 
+                    orderId = orderIdToUpdate, 
+                    orderUpdates = orderUpdates
+                )
                 refreshMetricsBackground()
             } catch (e: Exception) {
                 // Ignore for now

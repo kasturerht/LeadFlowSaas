@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.sp
 import com.nexaleads.app.Constants
 import com.nexaleads.app.data.model.Interaction
 import com.nexaleads.app.data.model.Lead
+import com.nexaleads.app.data.model.getCreatedAtString
 import com.nexaleads.app.ui.theme.*
 import com.nexaleads.app.ui.viewmodel.Customer360ViewModel
 import kotlinx.coroutines.launch
@@ -79,7 +80,7 @@ fun Customer360BottomSheet(
                     Customer360Header(
                         lead = activeLeadContext ?: initialLead,
                         ltv = ltv,
-                        totalOrders = leads.count { Constants.normalizeStatus(it.status) == Constants.STATUS_DELIVERED || Constants.normalizeStatus(it.status) == Constants.STATUS_ORDER_PLACED }
+                        totalOrders = orders.size
                     )
                     
                     val context = androidx.compose.ui.platform.LocalContext.current
@@ -281,8 +282,9 @@ fun OrdersTab(orders: List<com.nexaleads.app.data.model.Order>) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(order.product, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text("Status: ${order.status}", fontSize = 12.sp, color = Color.White.copy(alpha = 0.6f))
-                    if (order.createdAt.isNotEmpty()) {
-                        val displayDate = if (order.createdAt.length >= 10) order.createdAt.substring(0, 10) else order.createdAt
+                    val createdAtStr = order.getCreatedAtString()
+                    if (createdAtStr.isNotEmpty()) {
+                        val displayDate = if (createdAtStr.length >= 10) createdAtStr.substring(0, 10) else createdAtStr
                         Text(displayDate, fontSize = 10.sp, color = Color.White.copy(alpha = 0.4f))
                     }
                 }

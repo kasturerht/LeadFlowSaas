@@ -2,6 +2,7 @@ package com.nexaleads.app.data.repository
 
 import com.nexaleads.app.Constants
 import com.nexaleads.app.data.model.Interaction
+import com.nexaleads.app.data.model.getCreatedAtString
 import com.nexaleads.app.data.model.Lead
 import com.nexaleads.app.data.model.getPrimaryCategory
 import com.nexaleads.app.utils.PhoneUtils
@@ -12,6 +13,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.async
+import kotlinx.coroutines.cancel
 import javax.inject.Singleton
 import javax.inject.Inject
 import com.nexaleads.app.data.models.Product
@@ -41,7 +43,8 @@ class LeadRepository @Inject constructor(
             .limit(limit)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    close(error)
+                    android.util.Log.e("LeadRepository", "getLeadsForUser error: ${error.message}")
+                    cancel(java.util.concurrent.CancellationException(error.message))
                     return@addSnapshotListener
                 }
                 
@@ -181,7 +184,12 @@ class LeadRepository @Inject constructor(
         }
 
         val leadsListener = leadsCol().whereEqualTo("assignedTo", userId).whereEqualTo("archived", false)
-            .addSnapshotListener { snapshot, _ ->
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    android.util.Log.e("LeadRepository", "getDashboardMetricsFlow leads error: ${error.message}")
+                    cancel(java.util.concurrent.CancellationException(error.message))
+                    return@addSnapshotListener
+                }
                 if (snapshot != null) {
                     var freshLeads = 0L; var dueFollowups = 0L; var inquiries = 0L; var attempted = 0L; var rejected = 0L
                     for (doc in snapshot.documents) {
@@ -201,7 +209,12 @@ class LeadRepository @Inject constructor(
             }
 
         val ordersListener = ordersCol().whereEqualTo("assignedTo", userId)
-            .addSnapshotListener { snapshot, _ ->
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    android.util.Log.e("LeadRepository", "getDashboardMetricsFlow orders error: ${error.message}")
+                    cancel(java.util.concurrent.CancellationException(error.message))
+                    return@addSnapshotListener
+                }
                 if (snapshot != null) {
                     var confirmedOrders = 0L; var pendingPayments = 0L; var dispatched = 0L; var delivered = 0L; var rto = 0L
                     for (doc in snapshot.documents) {
@@ -239,7 +252,12 @@ class LeadRepository @Inject constructor(
         val listener = ordersCol()
             .whereEqualTo("assignedTo", userId)
             .whereGreaterThanOrEqualTo("createdAt", lastWeekStr)
-            .addSnapshotListener { snapshot, _ ->
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    android.util.Log.e("LeadRepository", "getSalesMetricsFlow error: ${error.message}")
+                    cancel(java.util.concurrent.CancellationException(error.message))
+                    return@addSnapshotListener
+                }
                 if (snapshot != null) {
                     val todayStr = isoFormat.format(java.util.Date())
                     var todayCount = 0L; var todayRev = 0L; var weekRev = 0L; var weekCount = 0L
@@ -248,7 +266,8 @@ class LeadRepository @Inject constructor(
                         if (order.status == "Order Cancelled" || order.status == "RTO" || order.status == "Cancelled") continue
                         if (order.paymentMethod.equals("Prepaid", ignoreCase=true) && order.paymentStatus.equals("Link Sent", ignoreCase=true)) continue
 
-                        val cAt = if (order.createdAt.length >= 10) order.createdAt.substring(0, 10) else continue
+                        val createdAtStr = order.getCreatedAtString()
+                        val cAt = if (createdAtStr.length >= 10) createdAtStr.substring(0, 10) else continue
                         if (cAt >= todayStr) {
                             todayCount++
                             todayRev += order.orderAmountNum
@@ -293,7 +312,7 @@ class LeadRepository @Inject constructor(
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     error.printStackTrace()
-                    close(error)
+                    cancel(java.util.concurrent.CancellationException(error.message))
                     return@addSnapshotListener
                 }
                 if (snapshot != null) {
@@ -395,7 +414,7 @@ class LeadRepository @Inject constructor(
                 snapshot.documents.forEach { doc ->
                     try {
                         val interaction = doc.toObject(Interaction::class.java)
-                        if (interaction != null) {
+                        if (interaction != null && !interaction.isReverted) {
                             allInteractions.add(interaction.copy(id = doc.id))
                         }
                     } catch (e: Exception) {
@@ -472,7 +491,9 @@ class LeadRepository @Inject constructor(
                 .get()
                 .await()
             
-            val interactionsList = snapshot.documents.mapNotNull { doc ->
+            val interactionsList = snapshot.documents
+                .filter { it.getBoolean("isReverted") != true }
+                .mapNotNull { doc ->
                 Interaction(
                     id = doc.id,
                     leadId = doc.getString("leadId") ?: "",
@@ -495,7 +516,9 @@ class LeadRepository @Inject constructor(
                     pincode = doc.getString("pincode"),
                     paymentMethod = doc.getString("paymentMethod"),
                     orderAmount = doc.getString("orderAmount"),
-                    orderAmountNum = doc.getLong("orderAmountNum") ?: 0L
+                    orderAmountNum = doc.getLong("orderAmountNum") ?: 0L,
+                    isReverted = doc.getBoolean("isReverted") ?: false,
+                    associatedOrderId = doc.getString("associatedOrderId")
                 )
             }
             
@@ -541,17 +564,17 @@ class LeadRepository @Inject constructor(
     }
     
     
-    fun getOrdersForCustomer(customerId: String): Flow<List<com.nexaleads.app.data.model.Order>> = callbackFlow {
+    fun getOrdersForCustomer(phone: String): Flow<List<com.nexaleads.app.data.model.Order>> = callbackFlow {
         if (orgId.isEmpty()) {
             trySend(emptyList())
             close()
             return@callbackFlow
         }
         val listener = ordersCol()
-            .whereEqualTo("customerId", customerId)
-            .orderBy("createdAtMillis", Query.Direction.DESCENDING)
+            .whereEqualTo("customerPhone", phone)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
+                    cancel(java.util.concurrent.CancellationException(error.message))
                     return@addSnapshotListener
                 }
                 if (snapshot != null) {
@@ -560,6 +583,18 @@ class LeadRepository @Inject constructor(
                 }
             }
         awaitClose { listener.remove() }
+    }
+
+    suspend fun getLatestOrderForCustomer(customerId: String): com.nexaleads.app.data.model.Order? {
+        return try {
+            val snapshot = ordersCol().whereEqualTo("customerId", customerId).get().await()
+            snapshot.documents
+                .mapNotNull { it.toObject(com.nexaleads.app.data.model.Order::class.java)?.copy(id = it.id) }
+                .maxByOrNull { it.createdAtMillis }
+        } catch (e: Exception) {
+            android.util.Log.e("LeadRepository", "Error getting latest order", e)
+            null
+        }
     }
 
     suspend fun updateLeadAddOrderAndInteractionBatch(
@@ -580,18 +615,40 @@ class LeadRepository @Inject constructor(
         }
     }
 
-    suspend fun updateLeadAndAddInteractionBatch(leadId: String, updates: Map<String, Any?>, interaction: Interaction) {
+    suspend fun updateLeadAndAddInteractionBatch(
+        leadId: String, 
+        updates: Map<String, Any?>, 
+        interaction: Interaction,
+        orderId: String? = null,
+        orderUpdates: Map<String, Any?>? = null
+    ) {
         kotlinx.coroutines.withTimeoutOrNull(5000) {
-            val batch = db.batch()
-            val leadRef = leadsCol().document(leadId)
-            val finalUpdates = updates.toMutableMap()
-            finalUpdates["updatedAt"] = com.google.firebase.firestore.FieldValue.serverTimestamp()
-            batch.update(leadRef, finalUpdates)
-            
-            val interactionRef = interactionsCol().document(interaction.id)
-            batch.set(interactionRef, interaction)
-            
-            batch.commit().await()
+            db.runTransaction { transaction ->
+                val leadRef = leadsCol().document(leadId)
+                val finalUpdates = updates.toMutableMap()
+                finalUpdates["updatedAt"] = com.google.firebase.firestore.FieldValue.serverTimestamp()
+                transaction.update(leadRef, finalUpdates)
+                
+                val interactionRef = interactionsCol().document(interaction.id)
+                transaction.set(interactionRef, interaction)
+                
+                if (orderId != null && orderUpdates != null && orderUpdates.isNotEmpty()) {
+                    val orderRef = ordersCol().document(orderId)
+                    val orderSnapshot = transaction.get(orderRef)
+                    if (orderSnapshot.exists()) {
+                        val currentStatus = orderSnapshot.getString("status")
+                        val lockedStatuses = listOf("Dispatched", "Delivered", "Order Cancelled", "Cancelled", "RTO", "Returned")
+                        if (currentStatus !in lockedStatuses) {
+                            transaction.update(orderRef, orderUpdates)
+                        } else {
+                            throw com.google.firebase.firestore.FirebaseFirestoreException(
+                                "Cannot edit: Order is already $currentStatus", 
+                                com.google.firebase.firestore.FirebaseFirestoreException.Code.ABORTED
+                            )
+                        }
+                    }
+                }
+            }.await()
         }
     }
 
@@ -723,6 +780,14 @@ class LeadRepository @Inject constructor(
                     "followUpTimeSlot" to finalTimeSlot,
                     "paymentStatus" to finalPaymentStatus
                 )
+
+                // Archive if it was a self-generated lead (from call log/manual) and it has 0 interactions left
+                if (remainingInteractions.isEmpty()) {
+                    val label = initialLeadSnapshot.getString("label")
+                    if (label == "Manual Inbound") {
+                        updateMap["archived"] = true
+                    }
+                }
     
                 if (normFinalStatus == Constants.STATUS_ORDER_PLACED || normFinalStatus == Constants.STATUS_DISPATCHED || normFinalStatus == Constants.STATUS_DELIVERED) {
                     updateMap["product"] = latestOrderInteraction?.product ?: ""
@@ -749,8 +814,22 @@ class LeadRepository @Inject constructor(
                 }
                 
                 // 5. Recalculate Orders Count and LTV
-                val ordersSnapshot = ordersCol().whereEqualTo("customerId", leadId).get().await()
-                val remainingOrders = ordersSnapshot.documents.filter { it.id != orderIdToDelete }
+                var ordersSnapshot: com.google.firebase.firestore.QuerySnapshot? = null
+                try {
+                    ordersSnapshot = ordersCol().whereEqualTo("customerId", leadId).get().await()
+                } catch (e: com.google.firebase.firestore.FirebaseFirestoreException) {
+                    if (e.code == com.google.firebase.firestore.FirebaseFirestoreException.Code.PERMISSION_DENIED) {
+                        // Fallback for telecallers who can only read their own orders
+                        ordersSnapshot = ordersCol()
+                            .whereEqualTo("customerId", leadId)
+                            .whereEqualTo("assignedTo", userId)
+                            .get().await()
+                    } else {
+                        throw e
+                    }
+                }
+                
+                val remainingOrders = ordersSnapshot!!.documents.filter { it.id != orderIdToDelete }
                 val newTotalOrdersCount = remainingOrders.size
                 var newLtv = 0L
                 for (doc in remainingOrders) {
@@ -788,11 +867,15 @@ class LeadRepository @Inject constructor(
                 }
                 
             } catch (e: Exception) {
+                android.util.Log.e("RevertDebug", "Exception during revert attempt", e)
                 if (e.message?.contains("Cannot Revert") == true) {
                     throw e // Re-throw custom validation errors so ViewModel can show them
                 }
                 if (e is com.google.firebase.firestore.FirebaseFirestoreException && e.code != com.google.firebase.firestore.FirebaseFirestoreException.Code.ABORTED) {
-                    return false
+                    throw e
+                }
+                if (retries <= 1) {
+                    throw Exception("Failed to revert after 3 attempts. Last error: ${e.message}")
                 }
             }
             retries--
@@ -868,6 +951,32 @@ class LeadRepository @Inject constructor(
                 "updatedAt", com.google.firebase.firestore.FieldValue.serverTimestamp(),
                 "createdAt", com.google.firebase.firestore.FieldValue.serverTimestamp()
             )
+
+            val interactionRef = interactionsCol().document(interaction.id)
+            batch.set(interactionRef, interaction)
+
+            batch.commit().await()
+            null
+        } catch (e: Exception) {
+            e.printStackTrace()
+            e.message ?: "Unknown Firebase Error"
+        }
+    }
+
+    suspend fun createReorderBatch(lead: Lead, order: com.nexaleads.app.data.model.Order, interaction: Interaction): String? {
+        return try {
+            val batch = db.batch()
+            
+            val leadRef = leadsCol().document(lead.id)
+            batch.set(leadRef, lead)
+            
+            batch.update(leadRef, 
+                "updatedAt", com.google.firebase.firestore.FieldValue.serverTimestamp(),
+                "createdAt", com.google.firebase.firestore.FieldValue.serverTimestamp()
+            )
+
+            val orderRef = ordersCol().document(order.id)
+            batch.set(orderRef, order)
 
             val interactionRef = interactionsCol().document(interaction.id)
             batch.set(interactionRef, interaction)

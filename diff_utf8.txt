@@ -1,0 +1,1407 @@
+﻿diff --git a/admin-web/src/components/WhatsAppTemplatesManager.jsx b/admin-web/src/components/WhatsAppTemplatesManager.jsx
+index 4edf601..9d9a8e3 100644
+--- a/admin-web/src/components/WhatsAppTemplatesManager.jsx
++++ b/admin-web/src/components/WhatsAppTemplatesManager.jsx
+@@ -6,7 +6,7 @@ import { useAuth } from '../AuthContext';
+ import { Plus, Edit2, Trash2, MessageSquare, AlertCircle, ChevronDown, Check, Sparkles } from 'lucide-react';
+ 
+ // Custom Select Component for Premium Look
+-const CustomSelect = ({ value, onChange, options, label }) => {
++const CustomSelect = ({ value, onChange, options, label, disabledOptions = [] }) => {
+   const [isOpen, setIsOpen] = useState(false);
+   const dropdownRef = useRef(null);
+ 
+@@ -22,19 +22,19 @@ const CustomSelect = ({ value, onChange, options, label }) => {
+ 
+   return (
+     <div className="custom-select-container" ref={dropdownRef} style={{ position: 'relative', width: '100%' }}>
+-      <label className="input-label" style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px', display: 'block' }}>{label}</label>
++      <label className="input-label" style={{ fontSize: '11px', fontWeight: 500, color: 'rgba(255,255,255,0.6)', marginBottom: '6px', display: 'block' }}>{label}</label>
+       <div 
+         onClick={() => setIsOpen(!isOpen)}
+         style={{
+           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+-          padding: '12px 16px', background: 'rgba(255, 255, 255, 0.03)',
+-          border: `1px solid ${isOpen ? 'var(--primary)' : 'var(--border)'}`,
+-          borderRadius: '10px', cursor: 'pointer',
+-          boxShadow: isOpen ? '0 0 0 3px rgba(99, 102, 241, 0.15)' : 'none',
+-          transition: 'all 0.2s ease', color: 'var(--text)'
++          padding: '8px 12px', background: 'rgba(0,0,0,0.2)',
++          border: 'none',
++          borderRadius: '8px', cursor: 'pointer',
++          boxShadow: isOpen ? '0 0 0 1px rgba(255,255,255,0.3)' : 'inset 0 0 0 1px rgba(255,255,255,0.08)',
++          transition: 'all 0.2s ease', color: '#f8fafc'
+         }}
+       >
+-        <span style={{ fontSize: '14px', fontWeight: 500 }}>{value}</span>
++        <span style={{ fontSize: '13px', fontWeight: 400 }}>{value}</span>
+         <ChevronDown size={16} style={{ color: 'var(--text-muted)', transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease' }} />
+       </div>
+ 
+@@ -46,24 +46,28 @@ const CustomSelect = ({ value, onChange, options, label }) => {
+           boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+           display: 'flex', flexDirection: 'column', gap: '4px'
+         }}>
+-          {options.map(opt => (
+-            <div 
+-              key={opt}
+-              onClick={() => { onChange(opt); setIsOpen(false); }}
+-              style={{
+-                padding: '10px 12px', borderRadius: '6px', cursor: 'pointer',
+-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+-                background: value === opt ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
+-                color: value === opt ? 'var(--primary)' : 'var(--text)',
+-                fontSize: '14px', transition: 'background 0.1s ease'
+-              }}
+-              onMouseEnter={(e) => { if(value !== opt) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)' }}
+-              onMouseLeave={(e) => { if(value !== opt) e.currentTarget.style.background = 'transparent' }}
+-            >
+-              <span>{opt}</span>
+-              {value === opt && <Check size={16} color="var(--primary)" />}
+-            </div>
+-          ))}
++          {options.map(opt => {
++            const isDisabled = disabledOptions.includes(opt);
++            return (
++              <div 
++                key={opt}
++                onClick={() => { if(!isDisabled) { onChange(opt); setIsOpen(false); } }}
++                style={{
++                  padding: '8px 12px', borderRadius: '6px', cursor: isDisabled ? 'not-allowed' : 'pointer',
++                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
++                  background: value === opt ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
++                  color: isDisabled ? 'rgba(255,255,255,0.3)' : (value === opt ? 'var(--primary)' : 'var(--text)'),
++                  fontSize: '13px', transition: 'background 0.1s ease',
++                  opacity: isDisabled ? 0.4 : 1
++                }}
++                onMouseEnter={(e) => { if(!isDisabled && value !== opt) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)' }}
++                onMouseLeave={(e) => { if(!isDisabled && value !== opt) e.currentTarget.style.background = 'transparent' }}
++              >
++                <span>{opt} {isDisabled && <span style={{ fontSize: '11px', fontStyle: 'italic', marginLeft: '6px' }}>(Exists)</span>}</span>
++                {value === opt && <Check size={16} color="var(--primary)" />}
++              </div>
++            );
++          })}
+         </div>
+       )}
+     </div>
+@@ -72,8 +76,8 @@ const CustomSelect = ({ value, onChange, options, label }) => {
+ 
+ // Premium Toggle Switch
+ const ToggleSwitch = ({ checked, onChange, label }) => (
+-  <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', userSelect: 'none' }}>
+-    <div style={{ position: 'relative', width: '44px', height: '24px' }}>
++  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', userSelect: 'none' }}>
++    <div style={{ position: 'relative', width: '36px', height: '20px' }}>
+       <input 
+         type="checkbox" 
+         checked={checked} 
+@@ -82,18 +86,19 @@ const ToggleSwitch = ({ checked, onChange, label }) => (
+       />
+       <div style={{
+         position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+-        background: checked ? 'var(--primary)' : 'rgba(255, 255, 255, 0.1)',
+-        borderRadius: '34px', transition: 'background-color 0.3s ease'
++        background: checked ? '#10b981' : 'rgba(255, 255, 255, 0.15)',
++        borderRadius: '20px', transition: 'background-color 0.3s ease',
++        boxShadow: checked ? 'none' : 'inset 0 1px 3px rgba(0,0,0,0.2)'
+       }}>
+         <div style={{
+-          position: 'absolute', top: '2px', left: checked ? '22px' : '2px',
+-          width: '20px', height: '20px', background: '#fff',
+-          borderRadius: '50%', transition: 'left 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55)',
+-          boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
++          position: 'absolute', top: '2px', left: checked ? '18px' : '2px',
++          width: '16px', height: '16px', background: '#fff',
++          borderRadius: '50%', transition: 'all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55)',
++          boxShadow: '0 1px 3px rgba(0,0,0,0.4)'
+         }} />
+       </div>
+     </div>
+-    <span style={{ fontSize: '14px', color: 'var(--text)', fontWeight: 500 }}>{label}</span>
++    <span style={{ fontSize: '12px', color: checked ? '#fff' : 'rgba(255,255,255,0.6)', fontWeight: 600, transition: 'color 0.3s ease' }}>{label}</span>
+   </label>
+ );
+ 
+@@ -105,20 +110,39 @@ export default function WhatsAppTemplatesManager() {
+   
+   const [showModal, setShowModal] = useState(false);
+   const [editingId, setEditingId] = useState(null);
++  const [expandedId, setExpandedId] = useState(null);
++  const [showTagMenu, setShowTagMenu] = useState(false);
++  const tagMenuRef = useRef(null);
+   
+   const [statusTrigger, setStatusTrigger] = useState('Product Enquiry');
+   const [language, setLanguage] = useState('Marathi');
+   const [templateText, setTemplateText] = useState('');
+   const [isActive, setIsActive] = useState(true);
+ 
+-  const STATUS_OPTIONS = ['Product Enquiry', 'Order Placed', 'Call Not Answered', 'Follow-up', 'Pending', 'Wrong Number'];
++  const STATUS_OPTIONS = ['Product Inquiry Only', 'Order Placed', 'Call Not Answered', 'Follow-up', 'Pending', 'Invalid', 'Not Interested'];
+   const LANGUAGES = ['Marathi', 'English', 'Hindi', 'Gujarati'];
+ 
++  // Identify which languages are already taken for the current status trigger
++  const takenLanguages = templates
++    .filter(t => t.statusTrigger === statusTrigger && t.id !== editingId)
++    .map(t => t.language);
++  const isDuplicate = takenLanguages.includes(language);
++
+   useEffect(() => {
+     if (orgId) {
+       fetchTemplates();
+     }
+-  }, [orgId]);
++  }, [orgId, db]);
++
++  useEffect(() => {
++    const handleClickOutside = (event) => {
++      if (tagMenuRef.current && !tagMenuRef.current.contains(event.target)) {
++        setShowTagMenu(false);
++      }
++    };
++    document.addEventListener('mousedown', handleClickOutside);
++    return () => document.removeEventListener('mousedown', handleClickOutside);
++  }, []);
+ 
+   const fetchTemplates = async () => {
+     try {
+@@ -161,7 +185,7 @@ export default function WhatsAppTemplatesManager() {
+       }
+     } catch (err) {
+       console.error("AI Generation failed:", err);
+-      alert("AI is currently busy or an error occurred. Please try again later.");
++      alert(err.message || "AI is currently busy or an error occurred. Please try again later.");
+     } finally {
+       setIsGenerating(false);
+     }
+@@ -191,7 +215,7 @@ export default function WhatsAppTemplatesManager() {
+       fetchTemplates();
+     } catch (err) {
+       console.error("Error saving template:", err);
+-      alert("Failed to save template.");
++      alert("Failed to save template: " + (err.message || err));
+     }
+   };
+ 
+@@ -208,7 +232,7 @@ export default function WhatsAppTemplatesManager() {
+ 
+   const resetForm = () => {
+     setEditingId(null);
+-    setStatusTrigger('Product Enquiry');
++    setStatusTrigger('Product Inquiry Only');
+     setLanguage('Marathi');
+     setTemplateText('');
+     setIsActive(true);
+@@ -227,89 +251,154 @@ export default function WhatsAppTemplatesManager() {
+     setTemplateText((prev) => prev + tag);
+   };
+ 
+-  const smartTags = [
+-    { label: 'Customer Name', value: '{{customer_name}}' },
+-    { label: 'Product List', value: '{{product_list}}' },
+-    { label: 'Organization Name', value: '{{org_name}}' },
+-    { label: 'Support Number', value: '{{support_number}}' },
++  const smartTagsGrouped = [
++    {
++      category: 'Customer Info',
++      tags: [
++        { label: 'Customer Name', value: '{{customer_name}}' },
++        { label: 'Delivery Address', value: '{{delivery_address}}' },
++      ]
++    },
++    {
++      category: 'Order Details',
++      tags: [
++        { label: 'Product List', value: '{{product_list}}' },
++        { label: 'Product & Qty', value: '{{product_list_with_quantity}}' },
++      ]
++    },
++    {
++      category: 'Pricing & Discounts',
++      tags: [
++        { label: 'Regular Price', value: '{{regular_price}}' },
++        { label: 'Special Price', value: '{{special_price}}' },
++        { label: 'Saved Amount', value: '{{saved_amount}}' },
++        { label: 'Discount %', value: '{{discount_percentage}}' },
++      ]
++    },
++    {
++      category: 'Payment',
++      tags: [
++        { label: 'Payment Status', value: '{{payment_status}}' },
++        { label: 'UPI Link', value: '{{upi_payment_link}}' },
++      ]
++    },
++    {
++      category: 'Company',
++      tags: [
++        { label: 'Org Name', value: '{{org_name}}' },
++        { label: 'Support Number', value: '{{support_number}}' },
++      ]
++    }
+   ];
+ 
+   return (
+-    <div className="glass-panel" style={{ height: '100%', overflowY: 'auto' }}>
+-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+-        <div>
+-          <h2 style={{ margin: 0, fontSize: '28px', display: 'flex', alignItems: 'center', gap: '12px', fontWeight: 700, color: '#fff' }}>
++    <div>
++      <div className="page-header">
++        <div className="page-title-group">
++          <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+             <div style={{ background: 'linear-gradient(135deg, #6366f1, #a855f7)', padding: '10px', borderRadius: '12px', display: 'flex', boxShadow: '0 4px 15px rgba(99, 102, 241, 0.4)' }}>
+               <MessageSquare size={24} color="#fff" />
+             </div>
+             WhatsApp Templates
+-          </h2>
+-          <p style={{ color: 'var(--text-muted)', margin: '8px 0 0 0', fontSize: '15px' }}>
++          </h1>
++          <p className="page-subtitle">
+             Design premium automated conversations based on lead status.
+           </p>
+         </div>
+-        <button className="btn-primary" onClick={() => { resetForm(); setShowModal(true); }} style={{ padding: '12px 24px', fontSize: '15px', borderRadius: '12px', boxShadow: '0 4px 15px rgba(99, 102, 241, 0.3)' }}>
+-          <Plus size={18} style={{ marginRight: '6px' }} /> New Template
+-        </button>
++        <div style={{ display: 'flex', gap: '10px' }}>
++          <button className="btn-primary" onClick={() => { resetForm(); setShowModal(true); }} style={{ padding: '12px 24px', fontSize: '15px', borderRadius: '12px', boxShadow: '0 4px 15px rgba(99, 102, 241, 0.3)' }}>
++            <Plus size={18} style={{ marginRight: '6px' }} /> New Template
++          </button>
++        </div>
+       </div>
+ 
++      <div className="glass-panel" style={{ padding: '24px', minHeight: '60vh' }}>
++
+       {loading ? (
+         <div style={{ display: 'flex', justifyContent: 'center', padding: '40px', color: 'var(--text-muted)' }}>Loading...</div>
+       ) : (
+-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px' }}>
+-          {templates.map(t => (
+-            <div key={t.id} style={{
+-              background: 'linear-gradient(145deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)',
+-              border: '1px solid rgba(255,255,255,0.05)',
+-              borderRadius: '16px',
+-              padding: '20px',
+-              display: 'flex',
+-              flexDirection: 'column',
+-              boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
+-              backdropFilter: 'blur(10px)',
+-              transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+-            }}
+-            onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 12px 40px rgba(0,0,0,0.2)'; }}
+-            onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 8px 30px rgba(0,0,0,0.12)'; }}
+-            >
+-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+-                  <span style={{ 
+-                    background: t.isActive ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)', 
+-                    color: t.isActive ? '#4ade80' : '#f87171',
+-                    padding: '6px 12px', borderRadius: '20px', fontSize: '13px', fontWeight: 600,
+-                    display: 'inline-block', border: `1px solid ${t.isActive ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`
++        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
++          {templates.map(t => {
++            const isExpanded = expandedId === t.id;
++            return (
++              <div key={t.id} style={{
++                background: 'linear-gradient(145deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)',
++                border: `1px solid ${isExpanded ? 'rgba(99, 102, 241, 0.4)' : 'rgba(255,255,255,0.05)'}`,
++                borderRadius: '12px',
++                overflow: 'hidden',
++                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
++                boxShadow: isExpanded ? '0 8px 30px rgba(0,0,0,0.2)' : '0 2px 10px rgba(0,0,0,0.1)'
++              }}>
++                <div 
++                  onClick={() => setExpandedId(isExpanded ? null : t.id)}
++                  style={{ 
++                    display: 'flex', alignItems: 'center', padding: '16px 20px', cursor: 'pointer', gap: '20px' 
++                  }}
++                  onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
++                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
++                >
++                  <div style={{ width: '150px', flexShrink: 0 }}>
++                    <span style={{ 
++                      background: t.isActive ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)', 
++                      color: t.isActive ? '#4ade80' : '#f87171',
++                      padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 600,
++                      display: 'inline-block', border: `1px solid ${t.isActive ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`
++                    }}>
++                      {t.statusTrigger}
++                    </span>
++                  </div>
++                  
++                  <div style={{ width: '90px', flexShrink: 0, color: 'var(--text-muted)', fontSize: '14px', fontWeight: 500 }}>
++                    {t.language}
++                  </div>
++
++                  <div style={{ 
++                    flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', 
++                    color: 'var(--text)', fontSize: '14px', opacity: 0.8,
++                    fontFamily: 'Inter, system-ui, sans-serif'
+                   }}>
+-                    {t.statusTrigger}
+-                  </span>
+-                  <span style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: 500, marginLeft: '4px' }}>{t.language}</span>
+-                </div>
+-                <div style={{ display: 'flex', gap: '4px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', padding: '4px' }}>
+-                  <button onClick={() => openEdit(t)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '6px', borderRadius: '6px', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+-                    <Edit2 size={16} />
+-                  </button>
+-                  <button onClick={() => handleDelete(t.id)} style={{ background: 'transparent', border: 'none', color: '#f87171', cursor: 'pointer', padding: '6px', borderRadius: '6px', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.1)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+-                    <Trash2 size={16} />
+-                  </button>
++                    {t.templateText.replace(/\n/g, ' ')}
++                  </div>
++
++                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }} onClick={e => e.stopPropagation()}>
++                    <button onClick={() => openEdit(t)} className="icon-action-btn edit-btn">
++                      <Edit2 size={16} />
++                    </button>
++                    <button onClick={() => handleDelete(t.id)} className="icon-action-btn delete-btn">
++                      <Trash2 size={16} />
++                    </button>
++                    <div style={{ width: '1px', height: '24px', background: 'rgba(255,255,255,0.1)', margin: '0 8px' }}></div>
++                    <div style={{ 
++                      color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center',
++                      transform: isExpanded ? 'rotate(180deg)' : 'none', 
++                      transition: 'transform 0.3s ease', cursor: 'pointer', padding: '4px'
++                    }} onClick={() => setExpandedId(isExpanded ? null : t.id)}>
++                      <ChevronDown size={20} />
++                    </div>
++                  </div>
+                 </div>
++
++                {isExpanded && (
++                  <div style={{ 
++                    padding: '0 20px 20px 20px', 
++                    borderTop: '1px solid rgba(255,255,255,0.05)',
++                    animation: 'fadeIn 0.3s ease forwards'
++                  }}>
++                    <div style={{ 
++                      marginTop: '16px', background: 'rgba(0,0,0,0.3)', padding: '20px', 
++                      borderRadius: '10px', fontSize: '14px', lineHeight: '1.6', 
++                      whiteSpace: 'pre-wrap', color: '#e2e8f0', border: '1px solid rgba(255,255,255,0.02)',
++                      fontFamily: 'Inter, system-ui, sans-serif'
++                    }}>
++                      {t.templateText}
++                    </div>
++                  </div>
++                )}
+               </div>
+-              <div style={{ 
+-                flex: 1, 
+-                background: 'rgba(0,0,0,0.3)', 
+-                padding: '16px', 
+-                borderRadius: '12px', 
+-                fontSize: '14px', 
+-                lineHeight: '1.6',
+-                whiteSpace: 'pre-wrap',
+-                color: '#e2e8f0',
+-                border: '1px solid rgba(255,255,255,0.02)'
+-              }}>
+-                {t.templateText}
+-              </div>
+-            </div>
+-          ))}
++            );
++          })}
+           {templates.length === 0 && (
+-            <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '60px', background: 'rgba(255,255,255,0.02)', borderRadius: '16px', border: '1px dashed rgba(255,255,255,0.1)' }}>
++            <div style={{ textAlign: 'center', padding: '60px', background: 'rgba(255,255,255,0.02)', borderRadius: '16px', border: '1px dashed rgba(255,255,255,0.1)' }}>
+               <MessageSquare size={48} color="var(--text-muted)" style={{ marginBottom: '16px', opacity: 0.5 }} />
+               <h3 style={{ margin: '0 0 8px 0', color: 'var(--text)' }}>No templates yet</h3>
+               <p style={{ margin: 0, color: 'var(--text-muted)' }}>Create your first WhatsApp template to automate your customer communication.</p>
+@@ -317,130 +406,210 @@ export default function WhatsAppTemplatesManager() {
+           )}
+         </div>
+       )}
++      </div>
+ 
+       {/* Premium Glassmorphism Modal */}
+       {showModal && (
+-        <div style={{
+-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+-          background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)',
+-          display: 'flex', alignItems: 'center', justifyContent: 'center',
+-          zIndex: 1000, padding: '20px'
+-        }}>
++        <div className="modal-overlay" style={{ padding: '24px', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}>
+           <div style={{
+-            background: '#18181b', border: '1px solid rgba(255,255,255,0.1)',
+-            borderRadius: '20px', width: '100%', maxWidth: '650px',
+-            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
+-            display: 'flex', flexDirection: 'column',
+-            overflow: 'hidden', animation: 'modalSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
++            width: '100%', maxWidth: '520px',
++            background: 'rgba(15, 15, 18, 0.95)', backdropFilter: 'blur(24px)',
++            border: '1px solid rgba(255,255,255,0.08)',
++            boxShadow: '0 24px 48px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.02)',
++            borderRadius: '16px', display: 'flex', flexDirection: 'column',
++            maxHeight: 'calc(100vh - 48px)',
++            animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
++            fontFamily: 'Inter, system-ui, sans-serif'
+           }}>
+             {/* Header */}
+-            <div style={{ padding: '24px 32px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', gap: '12px' }}>
+-              <div style={{ background: 'rgba(99, 102, 241, 0.1)', padding: '8px', borderRadius: '10px' }}>
+-                <Edit2 size={20} color="var(--primary)" />
++            <div style={{ padding: '20px 24px 12px 24px', display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
++              <div style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.02))', border: '1px solid rgba(255,255,255,0.05)', padding: '6px', borderRadius: '8px' }}>
++                <MessageSquare size={16} color="#e2e8f0" />
+               </div>
+-              <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 600, color: '#fff' }}>
+-                {editingId ? 'Edit Template' : 'Create New Template'}
++              <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 500, color: '#f8fafc', letterSpacing: '-0.2px' }}>
++                {editingId ? 'Edit Template' : 'New Template'}
+               </h3>
+             </div>
+ 
+             {/* Body */}
+-            <div style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+-              <div style={{ display: 'flex', gap: '20px' }}>
+-                <CustomSelect label="Trigger Status" value={statusTrigger} onChange={setStatusTrigger} options={STATUS_OPTIONS} />
+-                <CustomSelect label="Language" value={language} onChange={setLanguage} options={LANGUAGES} />
++            <div style={{ padding: '8px 24px', display: 'flex', flexDirection: 'column', gap: '20px', overflowY: 'visible' }}>
++              <div style={{ display: 'flex', gap: '16px' }}>
++                <CustomSelect label="Trigger" value={statusTrigger} onChange={setStatusTrigger} options={STATUS_OPTIONS} />
++                <CustomSelect label="Language" value={language} onChange={setLanguage} options={LANGUAGES} disabledOptions={takenLanguages} />
+               </div>
+ 
+               <div>
+-                <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '12px', display: 'block' }}>Message Design</label>
+-                
+-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+-                  {/* Smart Tags Pills */}
+-                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', flex: 1 }}>
+-                    {smartTags.map(tag => (
+-                      <div 
+-                        key={tag.value}
+-                        onClick={() => insertTag(tag.value)}
++                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
++                  <label style={{ fontSize: '11px', fontWeight: 500, color: 'rgba(255,255,255,0.6)', display: 'block', margin: 0 }}>Message Content</label>
++                  
++                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
++                    
++                    {/* Insert Variable Dropdown */}
++                    <div style={{ position: 'relative' }} ref={tagMenuRef}>
++                      <button 
++                        onClick={() => setShowTagMenu(!showTagMenu)}
+                         style={{
+-                          background: 'rgba(99, 102, 241, 0.1)', border: '1px solid rgba(99, 102, 241, 0.2)',
+-                          color: '#818cf8', padding: '6px 12px', borderRadius: '20px',
+-                          fontSize: '12px', fontWeight: 500, cursor: 'pointer',
+-                          transition: 'all 0.2s ease', display: 'flex', alignItems: 'center', gap: '4px'
++                          background: 'rgba(255,255,255,0.03)', border: 'none',
++                          boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.08)',
++                          color: '#e2e8f0', padding: '4px 8px', borderRadius: '6px',
++                          fontSize: '11px', fontWeight: 500, cursor: 'pointer',
++                          display: 'flex', alignItems: 'center', gap: '4px', transition: 'all 0.2s ease'
+                         }}
+-                        onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(99, 102, 241, 0.2)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+-                        onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(99, 102, 241, 0.1)'; e.currentTarget.style.transform = 'translateY(0)'; }}
++                        onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)' }}
++                        onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)' }}
+                       >
+-                        <Plus size={12} />
+-                        {tag.label}
+-                      </div>
+-                    ))}
+-                  </div>
++                        <span style={{ fontFamily: 'monospace', color: '#818cf8', fontWeight: 700 }}>{'{}'}</span> Insert <ChevronDown size={12} />
++                      </button>
+ 
+-                  {/* AI Generate Button */}
+-                  <button 
+-                    onClick={generateWithAI}
+-                    disabled={isGenerating}
+-                    style={{
+-                      background: 'linear-gradient(135deg, #a855f7, #ec4899)',
+-                      border: 'none', color: '#fff', padding: '8px 16px', borderRadius: '20px',
+-                      fontSize: '13px', fontWeight: 600, cursor: isGenerating ? 'not-allowed' : 'pointer',
+-                      display: 'flex', alignItems: 'center', gap: '6px', opacity: isGenerating ? 0.7 : 1,
+-                      boxShadow: '0 4px 15px rgba(236, 72, 153, 0.3)', transition: 'all 0.2s ease'
+-                    }}
+-                    onMouseEnter={(e) => { if(!isGenerating) e.currentTarget.style.transform = 'scale(1.02)' }}
+-                    onMouseLeave={(e) => { if(!isGenerating) e.currentTarget.style.transform = 'scale(1)' }}
+-                  >
+-                    <Sparkles size={14} />
+-                    {isGenerating ? 'Generating...' : 'Generate using AI'}
+-                  </button>
++                      {showTagMenu && (
++                        <>
++                          {/* Custom scrollbar for dropdown */}
++                          <style>{`
++                            .smart-tags-dropdown::-webkit-scrollbar { width: 6px; }
++                            .smart-tags-dropdown::-webkit-scrollbar-track { background: transparent; }
++                            .smart-tags-dropdown::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
++                            .smart-tags-dropdown::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
++                          `}</style>
++                          
++                          <div className="smart-tags-dropdown" style={{
++                            position: 'absolute', top: '110%', right: 0, zIndex: 100,
++                            background: 'rgba(20, 20, 30, 0.95)', backdropFilter: 'blur(16px)',
++                            border: '1px solid rgba(255,255,255,0.1)',
++                            borderRadius: '12px', width: '240px', maxHeight: '280px', overflowY: 'auto',
++                            boxShadow: '0 20px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05)', 
++                            padding: '8px', animation: 'fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
++                          }}>
++                            {smartTagsGrouped.map((group, gIdx) => (
++                              <div key={group.category} style={{ marginBottom: gIdx === smartTagsGrouped.length - 1 ? 0 : '12px' }}>
++                                <div style={{ 
++                                  fontSize: '9px', fontWeight: 700, color: '#a855f7', 
++                                  padding: '2px 8px', textTransform: 'uppercase', letterSpacing: '0.5px',
++                                  marginBottom: '2px'
++                                }}>
++                                  {group.category}
++                                </div>
++                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
++                                  {group.tags.map(tag => (
++                                    <div 
++                                      key={tag.value}
++                                      onClick={() => { insertTag(tag.value); setShowTagMenu(false); }}
++                                      style={{
++                                        padding: '6px 8px', borderRadius: '6px', color: '#e2e8f0',
++                                        fontSize: '11px', cursor: 'pointer', transition: 'all 0.2s ease',
++                                        display: 'flex', alignItems: 'center', justifyContent: 'space-between'
++                                      }}
++                                      onMouseEnter={e => {
++                                        e.currentTarget.style.background = 'rgba(99, 102, 241, 0.15)';
++                                        e.currentTarget.style.color = '#818cf8';
++                                        e.currentTarget.querySelector('.tag-insert-btn').style.opacity = '1';
++                                      }}
++                                      onMouseLeave={e => {
++                                        e.currentTarget.style.background = 'transparent';
++                                        e.currentTarget.style.color = '#e2e8f0';
++                                        e.currentTarget.querySelector('.tag-insert-btn').style.opacity = '0';
++                                      }}
++                                    >
++                                      <span style={{ fontWeight: 500 }}>{tag.label}</span>
++                                      <div className="tag-insert-btn" style={{ 
++                                        opacity: 0, transition: 'opacity 0.2s ease',
++                                        background: 'rgba(99, 102, 241, 0.2)', color: '#818cf8', 
++                                        padding: '2px 6px', borderRadius: '8px', fontSize: '9px', fontWeight: 600
++                                      }}>Insert</div>
++                                    </div>
++                                  ))}
++                                </div>
++                              </div>
++                            ))}
++                          </div>
++                        </>
++                      )}
++                    </div>
++
++                    {/* AI Generate Button */}
++                    <button 
++                      onClick={generateWithAI}
++                      disabled={isGenerating || isDuplicate}
++                      style={{
++                        background: 'rgba(255,255,255,0.08)',
++                        border: 'none', color: '#fff', padding: '4px 8px', borderRadius: '6px',
++                        fontSize: '11px', fontWeight: 500, cursor: (isGenerating || isDuplicate) ? 'not-allowed' : 'pointer',
++                        display: 'flex', alignItems: 'center', gap: '4px', opacity: (isGenerating || isDuplicate) ? 0.5 : 1,
++                        transition: 'all 0.2s ease'
++                      }}
++                      onMouseEnter={(e) => { if(!isGenerating && !isDuplicate) e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; }}
++                      onMouseLeave={(e) => { if(!isGenerating && !isDuplicate) e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; }}
++                    >
++                      <Sparkles size={14} />
++                      {isGenerating ? 'Generating...' : 'AI Generate'}
++                    </button>
++                  </div>
+                 </div>
+ 
+                 <div style={{ position: 'relative' }}>
+                   <textarea 
+                     value={templateText}
+                     onChange={e => setTemplateText(e.target.value)}
+-                    placeholder="Type your brilliant message here or use AI to generate one..."
++                    placeholder="Start typing..."
+                     disabled={isGenerating}
+                     style={{ 
+-                      width: '100%', height: '180px', resize: 'vertical', 
+-                      padding: '16px', borderRadius: '12px', 
+-                      background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)',
+-                      color: '#e2e8f0', fontSize: '15px', lineHeight: '1.5',
++                      width: '100%', height: '140px', minHeight: '100px', resize: 'vertical', 
++                      padding: '12px', borderRadius: '8px', 
++                      background: 'rgba(0,0,0,0.2)', border: 'none',
++                      boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.05)',
++                      color: '#f8fafc', fontSize: '13px', lineHeight: '1.5',
+                       fontFamily: 'Inter, system-ui, sans-serif',
+-                      outline: 'none', transition: 'border-color 0.2s ease',
++                      outline: 'none', transition: 'box-shadow 0.2s ease',
+                       opacity: isGenerating ? 0.5 : 1
+                     }}
+-                    onFocus={(e) => e.target.style.borderColor = 'var(--primary)'}
+-                    onBlur={(e) => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
++                    onFocus={(e) => e.target.style.boxShadow = 'inset 0 0 0 1px rgba(255,255,255,0.3)'}
++                    onBlur={(e) => e.target.style.boxShadow = 'inset 0 0 0 1px rgba(255,255,255,0.05)'}
+                   />
+                   {isGenerating && (
+                     <div style={{
+                       position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                       display: 'flex', justifyContent: 'center', alignItems: 'center',
+-                      background: 'rgba(30, 30, 36, 0.5)', borderRadius: '12px',
+-                      color: '#a855f7', fontWeight: 600, fontSize: '14px', gap: '8px'
++                      background: 'rgba(15, 15, 18, 0.6)', backdropFilter: 'blur(2px)', borderRadius: '8px',
++                      color: '#f8fafc', fontWeight: 500, fontSize: '13px', gap: '8px'
+                     }}>
+-                      <div className="ai-spinner"></div> Generating Magic...
++                      <div className="ai-spinner" style={{ width: '14px', height: '14px', borderTopColor: '#f8fafc' }}></div> Generating...
+                     </div>
+                   )}
+                 </div>
+               </div>
+-
+-              <div style={{ background: 'rgba(255,255,255,0.02)', padding: '16px 20px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+-                <ToggleSwitch checked={isActive} onChange={setIsActive} label="Enable this template instantly" />
+-              </div>
+             </div>
+ 
+             {/* Footer */}
+-            <div style={{ padding: '20px 32px', background: 'rgba(0,0,0,0.2)', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+-              <button onClick={() => setShowModal(false)} style={{ 
+-                padding: '10px 20px', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', 
+-                color: '#fff', borderRadius: '8px', cursor: 'pointer', fontWeight: 500, transition: 'background 0.2s' 
+-              }} onMouseEnter={e=>e.target.style.background='rgba(255,255,255,0.05)'} onMouseLeave={e=>e.target.style.background='transparent'}>
+-                Cancel
+-              </button>
+-              <button onClick={handleSave} className="btn-primary" style={{ padding: '10px 24px', borderRadius: '8px', fontWeight: 600, boxShadow: '0 4px 15px rgba(99, 102, 241, 0.4)' }}>
+-                {editingId ? 'Update Template' : 'Save Template'}
+-              </button>
++            <div style={{ padding: '16px 24px', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
++              <div style={{ transform: 'scale(0.85)', transformOrigin: 'left center', display: 'flex', alignItems: 'center' }}>
++                <ToggleSwitch checked={isActive} onChange={setIsActive} label="Active" />
++              </div>
++              <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
++                {isDuplicate && (
++                  <span style={{ color: '#ef4444', fontSize: '12px', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '4px' }}>
++                    <AlertCircle size={12} /> Already exists
++                  </span>
++                )}
++                <button 
++                  onClick={() => setShowModal(false)} 
++                  style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.6)', padding: '6px 12px', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}
++                  onMouseEnter={e => e.currentTarget.style.color = '#fff'}
++                  onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.6)'}
++                >
++                  Cancel
++                </button>
++                <button 
++                  onClick={handleSave} 
++                  disabled={isDuplicate} 
++                  style={{ 
++                    background: 'rgba(255,255,255,1)', color: '#000', border: 'none',
++                    padding: '6px 16px', borderRadius: '6px', fontSize: '13px', fontWeight: 600, 
++                    opacity: isDuplicate ? 0.3 : 1, cursor: isDuplicate ? 'not-allowed' : 'pointer',
++                    boxShadow: '0 2px 8px rgba(255,255,255,0.2)'
++                  }}
++                >
++                  {editingId ? 'Update' : 'Save'}
++                </button>
++              </div>
+             </div>
+           </div>
+           
+@@ -452,11 +621,24 @@ export default function WhatsAppTemplatesManager() {
+             @keyframes spin {
+               to { transform: rotate(360deg); }
+             }
++            @keyframes fadeIn {
++              from { opacity: 0; transform: translateY(-5px); }
++              to { opacity: 1; transform: translateY(0); }
++            }
+             .ai-spinner {
+               width: 16px; height: 16px; border: 2px solid rgba(168, 85, 247, 0.3);
+               border-top-color: #a855f7; border-radius: 50%;
+               animation: spin 1s linear infinite;
+             }
++            .icon-action-btn {
++              background: transparent; border: none; padding: 6px; border-radius: 6px;
++              cursor: pointer; display: flex; align-items: center; justify-content: center;
++              transition: all 0.2s ease;
++            }
++            .edit-btn { color: #818cf8; }
++            .edit-btn:hover { background: rgba(129, 140, 248, 0.1); }
++            .delete-btn { color: #f87171; }
++            .delete-btn:hover { background: rgba(248, 113, 113, 0.1); }
+           `}</style>
+         </div>
+       )}
+diff --git a/app/src/main/java/com/nexaleads/app/Constants.kt b/app/src/main/java/com/nexaleads/app/Constants.kt
+index 81d0dc9..90d94ae 100644
+--- a/app/src/main/java/com/nexaleads/app/Constants.kt
++++ b/app/src/main/java/com/nexaleads/app/Constants.kt
+@@ -34,6 +34,8 @@ object Constants {
+         if (raw == null || raw.trim().isEmpty()) return "Pending"
+         val trimmed = raw.trim()
+         val lower = trimmed.lowercase(java.util.Locale.ROOT)
++        if (lower.contains("enquiry") || lower.contains("inquiry")) return STATUS_INQUIRY
++        if (lower.contains("wrong number") || lower.contains("invalid")) return STATUS_INVALID
+         return when (lower) {
+             "no answer", "busy", "busy / cut", STATUS_CALL_NOT_ANSWERED.lowercase(java.util.Locale.ROOT) -> STATUS_CALL_NOT_ANSWERED
+             "warm lead", "warm / on hold", STATUS_INQUIRY.lowercase(java.util.Locale.ROOT) -> STATUS_INQUIRY
+diff --git a/app/src/main/java/com/nexaleads/app/components/CreateLeadBottomSheet.kt b/app/src/main/java/com/nexaleads/app/components/CreateLeadBottomSheet.kt
+index 743374d..e849559 100644
+--- a/app/src/main/java/com/nexaleads/app/components/CreateLeadBottomSheet.kt
++++ b/app/src/main/java/com/nexaleads/app/components/CreateLeadBottomSheet.kt
+@@ -228,7 +228,12 @@ fun CreateLeadBottomSheet(
+     // Auto-Reset Logic for hidden fields
+     LaunchedEffect(selectedStatus) {
+         val isProductRelevant = selectedStatus in listOf(Constants.STATUS_INQUIRY, "Product Inquiry Only", "Product Inquiry", Constants.STATUS_ORDER_PLACED, "Order Placed", Constants.STATUS_FOLLOW_UP, "Follow-up")
+-        val isFollowUpRelevant = selectedStatus in listOf(Constants.STATUS_FOLLOW_UP, "Follow-up")
++        val isFollowUpRelevant = selectedStatus in listOf(
++            Constants.STATUS_FOLLOW_UP, "Follow-up",
++            Constants.STATUS_INQUIRY, "Product Enquiry",
++            Constants.STATUS_CALL_NOT_ANSWERED, "Call Not Answered",
++            "Call Back", "No answer"
++        )
+         val isOrderRelevant = selectedStatus in listOf(Constants.STATUS_ORDER_PLACED, "Order Placed")
+         val isSubStatusRelevant = selectedStatus in listOf(Constants.STATUS_CALL_NOT_ANSWERED, "No Answer", "Busy")
+         
+@@ -992,17 +997,21 @@ fun CreateLeadBottomSheet(
+                                 originalTotalValue = originalTotalValue,
+                                 discountAmount = discountAmount,
+                                 orgName = orgName,
+-                                messagingProfile = messagingProfile
++                                messagingProfile = messagingProfile,
++                                whatsappTemplates = whatsappTemplates
+                             )
+                         }
+                     }
+                 } else {
+-                    val hasTemplate = whatsappTemplates.any { it.isActive && it.statusTrigger.equals(selectedStatus, ignoreCase = true) }
+-                    if (hasTemplate) {
++                    val normalizedStatus = Constants.normalizeStatus(selectedStatus)
++                    val isHighIntent = normalizedStatus == Constants.STATUS_INQUIRY || 
++                                       normalizedStatus == Constants.STATUS_FOLLOW_UP || 
++                                       normalizedStatus == Constants.STATUS_ORDER_PLACED
++                    if (isHighIntent) {
+                         item {
+                             Spacer(modifier = Modifier.height(12.dp))
+                             SmartWhatsAppTemplateCard(
+-                                status = selectedStatus,
++                                status = normalizedStatus,
+                                 autoLaunch = autoLaunchWhatsApp,
+                                 onAutoLaunchChange = { autoLaunchWhatsApp = it },
+                                 selectedLanguage = selectedLanguage,
+@@ -1013,11 +1022,12 @@ fun CreateLeadBottomSheet(
+                                     name = clientName.trim().ifEmpty { "Client Name" },
+                                     phone = selectedNumber,
+                                     product = selectedProduct,
+-                                    status = selectedStatus,
++                                    status = normalizedStatus,
+                                     subStatus = selectedSubStatus
+                                 ),
+                                 orgName = orgName,
+-                                messagingProfile = messagingProfile
++                                messagingProfile = messagingProfile,
++                                productsList = productsList
+                             )
+                         }
+                     }
+@@ -1134,7 +1144,12 @@ fun CreateLeadBottomSheet(
+                                 
+                                 // Data Sanitization based on final status
+                                 val isProductRelevant = selectedStatus in listOf(Constants.STATUS_INQUIRY, "Product Inquiry Only", "Product Inquiry", Constants.STATUS_ORDER_PLACED, "Order Placed", Constants.STATUS_FOLLOW_UP, "Follow-up")
+-                                val isFollowUpRelevant = selectedStatus in listOf(Constants.STATUS_FOLLOW_UP, "Follow-up")
++                                val isFollowUpRelevant = selectedStatus in listOf(
++                                    Constants.STATUS_FOLLOW_UP, "Follow-up",
++                                    Constants.STATUS_INQUIRY, "Product Enquiry",
++                                    Constants.STATUS_CALL_NOT_ANSWERED, "Call Not Answered",
++                                    "Call Back", "No answer"
++                                )
+                                 val isOrderRelevant = selectedStatus in listOf(Constants.STATUS_ORDER_PLACED, "Order Placed")
+                                 val isSubStatusRelevant = selectedStatus in listOf(Constants.STATUS_CALL_NOT_ANSWERED, "No Answer", "Busy")
+ 
+@@ -1176,42 +1191,54 @@ fun CreateLeadBottomSheet(
+                                     viewModel.updateLead(updatedLead)
+                                     isSaving = false
+                                     Toast.makeText(context, "Lead updated successfully!", Toast.LENGTH_SHORT).show()
+-                                    if (selectedStatus == "Order Placed" && autoLaunchWhatsApp) {
+-                                        com.nexaleads.app.utils.WhatsAppSender.sendOrderConfirmation(
+-                                            context = context,
+-                                            phone = purePhone,
+-                                            customerName = clientName.trim(),
+-                                            products = selectedProduct,
+-                                            address = listOf(shippingAddress, shippingCity, shippingState, shippingPincode).filter { it.isNotBlank() }.joinToString(", "),
+-                                            paymentMode = if (paymentMethod.equals("Prepaid", ignoreCase = true)) "$paymentMethod - $selectedPaymentStatus" else paymentMethod,
+-                                            includeAddress = includeAddress,
+-                                            includePaymentLink = includePaymentLink,
+-                                            includeDispatchNote = includeDispatchNote,
+-                                            includeSupportPhone = includeSupportPhone,
+-                                            originalTotal = finalOriginalTotal,
+-                                            discountAmount = finalDiscountAmount,
+-                                            language = selectedLanguage,
+-                                            orgName = orgName,
+-                                            messagingProfile = messagingProfile
+-                                        )
+-                                    } else if (autoLaunchWhatsApp) {
++                                    if (autoLaunchWhatsApp) {
++                                        val normalizedStatus = Constants.normalizeStatus(selectedStatus)
+                                         val template = whatsappTemplates.firstOrNull { 
+-                                            it.isActive && it.statusTrigger.equals(selectedStatus, ignoreCase = true) && 
++                                            it.isActive && Constants.normalizeStatus(it.statusTrigger).equals(normalizedStatus, ignoreCase = true) && 
+                                             it.language.equals(selectedLanguage, ignoreCase = true) 
+-                                        } ?: whatsappTemplates.firstOrNull { it.isActive && it.statusTrigger.equals(selectedStatus, ignoreCase = true) }
++                                        } ?: whatsappTemplates.firstOrNull { it.isActive && Constants.normalizeStatus(it.statusTrigger).equals(normalizedStatus, ignoreCase = true) }
+                                         
+                                         if (template != null) {
+                                             val messageText = com.nexaleads.app.utils.WhatsAppSender.parseDynamicTemplate(
+                                                 templateText = template.templateText,
+                                                 lead = updatedLead,
+                                                 orgName = orgName,
+-                                                messagingProfile = messagingProfile
++                                                messagingProfile = messagingProfile,
++                                                productsList = productsList
+                                             )
+                                             com.nexaleads.app.utils.WhatsAppSender.sendCustomMessage(
+                                                 context = context,
+                                                 phone = purePhone,
+                                                 messageText = messageText
+                                             )
++                                        } else if (normalizedStatus == Constants.STATUS_ORDER_PLACED) {
++                                            com.nexaleads.app.utils.WhatsAppSender.sendOrderConfirmation(
++                                                context = context,
++                                                phone = purePhone,
++                                                customerName = clientName.trim(),
++                                                products = selectedProduct,
++                                                address = listOf(shippingAddress, shippingCity, shippingState, shippingPincode).filter { it.isNotBlank() }.joinToString(", "),
++                                                paymentMode = if (paymentMethod.equals("Prepaid", ignoreCase = true)) "$paymentMethod - $selectedPaymentStatus" else paymentMethod,
++                                                includeAddress = includeAddress,
++                                                includePaymentLink = includePaymentLink,
++                                                includeDispatchNote = includeDispatchNote,
++                                                includeSupportPhone = includeSupportPhone,
++                                                originalTotal = finalOriginalTotal,
++                                                discountAmount = finalDiscountAmount,
++                                                language = selectedLanguage,
++                                                orgName = orgName,
++                                                messagingProfile = messagingProfile
++                                            )
++                                        } else {
++                                            com.nexaleads.app.utils.WhatsAppSender.sendDispositionWhatsApp(
++                                                context = context,
++                                                phone = purePhone,
++                                                status = normalizedStatus,
++                                                customerName = clientName.trim(),
++                                                productName = selectedProduct,
++                                                language = selectedLanguage,
++                                                orgName = orgName
++                                            )
+                                         }
+                                     }
+                                     onDismiss()
+@@ -1239,42 +1266,54 @@ fun CreateLeadBottomSheet(
+                                             isSaving = false
+                                             viewModel.clearDraft()
+                                             Toast.makeText(context, "Lead saved successfully!", Toast.LENGTH_SHORT).show()
+-                                            if (selectedStatus == "Order Placed" && autoLaunchWhatsApp) {
+-                                                com.nexaleads.app.utils.WhatsAppSender.sendOrderConfirmation(
+-                                                    context = context,
+-                                                    phone = purePhone,
+-                                                    customerName = clientName.trim(),
+-                                                    products = selectedProduct,
+-                                                    address = listOf(shippingAddress, shippingCity, shippingState, shippingPincode).filter { it.isNotBlank() }.joinToString(", "),
+-                                                    paymentMode = if (paymentMethod.equals("Prepaid", ignoreCase = true)) "$paymentMethod - $selectedPaymentStatus" else paymentMethod,
+-                                                    includeAddress = includeAddress,
+-                                                    includePaymentLink = includePaymentLink,
+-                                                    includeDispatchNote = includeDispatchNote,
+-                                                    includeSupportPhone = includeSupportPhone,
+-                                                    originalTotal = finalOriginalTotal,
+-                                                    discountAmount = finalDiscountAmount,
+-                                                    language = selectedLanguage,
+-                                                    orgName = orgName,
+-                                                    messagingProfile = messagingProfile
+-                                                )
+-                                            } else if (autoLaunchWhatsApp) {
++                                            if (autoLaunchWhatsApp) {
++                                                val normalizedStatus = Constants.normalizeStatus(selectedStatus)
+                                                 val template = whatsappTemplates.firstOrNull { 
+-                                                    it.isActive && it.statusTrigger.equals(selectedStatus, ignoreCase = true) && 
++                                                    it.isActive && Constants.normalizeStatus(it.statusTrigger).equals(normalizedStatus, ignoreCase = true) && 
+                                                     it.language.equals(selectedLanguage, ignoreCase = true) 
+-                                                } ?: whatsappTemplates.firstOrNull { it.isActive && it.statusTrigger.equals(selectedStatus, ignoreCase = true) }
++                                                } ?: whatsappTemplates.firstOrNull { it.isActive && Constants.normalizeStatus(it.statusTrigger).equals(normalizedStatus, ignoreCase = true) }
+                                                 
+                                                 if (template != null) {
+                                                     val messageText = com.nexaleads.app.utils.WhatsAppSender.parseDynamicTemplate(
+                                                         templateText = template.templateText,
+                                                         lead = newLead,
+                                                         orgName = orgName,
+-                                                        messagingProfile = messagingProfile
++                                                        messagingProfile = messagingProfile,
++                                                        productsList = productsList
+                                                     )
+                                                     com.nexaleads.app.utils.WhatsAppSender.sendCustomMessage(
+                                                         context = context,
+                                                         phone = purePhone,
+                                                         messageText = messageText
+                                                     )
++                                                } else if (normalizedStatus == Constants.STATUS_ORDER_PLACED) {
++                                                    com.nexaleads.app.utils.WhatsAppSender.sendOrderConfirmation(
++                                                        context = context,
++                                                        phone = purePhone,
++                                                        customerName = clientName.trim(),
++                                                        products = selectedProduct,
++                                                        address = listOf(shippingAddress, shippingCity, shippingState, shippingPincode).filter { it.isNotBlank() }.joinToString(", "),
++                                                        paymentMode = if (paymentMethod.equals("Prepaid", ignoreCase = true)) "$paymentMethod - $selectedPaymentStatus" else paymentMethod,
++                                                        includeAddress = includeAddress,
++                                                        includePaymentLink = includePaymentLink,
++                                                        includeDispatchNote = includeDispatchNote,
++                                                        includeSupportPhone = includeSupportPhone,
++                                                        originalTotal = finalOriginalTotal,
++                                                        discountAmount = finalDiscountAmount,
++                                                        language = selectedLanguage,
++                                                        orgName = orgName,
++                                                        messagingProfile = messagingProfile
++                                                    )
++                                                } else {
++                                                    com.nexaleads.app.utils.WhatsAppSender.sendDispositionWhatsApp(
++                                                        context = context,
++                                                        phone = purePhone,
++                                                        status = normalizedStatus,
++                                                        customerName = clientName.trim(),
++                                                        productName = selectedProduct,
++                                                        language = selectedLanguage,
++                                                        orgName = orgName
++                                                    )
+                                                 }
+                                             }
+                                             onDismiss()
+diff --git a/app/src/main/java/com/nexaleads/app/components/DispositionBottomSheet.kt b/app/src/main/java/com/nexaleads/app/components/DispositionBottomSheet.kt
+index 79c9ca8..66438ba 100644
+--- a/app/src/main/java/com/nexaleads/app/components/DispositionBottomSheet.kt
++++ b/app/src/main/java/com/nexaleads/app/components/DispositionBottomSheet.kt
+@@ -178,7 +178,12 @@ fun DispositionBottomSheet(
+         val isHighIntent = selectedStatus == Constants.STATUS_ORDER_PLACED || selectedStatus == "Order Placed" || selectedStatus == Constants.STATUS_INQUIRY || selectedStatus == "Product Inquiry Only"
+         // Data Sanitization based on final status
+         val isProductRelevant = selectedStatus in listOf(Constants.STATUS_INQUIRY, "Product Inquiry Only", "Product Inquiry", Constants.STATUS_ORDER_PLACED, "Order Placed", Constants.STATUS_FOLLOW_UP, "Follow-up")
+-        val isFollowUpRelevant = selectedStatus in listOf(Constants.STATUS_FOLLOW_UP, "Follow-up")
++        val isFollowUpRelevant = selectedStatus in listOf(
++            Constants.STATUS_FOLLOW_UP, "Follow-up",
++            Constants.STATUS_INQUIRY, "Product Enquiry",
++            Constants.STATUS_CALL_NOT_ANSWERED, "Call Not Answered",
++            "Call Back", "No answer"
++        )
+         val isOrderRelevant = selectedStatus in listOf(Constants.STATUS_ORDER_PLACED, "Order Placed")
+         val isSubStatusRelevant = selectedStatus in listOf(Constants.STATUS_CALL_NOT_ANSWERED, "No Answer", "Busy")
+ 
+@@ -218,47 +223,63 @@ fun DispositionBottomSheet(
+             baseProductsBreakdown = com.nexaleads.app.utils.ProductUtils.calculateBaseProductsBreakdown(finalProduct, productsList),
+             onSuccess = { interactionId, updatedLead ->
+                 coroutineScope.launch { sheetState.hide() }.invokeOnCompletion {
+-                    if ((selectedStatus == "Order Placed" || selectedStatus == Constants.STATUS_ORDER_PLACED) && autoLaunchWhatsApp) {
++                    if (autoLaunchWhatsApp) {
+                         
+                         if (finalPaymentStatus.contains("Verified", ignoreCase = true)) {
+                             viewModel.setPendingInvoice(updatedLead)
+                         }
+ 
+-                        com.nexaleads.app.utils.WhatsAppSender.sendOrderConfirmation(
+-                            context = context,
+-                            phone = currentLead.phone,
+-                            customerName = currentLead.name,
+-                            products = selectedProduct,
+-                            address = listOf(shippingAddress, shippingCity, shippingPincode).filter { it.isNotBlank() }.joinToString(", "),
+-                            paymentMode = if (paymentMethod.equals("Prepaid", ignoreCase = true)) "$paymentMethod - $selectedPaymentStatus" else paymentMethod,
+-                            originalTotal = finalOriginalTotal,
+-                            discountAmount = finalDiscountAmount,
+-                            includeAddress = includeAddress,
+-                            includePaymentLink = includePaymentLink,
+-                            includeDispatchNote = includeDispatchNote,
+-                            includeSupportPhone = includeSupportPhone,
+-                            language = selectedLanguage,
+-                            orgName = orgName,
+-                            messagingProfile = messagingProfile
+-                        )
+-                    } else if (autoLaunchWhatsApp) {
++                        val normalizedStatus = Constants.normalizeStatus(selectedStatus)
+                         val template = whatsappTemplates.firstOrNull { 
+-                            it.isActive && it.statusTrigger.equals(selectedStatus, ignoreCase = true) && 
++                            it.isActive && Constants.normalizeStatus(it.statusTrigger).equals(normalizedStatus, ignoreCase = true) && 
+                             it.language.equals(selectedLanguage, ignoreCase = true) 
+-                        } ?: whatsappTemplates.firstOrNull { it.isActive && it.statusTrigger.equals(selectedStatus, ignoreCase = true) }
++                        } ?: whatsappTemplates.firstOrNull { it.isActive && Constants.normalizeStatus(it.statusTrigger).equals(normalizedStatus, ignoreCase = true) }
+                         
+                         if (template != null) {
+                             val messageText = com.nexaleads.app.utils.WhatsAppSender.parseDynamicTemplate(
+                                 templateText = template.templateText,
+                                 lead = updatedLead,
+                                 orgName = orgName,
+-                                messagingProfile = messagingProfile
++                                messagingProfile = messagingProfile,
++                                productsList = productsList
+                             )
+                             com.nexaleads.app.utils.WhatsAppSender.sendCustomMessage(
+                                 context = context,
+                                 phone = currentLead.phone,
+                                 messageText = messageText
+                             )
++                        } else if (normalizedStatus == Constants.STATUS_ORDER_PLACED) {
++                            // Fallback for Order Placed
++                            com.nexaleads.app.utils.WhatsAppSender.sendOrderConfirmation(
++                                context = context,
++                                phone = currentLead.phone,
++                                customerName = currentLead.name,
++                                products = selectedProduct,
++                                address = listOf(shippingAddress, shippingCity, shippingPincode).filter { it.isNotBlank() }.joinToString(", "),
++                                paymentMode = if (paymentMethod.equals("Prepaid", ignoreCase = true)) "$paymentMethod - $selectedPaymentStatus" else paymentMethod,
++                                originalTotal = finalOriginalTotal,
++                                discountAmount = finalDiscountAmount,
++                                includeAddress = includeAddress,
++                                includePaymentLink = includePaymentLink,
++                                includeDispatchNote = includeDispatchNote,
++                                includeSupportPhone = includeSupportPhone,
++                                language = selectedLanguage,
++                                orgName = orgName,
++                                messagingProfile = messagingProfile
++                            )
++                        } else {
++                            val isHighIntentNormalized = normalizedStatus == Constants.STATUS_INQUIRY || normalizedStatus == Constants.STATUS_FOLLOW_UP
++                            if (isHighIntentNormalized) {
++                                com.nexaleads.app.utils.WhatsAppSender.sendDispositionWhatsApp(
++                                    context = context,
++                                    phone = currentLead.phone,
++                                    status = normalizedStatus,
++                                    customerName = currentLead.name,
++                                    productName = selectedProduct,
++                                    language = selectedLanguage,
++                                    orgName = orgName
++                                )
++                            }
+                         }
+                     }
+                     onSaveSuccess(selectedStatus)
+@@ -678,29 +699,34 @@ fun DispositionBottomSheet(
+                             selectedLanguage = selectedLanguage,
+                             onLanguageChange = { selectedLanguage = it },
+                             orgName = orgName,
+-                            messagingProfile = messagingProfile
++                            messagingProfile = messagingProfile,
++                            whatsappTemplates = whatsappTemplates
+                         )
+                     }
+                 }
+             } else {
+-                val hasTemplate = whatsappTemplates.any { it.isActive && it.statusTrigger.equals(selectedStatus, ignoreCase = true) }
+-                if (hasTemplate) {
++                val normalizedStatus = Constants.normalizeStatus(selectedStatus)
++                val isHighIntent = normalizedStatus == Constants.STATUS_INQUIRY || 
++                                   normalizedStatus == Constants.STATUS_FOLLOW_UP || 
++                                   normalizedStatus == Constants.STATUS_ORDER_PLACED
++                if (isHighIntent) {
+                     item {
+                         Spacer(modifier = Modifier.height(12.dp))
+                         SmartWhatsAppTemplateCard(
+-                            status = selectedStatus,
++                            status = normalizedStatus,
+                             autoLaunch = autoLaunchWhatsApp,
+                             onAutoLaunchChange = { autoLaunchWhatsApp = it },
+                             selectedLanguage = selectedLanguage,
+                             onLanguageChange = { selectedLanguage = it },
+                             templates = whatsappTemplates,
+                             mockLead = lead.copy(
+-                                status = selectedStatus,
++                                status = normalizedStatus,
+                                 subStatus = selectedSubStatus,
+                                 product = selectedProduct
+                             ),
+                             orgName = orgName,
+-                            messagingProfile = messagingProfile
++                            messagingProfile = messagingProfile,
++                            productsList = productsList
+                         )
+                     }
+                 }
+diff --git a/app/src/main/java/com/nexaleads/app/components/SmartWhatsAppOrderCard.kt b/app/src/main/java/com/nexaleads/app/components/SmartWhatsAppOrderCard.kt
+index a94a0a9..f5e61fd 100644
+--- a/app/src/main/java/com/nexaleads/app/components/SmartWhatsAppOrderCard.kt
++++ b/app/src/main/java/com/nexaleads/app/components/SmartWhatsAppOrderCard.kt
+@@ -47,6 +47,7 @@ fun SmartWhatsAppOrderCard(
+     supportNumber: String = "+91 98347 83503",
+     orgName: String,
+     messagingProfile: com.nexaleads.app.data.model.MessagingProfile?,
++    whatsappTemplates: List<com.nexaleads.app.data.model.WhatsAppTemplate> = emptyList(),
+     onLanguageChange: ((String) -> Unit)? = null,
+     modifier: Modifier = Modifier
+ ) {
+@@ -69,9 +70,33 @@ fun SmartWhatsAppOrderCard(
+ 
+     val livePreviewText = remember(
+         status, customerName, products, address, paymentMode,
+-        includeAddress, includePaymentLink, includeDispatchNote, includeSupportPhone, currentLanguage, originalTotalValue, discountAmount, supportNumber, orgName, messagingProfile
++        includeAddress, includePaymentLink, includeDispatchNote, includeSupportPhone, currentLanguage, originalTotalValue, discountAmount, supportNumber, orgName, messagingProfile, whatsappTemplates
+     ) {
+-        if (status == "Order Placed") {
++        val template = whatsappTemplates.firstOrNull { 
++            it.isActive && it.statusTrigger.equals(status, ignoreCase = true) && 
++            it.language.equals(currentLanguage, ignoreCase = true) 
++        } ?: whatsappTemplates.firstOrNull { it.isActive && it.statusTrigger.equals(status, ignoreCase = true) }
++
++        if (template != null) {
++            val dummyLead = com.nexaleads.app.data.model.Lead(
++                name = customerName,
++                product = products,
++                address = if (includeAddress) address else "",
++                city = "",
++                state = "",
++                pincode = "",
++                paymentMethod = paymentMode,
++                originalTotalValue = originalTotalValue,
++                discountAmount = discountAmount,
++                orderAmount = ""
++            )
++            WhatsAppSender.parseDynamicTemplate(
++                templateText = template.templateText,
++                lead = dummyLead,
++                orgName = orgName,
++                messagingProfile = messagingProfile
++            )
++        } else if (status == "Order Placed") {
+             WhatsAppSender.generateOrderMessage(
+                 customerName = customerName,
+                 products = products,
+diff --git a/app/src/main/java/com/nexaleads/app/components/SmartWhatsAppTemplateCard.kt b/app/src/main/java/com/nexaleads/app/components/SmartWhatsAppTemplateCard.kt
+index 321aea4..d2da1a6 100644
+--- a/app/src/main/java/com/nexaleads/app/components/SmartWhatsAppTemplateCard.kt
++++ b/app/src/main/java/com/nexaleads/app/components/SmartWhatsAppTemplateCard.kt
+@@ -35,6 +35,7 @@ fun SmartWhatsAppTemplateCard(
+     mockLead: Lead,
+     orgName: String,
+     messagingProfile: com.nexaleads.app.data.model.MessagingProfile?,
++    productsList: List<com.nexaleads.app.data.models.Product> = emptyList(),
+     modifier: Modifier = Modifier
+ ) {
+     val context = LocalContext.current
+@@ -46,7 +47,7 @@ fun SmartWhatsAppTemplateCard(
+     val textSecondary = Color(0xFF64748B)
+ 
+     // Filter templates for current status
+-    val availableTemplates = templates.filter { it.isActive && it.statusTrigger.equals(status, ignoreCase = true) }
++    val availableTemplates = templates.filter { it.isActive && com.nexaleads.app.Constants.normalizeStatus(it.statusTrigger).equals(status, ignoreCase = true) }
+     
+     // Available languages based on available templates
+     val availableLanguages = availableTemplates.map { it.language }.distinct()
+@@ -63,22 +64,26 @@ fun SmartWhatsAppTemplateCard(
+         ?: availableTemplates.firstOrNull()
+ 
+     val livePreviewText = remember(
+-        currentTemplate, mockLead, orgName, messagingProfile
++        currentTemplate, mockLead, orgName, messagingProfile, selectedLanguage
+     ) {
+         if (currentTemplate != null) {
+             WhatsAppSender.parseDynamicTemplate(
+                 templateText = currentTemplate.templateText,
+                 lead = mockLead,
+                 orgName = orgName,
+-                messagingProfile = messagingProfile
++                messagingProfile = messagingProfile,
++                productsList = productsList
+             )
+         } else {
+-            "No template available for $status in $selectedLanguage."
++            WhatsAppSender.generateDispositionMessage(
++                status = mockLead.status,
++                customerName = mockLead.name,
++                productName = mockLead.product,
++                language = selectedLanguage,
++                orgName = orgName
++            )
+         }
+     }
+-
+-    if (availableTemplates.isEmpty()) return // Don't show if no templates
+-
+     Surface(
+         modifier = modifier.fillMaxWidth(),
+         shape = RoundedCornerShape(20.dp),
+@@ -162,7 +167,7 @@ fun SmartWhatsAppTemplateCard(
+                     ) {
+                         val languages = listOf("English" to "English", "Marathi" to "αñ«αñ░αñ╛αñáαÑÇ", "Hindi" to "αñ╣αñ┐αñéαñªαÑÇ")
+                         languages.forEach { (langCode, langLabel) ->
+-                            val hasTemplateInLang = availableLanguages.any { it.equals(langCode, ignoreCase = true) }
++                            val hasTemplateInLang = availableTemplates.isEmpty() || availableLanguages.any { it.equals(langCode, ignoreCase = true) }
+                             if (hasTemplateInLang) {
+                                 val isSelected = selectedLanguage.equals(langCode, ignoreCase = true)
+                                 Box(
+diff --git a/app/src/main/java/com/nexaleads/app/data/model/Lead.kt b/app/src/main/java/com/nexaleads/app/data/model/Lead.kt
+index aadf295..65e07a8 100644
+--- a/app/src/main/java/com/nexaleads/app/data/model/Lead.kt
++++ b/app/src/main/java/com/nexaleads/app/data/model/Lead.kt
+@@ -68,6 +68,9 @@ fun Lead.getPrimaryCategory(): String {
+     if (normStatus == Constants.STATUS_DISPATCHED) return "DISPATCHED"
+     if (normStatus == Constants.STATUS_ORDER_PLACED) return "CONVERTED"
+     if (normStatus == Constants.STATUS_NOT_INTERESTED || normStatus == Constants.STATUS_INVALID || normStatus == Constants.STATUS_ORDER_CANCELLED) return "REJECTED"
++    
++    if (!this.followUpDate.isNullOrEmpty()) return "FOLLOWUP"
++    
+     if (normStatus == Constants.STATUS_FOLLOW_UP) return "FOLLOWUP"
+     if (normStatus == Constants.STATUS_CALL_NOT_ANSWERED) return "ATTEMPTED"
+     if (normStatus == Constants.STATUS_INQUIRY) return "INQUIRY"
+diff --git a/app/src/main/java/com/nexaleads/app/utils/WhatsAppSender.kt b/app/src/main/java/com/nexaleads/app/utils/WhatsAppSender.kt
+index e088eb9..5631d58 100644
+--- a/app/src/main/java/com/nexaleads/app/utils/WhatsAppSender.kt
++++ b/app/src/main/java/com/nexaleads/app/utils/WhatsAppSender.kt
+@@ -33,20 +33,79 @@ object WhatsAppSender {
+         templateText: String,
+         lead: Lead,
+         orgName: String,
+-        messagingProfile: MessagingProfile?
++        messagingProfile: MessagingProfile?,
++        productsList: List<com.nexaleads.app.data.models.Product> = emptyList(),
++        customPaymentLink: String = "upi://pay?pa=merchant@icici&pn=Order%20Payment"
+     ): String {
+         var parsed = templateText
+         
+         val safeOrgName = if (orgName.isNotBlank() && orgName != "ORGANIZATION") orgName else "our company"
+         
+-        val productStr = if (lead.product.isNotBlank()) {
++        val productListStr = if (lead.product.isNotBlank()) {
+             lead.product.split(",").joinToString("\n") { "ΓÇó ${it.trim()}" }
+-        } else ""
++        } else "ΓÇó N/A"
++
++        val productListWithQtyStr = if (lead.product.isNotBlank()) {
++            lead.product.split(",").joinToString("\n") { 
++                val trimmed = it.trim()
++                if (trimmed.contains(Regex("[0-9]+x", RegexOption.IGNORE_CASE))) "ΓÇó $trimmed" else "ΓÇó $trimmed (1x)"
++            }
++        } else "ΓÇó N/A"
++
++        val addressParts = listOf(lead.address, lead.city, lead.state, lead.pincode)
++            .filter { it.isNotBlank() }
++        val deliveryAddress = if (addressParts.isNotEmpty()) addressParts.joinToString(", ") else "N/A"
++
++        var calculatedOriginalTotal = lead.originalTotalValue.toDoubleOrNull() ?: 0.0
++        var calculatedOrderAmount = lead.orderAmount.toDoubleOrNull() ?: 0.0
++        var calculatedDiscount = lead.discountAmount.toDoubleOrNull() ?: 0.0
++        
++        if (calculatedOriginalTotal == 0.0 && calculatedOrderAmount == 0.0 && productsList.isNotEmpty() && lead.product.isNotBlank()) {
++            val selectedProductItems = lead.product.split(",").map { it.trim() }
++            val regex = Regex("""^(.*?)(?:\s*\((\d+)x\))?$""", RegexOption.IGNORE_CASE)
++            
++            selectedProductItems.forEach { item ->
++                val matchResult = regex.find(item)
++                if (matchResult != null) {
++                    val pName = matchResult.groupValues[1].trim()
++                    val qtyStr = matchResult.groupValues.getOrNull(2) ?: ""
++                    val qty = if (qtyStr.isNotBlank()) qtyStr.toIntOrNull() ?: 1 else 1
++                    
++                    val match = productsList.firstOrNull { it.name.equals(pName, ignoreCase = true) }
++                    if (match != null) {
++                        calculatedOriginalTotal += (match.getEffectiveMrp() * qty)
++                        calculatedOrderAmount += (match.getEffectiveOfferPrice() * qty)
++                    }
++                }
++            }
++            if (calculatedOriginalTotal > 0) {
++                calculatedDiscount = calculatedOriginalTotal - calculatedOrderAmount
++            }
++        }
+ 
+-        parsed = parsed.replace("{{customer_name}}", lead.name, ignoreCase = true)
+-        parsed = parsed.replace("{{product_list}}", productStr, ignoreCase = true)
++        val regularPrice = if (calculatedOriginalTotal > 0) "Γé╣${calculatedOriginalTotal.toInt()}" else "N/A"
++        val specialPrice = if (calculatedOrderAmount > 0) "Γé╣${calculatedOrderAmount.toInt()}" else "N/A"
++        val savedAmount = if (calculatedDiscount > 0) "Γé╣${calculatedDiscount.toInt()}" else "N/A"
++        
++        val discountPercentage = if (calculatedOriginalTotal > 0 && calculatedDiscount > 0) "${((calculatedDiscount * 100) / calculatedOriginalTotal).toInt()}%" else "0%"
++
++        val paymentStatus = lead.paymentStatus.takeIf { !it.isNullOrBlank() } 
++            ?: lead.paymentMethod.takeIf { it.isNotBlank() } 
++            ?: "N/A"
++
++        parsed = parsed.replace("{{customer_name}}", lead.name.takeIf { it.isNotBlank() } ?: "Customer", ignoreCase = true)
++        parsed = parsed.replace("{{product_list}}", productListStr, ignoreCase = true)
++        parsed = parsed.replace("{{product_list_with_quantity}}", productListWithQtyStr, ignoreCase = true)
+         parsed = parsed.replace("{{org_name}}", safeOrgName, ignoreCase = true)
+-        parsed = parsed.replace("{{support_number}}", messagingProfile?.supportPhone ?: "", ignoreCase = true)
++        parsed = parsed.replace("{{support_number}}", messagingProfile?.supportPhone ?: "N/A", ignoreCase = true)
++        
++        parsed = parsed.replace("{{delivery_address}}", deliveryAddress, ignoreCase = true)
++        parsed = parsed.replace("{{regular_price}}", regularPrice, ignoreCase = true)
++        parsed = parsed.replace("{{special_price}}", specialPrice, ignoreCase = true)
++        parsed = parsed.replace("{{saved_amount}}", savedAmount, ignoreCase = true)
++        parsed = parsed.replace("{{discount_percentage}}", discountPercentage, ignoreCase = true)
++        parsed = parsed.replace("{{payment_status}}", paymentStatus, ignoreCase = true)
++        parsed = parsed.replace("{{upi_payment_link}}", customPaymentLink, ignoreCase = true)
+         
+         return parsed.trim()
+     }
+diff --git a/firestore.rules b/firestore.rules
+index 264267f..0c2b698 100644
+--- a/firestore.rules
++++ b/firestore.rules
+@@ -5,8 +5,9 @@ service cloud.firestore {
+     
+     // Global Super Admin Check
+     function isSuperAdmin() {
++      let mapping = get(/databases/$(database)/documents/user_mappings/$(request.auth.uid));
+       return request.auth != null && (
+-        get(/databases/$(database)/documents/user_mappings/$(request.auth.uid)).data.role == 'superadmin'
++        (mapping != null && mapping.data.role == 'superadmin')
+         || request.auth.token.email == 'kasturerht@gmail.com'
+         || request.auth.token.email == 'admin@nexaleads.com'
+       );
+@@ -46,7 +47,9 @@ service cloud.firestore {
+       }
+       
+       function isAdmin() {
+-        return request.auth != null && getUserDoc() != null && getUserDoc().data.role == 'admin';
++        return request.auth != null && (
++          (getUserDoc() != null && getUserDoc().data.role == 'admin') || isSuperAdmin()
++        );
+       }
+ 
+       function isTelecaller() {
+diff --git a/functions/index.js b/functions/index.js
+index 7670f6b..de0cb97 100644
+--- a/functions/index.js
++++ b/functions/index.js
+@@ -152,6 +152,12 @@ exports.generateWhatsAppTemplate = functions.region('asia-south1')
+         );
+     }
+ 
++    const allowedTags = [
++        '{{customer_name}}', '{{delivery_address}}', '{{product_list}}', '{{product_list_with_quantity}}',
++        '{{regular_price}}', '{{special_price}}', '{{saved_amount}}', '{{discount_percentage}}',
++        '{{payment_status}}', '{{upi_payment_link}}', '{{org_name}}', '{{support_number}}'
++    ];
++
+     const prompt = `You are an expert Silicon Valley level copywriter for high-converting sales WhatsApp messages.
+ Write a highly converting, professional, and concise WhatsApp message for a customer whose lead status is '${status}'.
+ The message MUST be in ${language}.
+@@ -159,14 +165,16 @@ The organization sending the message is '${orgName || 'our company'}'.
+ Their available products might be related to: '${products || 'our catalog'}'.
+ 
+ CRITICAL RULES:
+-1. You MUST include these exact placeholder tags where appropriate: {{customer_name}}, {{product_list}}, {{org_name}}, {{support_number}}.
+-2. Do NOT write any conversational filler (e.g. "Here is your template", "Sure!"). 
+-3. Output ONLY the raw template text that will be directly sent to the customer.
+-4. Use polite emojis naturally.
+-5. If the status is "Order Placed", ensure the tone is celebratory and reassuring. If it's a "Follow-up", ensure the tone is polite but creates slight urgency.`;
++1. You MUST use placeholder tags from this EXACT list where appropriate: ${allowedTags.join(', ')}.
++2. NEVER invent custom tags. Only use the ones provided in the list above.
++3. If the status is "Order Placed", you MUST prioritize using pricing tags (like {{regular_price}}, {{special_price}}, {{discount_percentage}}) and payment tags ({{payment_status}}, {{upi_payment_link}}) to create a comprehensive order summary. Make the tone celebratory and reassuring.
++4. If the status is NOT related to a placed order (e.g., "Follow-up", "Product Enquiry"), DO NOT spam payment links or saved amounts unless it fits perfectly into a soft sales pitch.
++5. Do NOT write any conversational filler (e.g. "Here is your template", "Sure!"). 
++6. Output ONLY the raw template text that will be directly sent to the customer.
++7. Use polite emojis naturally.`;
+ 
+     try {
+-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
++        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`, {
+             method: 'POST',
+             headers: { 'Content-Type': 'application/json' },
+             body: JSON.stringify({
+@@ -178,6 +186,9 @@ CRITICAL RULES:
+         if (!response.ok) {
+             const err = await response.text();
+             console.error("Gemini API Error:", err);
++            if (response.status === 429) {
++                throw new functions.https.HttpsError('resource-exhausted', 'AI is currently busy due to high demand. Please try again in a few moments.');
++            }
+             throw new functions.https.HttpsError('internal', 'AI generation failed from Gemini API.');
+         }
+ 

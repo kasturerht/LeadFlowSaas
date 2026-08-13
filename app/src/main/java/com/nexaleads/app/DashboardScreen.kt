@@ -79,6 +79,7 @@ fun DashboardScreen(
     }
     var showDispositionSheet by remember { mutableStateOf(false) }
     var contextLeadForDisposition by remember { mutableStateOf<Lead?>(null) }
+    var isDispositionReorderMode by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     
     var showCreateLeadSheet by remember { mutableStateOf(false) }
@@ -679,14 +680,9 @@ fun DashboardScreen(
             },
             onPlaceOrderClick = { contextLead ->
                 showCustomer360 = false
-                viewModel.createReorder(
-                    parentLead = contextLead,
-                    onSuccess = { newLead ->
-                        selectedLeadToEdit = newLead
-                        showCreateLeadSheet = true
-                    },
-                    onError = { }
-                )
+                contextLeadForDisposition = contextLead
+                isDispositionReorderMode = true
+                showDispositionSheet = true
             },
             onOrderCardClick = { contextLead ->
                 showCustomer360 = false
@@ -705,14 +701,46 @@ fun DashboardScreen(
             callStartTimestamp = callStartTimestamp,
             orgName = orgName,
             messagingProfile = messagingProfile,
+            isReorderMode = isDispositionReorderMode,
+            onInitiateReorder = {
+                isDispositionReorderMode = true
+            },
+            onCreateReorder = { newProduct, newAmount, newPaymentMethod, newPaymentStatus, newNotes, newBaseProductsBreakdown, newOriginalTotal, newDiscount ->
+                viewModel.createReorder(
+                    parentLead = activeLead,
+                    newProduct = newProduct,
+                    newOrderAmount = newAmount,
+                    newPaymentMethod = newPaymentMethod,
+                    newPaymentStatus = newPaymentStatus,
+                    newNotes = newNotes,
+                    newBaseProductsBreakdown = newBaseProductsBreakdown,
+                    newOriginalTotalValue = newOriginalTotal,
+                    newDiscountAmount = newDiscount,
+                    onSuccess = { newLead ->
+                        showDispositionSheet = false
+                        isDispositionReorderMode = false
+                        contextLeadForDisposition = null
+                        selectedLeadToEdit = newLead
+                    },
+                    onError = {
+                        // handled inside disposition sheet ideally, or show toast
+                    }
+                )
+            },
             onDismiss = {
                 showDispositionSheet = false
-                viewModel.clearPendingCall()
+                isDispositionReorderMode = false
+                if (contextLeadForDisposition == null) {
+                    viewModel.clearPendingCall()
+                }
                 contextLeadForDisposition = null
             },
             onSaveSuccess = { newStatus ->
                 showDispositionSheet = false
-                viewModel.clearPendingCall()
+                isDispositionReorderMode = false
+                if (contextLeadForDisposition == null) {
+                    viewModel.clearPendingCall()
+                }
                 contextLeadForDisposition = null
                 
                 // Business Logic Filter: Don't send WhatsApp for Invalid or Not Interested
