@@ -674,7 +674,9 @@ fun DashboardScreen(
             onDismiss = { showCustomer360 = false; selectedLeadFor360 = null },
             onLogActivityClick = { contextLead ->
                 showCustomer360 = false
-                viewModel.setPendingCall(contextLead.id)
+                if (pendingCallLeadId != contextLead.id) {
+                    viewModel.setPendingCall(contextLead.id)
+                }
                 contextLeadForDisposition = contextLead
                 showDispositionSheet = true
             },
@@ -969,9 +971,12 @@ fun DashboardScreen(
                 showCreateLeadSheet = false 
                 selectedLeadToEdit = null
             },
-            onExistingLeadFound = { existingLead ->
+            onExistingLeadFound = { existingLead, timestamp ->
                 showCreateLeadSheet = false
                 selectedLeadFor360 = existingLead
+                if (timestamp != null) {
+                    viewModel.setPendingCall(existingLead.id, timestamp)
+                }
                 showCustomer360 = true
             }
         )

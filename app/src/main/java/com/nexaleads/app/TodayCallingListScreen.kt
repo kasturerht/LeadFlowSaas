@@ -518,7 +518,7 @@ fun TodayCallingListScreen(
                                 item = item,
                                 statusColors = statusColors,
                                 indianStatusLabels = indianStatusLabels,
-                                onClick = { selectedOrderIdForDetails = item.id },
+                                onClick = { selectedLeadToEdit = item },
                                 onLongClick = {
                                     leadForQuickActions = item
                                 },
@@ -538,7 +538,7 @@ fun TodayCallingListScreen(
                                     showWhatsAppSheet = true
                                 },
                                 onEditClick = {
-                                    selectedOrderIdForDetails = item.id
+                                    selectedLeadToEdit = item
                                 },
                                 onVerifyDeliveryClick = if (item.getPrimaryCategory() == "DISPATCHED") { { selectedDeliveryVerifyLead = item } } else null
                             )
@@ -598,7 +598,7 @@ fun TodayCallingListScreen(
                             item = item,
                             statusColors = statusColors,
                             indianStatusLabels = indianStatusLabels,
-                            onClick = { selectedOrderIdForDetails = item.id },
+                            onClick = { selectedLeadToEdit = item },
                             onLongClick = {
                                 
                                 leadForQuickActions = item
@@ -619,7 +619,7 @@ fun TodayCallingListScreen(
                                 showWhatsAppSheet = true
                             },
                             onEditClick = {
-                                selectedOrderIdForDetails = item.id
+                                selectedLeadToEdit = item
                             },
                             onVerifyDeliveryClick = if (item.getPrimaryCategory() == "DISPATCHED") { { selectedDeliveryVerifyLead = item } } else null
                         )
@@ -632,7 +632,7 @@ fun TodayCallingListScreen(
                             item = item,
                             statusColors = statusColors,
                             indianStatusLabels = indianStatusLabels,
-                            onClick = { selectedOrderIdForDetails = item.id },
+                            onClick = { selectedLeadToEdit = item },
                             onLongClick = {
                                 
                                 leadForQuickActions = item
@@ -653,7 +653,7 @@ fun TodayCallingListScreen(
                                 showWhatsAppSheet = true
                             },
                             onEditClick = {
-                                selectedOrderIdForDetails = item.id
+                                selectedLeadToEdit = item
                             },
                             onVerifyDeliveryClick = if (item.getPrimaryCategory() == "DISPATCHED") { { selectedDeliveryVerifyLead = item } } else null
                         )
@@ -782,7 +782,7 @@ fun TodayCallingListScreen(
                 orgName = orgName,
                 messagingProfile = messagingProfile,
                 onDismiss = { selectedLeadToEdit = null },
-                onExistingLeadFound = { existingLead ->
+                onExistingLeadFound = { existingLead, _ ->
                     selectedLeadToEdit = null
                     selectedLead = existingLead
                     showCustomer360 = true
@@ -1060,7 +1060,7 @@ fun TodayCallingListScreen(
                             subtitle = "View call logs, address or change status",
                             onClick = {
                                 leadForQuickActions = null
-                                selectedOrderIdForDetails = lead.id
+                                selectedLeadToEdit = lead
                             }
                         )
 
@@ -1413,6 +1413,38 @@ fun PremiumLeadCard(
                     metaParts.forEach { part ->
                         Box(modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.05f)).padding(horizontal = 6.dp, vertical = 4.dp)) {
                             Text(text = part, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = TextSecondary)
+                        }
+                    }
+                }
+            }
+
+            val actualCallTime = item.lastCallTime ?: item.updatedAt
+            if (actualCallTime != null && actualCallTime > 0L) {
+                val formattedLastCall = try {
+                    val sdf = java.text.SimpleDateFormat("dd MMM, hh:mm a", java.util.Locale.US)
+                    sdf.timeZone = java.util.TimeZone.getTimeZone("Asia/Kolkata")
+                    sdf.format(java.util.Date(actualCallTime)).replace("AM", "am").replace("PM", "pm")
+                } catch (e: Exception) { "" }
+                
+                if (formattedLastCall.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(ModernViolet.copy(alpha = 0.1f))
+                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                    ) {
+                        androidx.compose.material3.Icon(
+                            imageVector = Icons.Default.Phone,
+                            contentDescription = "Last Called",
+                            modifier = Modifier.size(13.dp),
+                            tint = ModernViolet
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text("Last Called:", fontSize = 11.sp, fontWeight = FontWeight.Medium, color = ModernViolet)
+                            Text(formattedLastCall, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TextPrimary.copy(alpha = 0.8f))
                         }
                     }
                 }

@@ -238,6 +238,7 @@ fun DispositionBottomSheet(
             paymentStatus = finalPaymentStatus,
             isSuspiciousShortCall = (durationSeconds < 5 && isHighIntent),
             baseProductsBreakdown = com.nexaleads.app.utils.ProductUtils.calculateBaseProductsBreakdown(finalProduct, productsList),
+            customCallTimestamp = callStartTimestamp,
             onSuccess = { interactionId, updatedLead ->
                 coroutineScope.launch { sheetState.hide() }.invokeOnCompletion {
                     if (autoLaunchWhatsApp) {

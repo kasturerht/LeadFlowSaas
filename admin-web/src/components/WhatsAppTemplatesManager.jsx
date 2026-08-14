@@ -119,7 +119,7 @@ export default function WhatsAppTemplatesManager() {
   const [templateText, setTemplateText] = useState('');
   const [isActive, setIsActive] = useState(true);
 
-  const STATUS_OPTIONS = ['Product Inquiry Only', 'Order Placed', 'Call Not Answered', 'Follow-up', 'Pending', 'Invalid', 'Not Interested'];
+  const STATUS_OPTIONS = ['Product Enquiry', 'Order Placed', 'Call Not Answered', 'Follow-up', 'Pending', 'Invalid', 'Not Interested'];
   const LANGUAGES = ['Marathi', 'English', 'Hindi', 'Gujarati'];
 
   // Identify which languages are already taken for the current status trigger
@@ -232,7 +232,7 @@ export default function WhatsAppTemplatesManager() {
 
   const resetForm = () => {
     setEditingId(null);
-    setStatusTrigger('Product Inquiry Only');
+    setStatusTrigger('Product Enquiry');
     setLanguage('Marathi');
     setTemplateText('');
     setIsActive(true);

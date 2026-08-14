@@ -52,7 +52,8 @@ data class Lead(
     val searchKeywords: List<String> = emptyList(),
     val totalOrdersCount: Int = 0,
     val lifetimeOrderValue: Long = 0L,
-    val updatedAt: Long? = null
+    val updatedAt: Long? = null,
+    val lastCallTime: Long? = null
 )
 
 @Keep

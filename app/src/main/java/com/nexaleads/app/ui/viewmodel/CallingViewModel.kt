@@ -284,8 +284,8 @@ class CallingViewModel @Inject constructor(
         // No-op: Realtime Firebase count flows handle this automatically and accurately now
     }
 
-    fun setPendingCall(leadId: String) {
-        val timestamp = System.currentTimeMillis()
+    fun setPendingCall(leadId: String, customTimestamp: Long? = null) {
+        val timestamp = customTimestamp ?: System.currentTimeMillis()
         prefs.edit()
             .putString("pending_call_lead_id", leadId)
             .putLong("pending_call_timestamp", timestamp)
@@ -553,6 +553,7 @@ class CallingViewModel @Inject constructor(
         paymentStatus: String? = null,
         isSuspiciousShortCall: Boolean = false,
         baseProductsBreakdown: String = "",
+        customCallTimestamp: Long? = null,
         onSuccess: (String, Lead) -> Unit,
         onError: (String) -> Unit
     ) {
@@ -561,7 +562,13 @@ class CallingViewModel @Inject constructor(
                 val isoFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
                     timeZone = TimeZone.getTimeZone("UTC")
                 }
-                val isoTimestamp = isoFormat.format(Date())
+                
+                val finalCallTimestamp = customCallTimestamp?.let { kotlin.math.min(it, System.currentTimeMillis()) }
+                val isoTimestamp = if (finalCallTimestamp != null) {
+                    isoFormat.format(Date(finalCallTimestamp))
+                } else {
+                    isoFormat.format(Date())
+                }
 
                 val amtNum = orderAmount.replace(Regex("[^0-9]"), "").toLongOrNull() ?: 0L
                 val isNewRev = isRevenue(status, paymentMethod, paymentStatus)
@@ -592,15 +599,52 @@ class CallingViewModel @Inject constructor(
                     "isSuspiciousShortCall" to isSuspiciousShortCall,
                     "baseProductsBreakdown" to baseProductsBreakdown
                 )
+                if (finalCallTimestamp != null) {
+                    updateMap["lastCallTime"] = finalCallTimestamp
+                }
 
-                // Determine if we need to create a new Order document
-                val isNewOrder = status == "Order Placed" && lead.status != "Order Placed"
-                val orderId = if (isNewOrder) "o-" + UUID.randomUUID().toString() else null
+                // Deterministic Order logic
+                val orderId = "order_${lead.id}"
+                var orderToUpsert: com.nexaleads.app.data.model.Order? = null
+                var orderIdToCancel: String? = null
+
+                if (isNewRev) {
+                    orderToUpsert = com.nexaleads.app.data.model.Order(
+                        id = orderId,
+                        customerId = lead.id,
+                        customerPhone = lead.phone,
+                        assignedTo = lead.assignedTo,
+                        product = product,
+                        baseProductsBreakdown = baseProductsBreakdown,
+                        originalTotalValue = originalTotalValue,
+                        discountAmount = discountAmount,
+                        orderAmount = orderAmount,
+                        orderAmountNum = amtNum,
+                        paymentMethod = paymentMethod,
+                        paymentStatus = paymentStatus,
+                        status = "Order Placed",
+                        subStatus = subStatus,
+                        createdAt = if (wasOldRev && lead.convertedAt != null) lead.convertedAt else isoTimestamp,
+                        createdAtMillis = System.currentTimeMillis(),
+                        isReorder = lead.status == "Order Placed" || lead.status == "Delivered" || lead.totalOrdersCount > 0
+                    )
+                    if (!wasOldRev) {
+                        updateMap["totalOrdersCount"] = lead.totalOrdersCount + 1
+                        updateMap["lifetimeOrderValue"] = lead.lifetimeOrderValue + amtNum
+                    } else {
+                        updateMap["totalOrdersCount"] = lead.totalOrdersCount
+                        updateMap["lifetimeOrderValue"] = lead.lifetimeOrderValue - lead.orderAmountNum + amtNum
+                    }
+                } else if (wasOldRev) {
+                    orderIdToCancel = orderId
+                    updateMap["totalOrdersCount"] = kotlin.math.max(0, lead.totalOrdersCount - 1)
+                    updateMap["lifetimeOrderValue"] = kotlin.math.max(0L, lead.lifetimeOrderValue - lead.orderAmountNum)
+                }
 
                 val logId = "i-" + UUID.randomUUID().toString().take(6)
                 val interaction = Interaction(
                     id = logId,
-                    associatedOrderId = orderId,
+                    associatedOrderId = if (isNewRev) orderId else null,
                     leadId = lead.id,
                     callerId = _currentUserId.value ?: "",
                     callerName = callerName,
@@ -627,36 +671,21 @@ class CallingViewModel @Inject constructor(
                     discountAmount = discountAmount
                 )
                 
-                if (isNewOrder && orderId != null) {
-                    val order = com.nexaleads.app.data.model.Order(
-                        id = orderId,
-                        customerId = lead.id,
-                        customerPhone = lead.phone,
-                        assignedTo = lead.assignedTo,
-                        product = product,
-                        baseProductsBreakdown = baseProductsBreakdown,
-                        originalTotalValue = originalTotalValue,
-                        discountAmount = discountAmount,
-                        orderAmount = orderAmount,
-                        orderAmountNum = amtNum,
-                        paymentMethod = paymentMethod,
-                        paymentStatus = paymentStatus,
-                        status = "Order Placed",
-                        subStatus = subStatus,
-                        createdAt = isoTimestamp,
-                        createdAtMillis = System.currentTimeMillis(),
-                        isReorder = lead.status == "Order Placed" || lead.status == "Delivered" || lead.totalOrdersCount > 0
-                    )
-                    
-                    updateMap["totalOrdersCount"] = lead.totalOrdersCount + 1
-                    updateMap["lifetimeOrderValue"] = lead.lifetimeOrderValue + amtNum
-
-                    repository.updateLeadAddOrderAndInteractionBatch(lead.id, updateMap, order, interaction)
+                if (orderToUpsert != null) {
+                    repository.updateLeadAddOrderAndInteractionBatch(lead.id, updateMap, orderToUpsert, interaction)
                 } else {
-                    repository.updateLeadAndAddInteractionBatch(lead.id, updateMap, interaction)
+                    repository.updateLeadAndAddInteractionBatch(
+                        leadId = lead.id, 
+                        updates = updateMap, 
+                        interaction = interaction,
+                        orderIdToCancel = orderIdToCancel
+                    )
                 }
 
-                val updatedLead = lead.copy(status = status, notes = notes, updatedAt = System.currentTimeMillis(), convertedAt = finalConvertedAt, followUpDate = followUpDate, product = product, address = address, city = city, state = state, pincode = pincode, paymentMethod = paymentMethod, orderAmount = orderAmount, orderAmountNum = amtNum, originalTotalValue = originalTotalValue, discountAmount = discountAmount, subStatus = subStatus, followUpTimeSlot = followUpTimeSlot, paymentStatus = paymentStatus, isSuspiciousShortCall = isSuspiciousShortCall, baseProductsBreakdown = baseProductsBreakdown, totalOrdersCount = if (isNewOrder) lead.totalOrdersCount + 1 else lead.totalOrdersCount, lifetimeOrderValue = if (isNewOrder) lead.lifetimeOrderValue + amtNum else lead.lifetimeOrderValue)
+                val finalTotalOrdersCount = updateMap["totalOrdersCount"] as? Int ?: lead.totalOrdersCount
+                val finalLifetimeOrderValue = updateMap["lifetimeOrderValue"] as? Long ?: lead.lifetimeOrderValue
+
+                val updatedLead = lead.copy(status = status, notes = notes, updatedAt = System.currentTimeMillis(), convertedAt = finalConvertedAt, followUpDate = followUpDate, product = product, address = address, city = city, state = state, pincode = pincode, paymentMethod = paymentMethod, orderAmount = orderAmount, orderAmountNum = amtNum, originalTotalValue = originalTotalValue, discountAmount = discountAmount, subStatus = subStatus, followUpTimeSlot = followUpTimeSlot, paymentStatus = paymentStatus, isSuspiciousShortCall = isSuspiciousShortCall, baseProductsBreakdown = baseProductsBreakdown, totalOrdersCount = finalTotalOrdersCount, lifetimeOrderValue = finalLifetimeOrderValue)
                 _leads.value = _leads.value.map { if (it.id == lead.id) updatedLead else it }
                 if (_isSearching.value) {
                     _searchResults.value = _searchResults.value.map { if (it.id == lead.id) updatedLead else it }
@@ -842,12 +871,107 @@ class CallingViewModel @Inject constructor(
 
     suspend fun checkDuplicateLead(phone: String): Lead? {
         val sanitized = PhoneUtils.sanitizePhoneNumber(phone)
-        // 1. Check in-memory list first to handle any old DB records that might contain spaces/dashes
         val localMatch = leads.value.find { PhoneUtils.sanitizePhoneNumber(it.phone) == sanitized }
         if (localMatch != null) return localMatch
         
-        // 2. Fallback to network repository (handles leads not currently in memory)
         return repository.checkDuplicateLead(phone)
+    }
+
+    suspend fun getSelfActiveLeads(phone: String): List<Lead> {
+        val allMatches = repository.getAllMatchingLeads(phone)
+        val closedStatuses = listOf(
+            Constants.STATUS_ORDER_PLACED, "Order Placed", 
+            Constants.STATUS_ORDER_CANCELLED, "Order Cancelled", "Cancelled", 
+            Constants.STATUS_RTO, "RTO", 
+            Constants.STATUS_DELIVERED, "Delivered"
+        )
+        
+        return allMatches.filter { 
+            it.assignedTo == _currentUserId.value && 
+            !closedStatuses.contains(it.status) &&
+            !it.archived
+        }
+    }
+
+    fun updateExistingLeadFromDuplicate(
+        leadId: String,
+        name: String,
+        phone: String,
+        status: String,
+        subStatus: String = "",
+        notes: String,
+        followUpDate: String?,
+        followUpTimeSlot: String = "",
+        product: String,
+        address: String,
+        city: String,
+        state: String,
+        pincode: String,
+        paymentMethod: String,
+        orderAmount: String,
+        originalTotalValue: String,
+        discountAmount: String,
+        paymentStatus: String = "",
+        onSuccess: (String, Lead) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                val isoFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }
+                val isoTimestamp = isoFormat.format(Date())
+
+                val interaction = Interaction(
+                    id = "ix-" + UUID.randomUUID().toString(),
+                    leadId = leadId,
+                    callerId = _currentUserId.value ?: "",
+                    callerName = callerName,
+                    statusBefore = "Updated via Merge", // Not exactly true but indicates merge
+                    statusAfter = status,
+                    notes = notes,
+                    timestamp = isoTimestamp,
+                    duration = 0,
+                    followUpDate = followUpDate,
+                    isVisitLog = false,
+                    subStatus = subStatus,
+                    followUpTimeSlot = followUpTimeSlot,
+                    paymentStatus = paymentStatus,
+                    product = product,
+                    address = address,
+                    city = city,
+                    pincode = pincode,
+                    paymentMethod = paymentMethod,
+                    orderAmount = orderAmount,
+                    orderAmountNum = orderAmount.replace(Regex("[^0-9]"), "").toLongOrNull() ?: 0L,
+                    associatedOrderId = null
+                )
+
+                repository.updateExistingLeadFromDuplicate(
+                    leadId = leadId,
+                    status = status,
+                    subStatus = subStatus,
+                    notes = notes,
+                    product = product,
+                    followUpDate = followUpDate,
+                    followUpTimeSlot = followUpTimeSlot,
+                    orderAmount = orderAmount,
+                    originalTotalValue = originalTotalValue,
+                    discountAmount = discountAmount,
+                    paymentStatus = paymentStatus,
+                    address = address,
+                    city = city,
+                    state = state,
+                    pincode = pincode,
+                    paymentMethod = paymentMethod,
+                    interaction = interaction
+                )
+                
+                // Return a dummy lead just to satisfy the callback interface
+                val dummyLead = Lead(id = leadId, name = name, phone = phone, status = status)
+                onSuccess("Lead Successfully Updated!", dummyLead)
+            } catch (e: Exception) {
+                onError("Failed to update existing lead: ${e.message}")
+            }
+        }
     }
 
     fun createManualLead(
@@ -869,6 +993,7 @@ class CallingViewModel @Inject constructor(
         originalTotalValue: String,
         discountAmount: String,
         paymentStatus: String = "",
+        customCallTimestamp: Long? = null,
         onSuccess: (String, Lead) -> Unit,
         onError: (String) -> Unit
     ) {
@@ -877,7 +1002,13 @@ class CallingViewModel @Inject constructor(
                 val isoFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
                     timeZone = TimeZone.getTimeZone("UTC")
                 }
-                val isoTimestamp = isoFormat.format(Date())
+                
+                val finalCallTimestamp = customCallTimestamp?.let { kotlin.math.min(it, System.currentTimeMillis()) }
+                val isoTimestamp = if (finalCallTimestamp != null) {
+                    isoFormat.format(Date(finalCallTimestamp))
+                } else {
+                    isoFormat.format(Date())
+                }
 
                 val newLeadId = "l-" + UUID.randomUUID().toString()
                 
@@ -911,7 +1042,8 @@ class CallingViewModel @Inject constructor(
                     originalTotalValue = originalTotalValue,
                     discountAmount = discountAmount,
                     paymentStatus = paymentStatus,
-                    convertedAt = finalConvertedAt
+                    convertedAt = finalConvertedAt,
+                    lastCallTime = finalCallTimestamp
                 )
 
                 val logId = "i-" + UUID.randomUUID().toString().take(6)
@@ -931,7 +1063,40 @@ class CallingViewModel @Inject constructor(
                     isVisitLog = false
                 )
 
-                val errorMsg = repository.createManualLeadBatch(lead, interaction)
+                val orderId = "order_$newLeadId"
+                val order = if (isNewRev) {
+                    com.nexaleads.app.data.model.Order(
+                        id = orderId,
+                        customerId = newLeadId,
+                        customerPhone = phone,
+                        assignedTo = _currentUserId.value ?: "",
+                        product = product,
+                        originalTotalValue = originalTotalValue,
+                        discountAmount = discountAmount,
+                        orderAmount = orderAmount,
+                        orderAmountNum = amtNum,
+                        paymentMethod = paymentMethod,
+                        paymentStatus = paymentStatus,
+                        status = "Order Placed",
+                        subStatus = subStatus,
+                        createdAt = isoTimestamp,
+                        createdAtMillis = System.currentTimeMillis(),
+                        isReorder = false
+                    )
+                } else null
+
+                val finalInteraction = if (isNewRev) {
+                    interaction.copy(associatedOrderId = orderId)
+                } else {
+                    interaction
+                }
+
+                val finalLead = lead.copy(
+                    totalOrdersCount = if (isNewRev) 1 else 0,
+                    lifetimeOrderValue = if (isNewRev) amtNum else 0L
+                )
+
+                val errorMsg = repository.createManualLeadBatch(finalLead, finalInteraction, order)
                 if (errorMsg == null) {
                     updateMetricsOptimistically(
                         oldStatus = null,
@@ -940,7 +1105,7 @@ class CallingViewModel @Inject constructor(
                         newPaymentStatus = paymentStatus
                     )
                     updateSalesMetricsOptimistically(if (isNewRev) amtNum else 0L, if (isNewRev) 1 else 0)
-                    onSuccess(logId, lead)
+                    onSuccess(logId, finalLead)
                 } else {
                     onError("DB Error: $errorMsg")
                 }
@@ -950,12 +1115,155 @@ class CallingViewModel @Inject constructor(
         }
     }
 
-    fun updateLead(lead: Lead) {
+    fun createSharedLead(
+        name: String,
+        phone: String,
+        source: String,
+        status: String,
+        subStatus: String = "",
+        notes: String,
+        followUpDate: String?,
+        followUpTimeSlot: String = "",
+        product: String,
+        address: String,
+        city: String,
+        state: String,
+        pincode: String,
+        paymentMethod: String,
+        orderAmount: String,
+        originalTotalValue: String,
+        discountAmount: String,
+        paymentStatus: String = "",
+        originalLeadId: String,
+        customCallTimestamp: Long? = null,
+        onSuccess: (String, Lead) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                val isoFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
+                    timeZone = TimeZone.getTimeZone("UTC")
+                }
+                val finalCallTimestamp = customCallTimestamp?.let { kotlin.math.min(it, System.currentTimeMillis()) }
+                val isoTimestamp = if (finalCallTimestamp != null) {
+                    isoFormat.format(Date(finalCallTimestamp))
+                } else {
+                    isoFormat.format(Date())
+                }
+
+                val newLeadId = "l-" + UUID.randomUUID().toString()
+                
+                val finalNotes = if (notes.trim().isNotEmpty()) "📞 ${notes.trim()}" else ""
+
+                val amtNum = orderAmount.replace(Regex("[^0-9]"), "").toLongOrNull() ?: 0L
+                val isNewRev = isRevenue(status, paymentMethod, paymentStatus)
+                val finalConvertedAt = if (isNewRev) isoTimestamp else null
+
+                val lead = Lead(
+                    id = newLeadId,
+                    name = name,
+                    phone = phone,
+                    source = source,
+                    status = status,
+                    subStatus = subStatus,
+                    notes = finalNotes,
+                    label = "Manual Inbound",
+                    followUpDate = followUpDate,
+                    followUpTimeSlot = followUpTimeSlot,
+                    archived = false,
+                    assignedTo = _currentUserId.value ?: "",
+                    product = product,
+                    address = address,
+                    city = city,
+                    state = state,
+                    pincode = pincode,
+                    paymentMethod = paymentMethod,
+                    orderAmount = orderAmount,
+                    orderAmountNum = amtNum,
+                    originalTotalValue = originalTotalValue,
+                    discountAmount = discountAmount,
+                    paymentStatus = paymentStatus,
+                    convertedAt = finalConvertedAt,
+                    lastCallTime = finalCallTimestamp
+                )
+
+                val logId = "i-" + UUID.randomUUID().toString().take(6)
+                val interaction = Interaction(
+                    id = logId,
+                    leadId = newLeadId,
+                    callerId = _currentUserId.value ?: "",
+                    callerName = callerName,
+                    statusBefore = "New",
+                    statusAfter = status,
+                    subStatus = subStatus,
+                    notes = notes.trim(),
+                    timestamp = isoTimestamp,
+                    duration = 0,
+                    followUpDate = followUpDate,
+                    followUpTimeSlot = followUpTimeSlot,
+                    isVisitLog = false
+                )
+
+                val orderId = "order_$newLeadId"
+                val order = if (isNewRev) {
+                    com.nexaleads.app.data.model.Order(
+                        id = orderId,
+                        customerId = newLeadId,
+                        customerPhone = phone,
+                        assignedTo = _currentUserId.value ?: "",
+                        product = product,
+                        originalTotalValue = originalTotalValue,
+                        discountAmount = discountAmount,
+                        orderAmount = orderAmount,
+                        orderAmountNum = amtNum,
+                        paymentMethod = paymentMethod,
+                        paymentStatus = paymentStatus,
+                        status = "Order Placed",
+                        subStatus = subStatus,
+                        createdAt = isoTimestamp,
+                        createdAtMillis = System.currentTimeMillis(),
+                        isReorder = false
+                    )
+                } else null
+
+                val finalInteraction = if (isNewRev) {
+                    interaction.copy(associatedOrderId = orderId)
+                } else {
+                    interaction
+                }
+
+                val finalLead = lead.copy(
+                    totalOrdersCount = if (isNewRev) 1 else 0,
+                    lifetimeOrderValue = if (isNewRev) amtNum else 0L
+                )
+
+                val errorMsg = repository.createSharedLeadBatch(finalLead, finalInteraction, originalLeadId, callerName, order)
+                if (errorMsg == null) {
+                    updateMetricsOptimistically(
+                        oldStatus = null,
+                        newStatus = status,
+                        newPaymentMethod = paymentMethod,
+                        newPaymentStatus = paymentStatus
+                    )
+                    updateSalesMetricsOptimistically(if (isNewRev) amtNum else 0L, if (isNewRev) 1 else 0)
+                    onSuccess(logId, finalLead)
+                } else {
+                    onError("DB Error: $errorMsg")
+                }
+            } catch (e: Exception) {
+                onError(e.message ?: "Unknown error")
+            }
+        }
+    }
+
+    fun updateLead(lead: Lead, customCallTimestamp: Long? = null) {
         viewModelScope.launch {
             try {
                 val amtNum = lead.orderAmount.replace(Regex("[^0-9]"), "").toLongOrNull() ?: 0L
                 val isRev = isRevenue(lead.status, lead.paymentMethod, lead.paymentStatus)
-                val isoTimestamp = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }.format(Date())
+                val finalCallTimestamp = customCallTimestamp?.let { kotlin.math.min(it, System.currentTimeMillis()) }
+                val isoFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }
+                val isoTimestamp = if (finalCallTimestamp != null) isoFormat.format(Date(finalCallTimestamp)) else isoFormat.format(Date())
                 val finalConvertedAt = if (isRev) {
                     if (lead.convertedAt.isNullOrEmpty()) isoTimestamp else lead.convertedAt
                 } else null
@@ -982,13 +1290,16 @@ class CallingViewModel @Inject constructor(
                     "paymentStatus" to lead.paymentStatus,
                     "dispatchStatus" to lead.dispatchStatus,
                     "cancellationReason" to lead.cancellationReason,
-                    "cancellationNotes" to lead.cancellationNotes,
                     "cancellationRequestedAt" to lead.cancellationRequestedAt,
                     "convertedAt" to finalConvertedAt
-                )
-
+                ).toMutableMap()
+                
+                if (finalCallTimestamp != null) {
+                    updateMap["lastCallTime"] = finalCallTimestamp
+                }
+                
+                val oldLead = _leads.value.find { it.id == lead.id }
                 val diffNotes = buildString {
-                    val oldLead = _leads.value.find { it.id == lead.id }
                     if (oldLead != null) {
                         if (oldLead.name != lead.name) append("Name: ${oldLead.name} -> ${lead.name}\n")
                         if (oldLead.phone != lead.phone) append("Phone: ${oldLead.phone} -> ${lead.phone}\n")
@@ -1000,44 +1311,69 @@ class CallingViewModel @Inject constructor(
 
                 val finalNote = if (diffNotes.isNotEmpty()) "📝 Details Updated:\n$diffNotes" else "📝 Lead Details Updated"
 
+                val isNewRev = isRevenue(lead.status, lead.paymentMethod, lead.paymentStatus)
+                val wasOldRev = oldLead != null && isRevenue(oldLead.status, oldLead.paymentMethod, oldLead.paymentStatus)
+                val orderId = "order_${lead.id}"
+                
+                var orderToUpsert: com.nexaleads.app.data.model.Order? = null
+                var orderIdToCancel: String? = null
+
+                if (isNewRev) {
+                    orderToUpsert = com.nexaleads.app.data.model.Order(
+                        id = orderId,
+                        customerId = lead.id,
+                        customerPhone = lead.phone,
+                        assignedTo = lead.assignedTo,
+                        product = lead.product,
+                        originalTotalValue = lead.originalTotalValue,
+                        discountAmount = lead.discountAmount,
+                        orderAmount = lead.orderAmount,
+                        orderAmountNum = amtNum,
+                        paymentMethod = lead.paymentMethod,
+                        paymentStatus = lead.paymentStatus,
+                        status = "Order Placed",
+                        subStatus = lead.subStatus,
+                        createdAt = if (wasOldRev && lead.convertedAt != null) lead.convertedAt else isoTimestamp,
+                        createdAtMillis = System.currentTimeMillis(),
+                        isReorder = lead.status == "Order Placed" || lead.status == "Delivered" || lead.totalOrdersCount > 0
+                    )
+                    
+                    if (!wasOldRev) {
+                        updateMap["totalOrdersCount"] = lead.totalOrdersCount + 1
+                        updateMap["lifetimeOrderValue"] = lead.lifetimeOrderValue + amtNum
+                    } else {
+                        updateMap["totalOrdersCount"] = lead.totalOrdersCount
+                        updateMap["lifetimeOrderValue"] = lead.lifetimeOrderValue - (oldLead?.orderAmountNum ?: 0L) + amtNum
+                    }
+                } else if (wasOldRev) {
+                    orderIdToCancel = orderId
+                    updateMap["totalOrdersCount"] = kotlin.math.max(0, lead.totalOrdersCount - 1)
+                    updateMap["lifetimeOrderValue"] = kotlin.math.max(0L, lead.lifetimeOrderValue - (oldLead?.orderAmountNum ?: 0L))
+                }
+
                 val logId = "i-edit-" + UUID.randomUUID().toString().take(6)
                 val interaction = Interaction(
                     id = logId,
+                    associatedOrderId = if (isNewRev) orderId else null,
                     leadId = lead.id,
                     callerId = _currentUserId.value ?: "",
                     callerName = callerName,
-                    statusBefore = lead.status,
+                    statusBefore = oldLead?.status ?: lead.status,
                     statusAfter = lead.status,
                     notes = finalNote,
                     timestamp = isoTimestamp
                 )
                 
-                var orderIdToUpdate: String? = null
-                var orderUpdates: Map<String, Any?>? = null
-                
-                if (lead.status == "Order Placed" || lead.status == Constants.STATUS_ORDER_PLACED) {
-                    val latestOrder = repository.getLatestOrderForCustomer(lead.id)
-                    if (latestOrder != null) {
-                        orderIdToUpdate = latestOrder.id
-                        orderUpdates = mapOf(
-                            "product" to lead.product,
-                            "orderAmount" to lead.orderAmount,
-                            "orderAmountNum" to amtNum,
-                            "paymentMethod" to lead.paymentMethod,
-                            "paymentStatus" to lead.paymentStatus,
-                            "discountAmount" to lead.discountAmount,
-                            "originalTotalValue" to lead.originalTotalValue
-                        )
-                    }
+                if (orderToUpsert != null) {
+                    repository.updateLeadAddOrderAndInteractionBatch(lead.id, updateMap, orderToUpsert, interaction)
+                } else {
+                    repository.updateLeadAndAddInteractionBatch(
+                        leadId = lead.id, 
+                        updates = updateMap, 
+                        interaction = interaction, 
+                        orderIdToCancel = orderIdToCancel
+                    )
                 }
-                
-                repository.updateLeadAndAddInteractionBatch(
-                    leadId = lead.id, 
-                    updates = updateMap, 
-                    interaction = interaction, 
-                    orderId = orderIdToUpdate, 
-                    orderUpdates = orderUpdates
-                )
                 refreshMetricsBackground()
             } catch (e: Exception) {
                 // Ignore for now

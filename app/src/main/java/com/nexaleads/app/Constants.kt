@@ -2,7 +2,7 @@ package com.nexaleads.app
 
 object Constants {
     const val STATUS_CALL_NOT_ANSWERED = "Call Not Answered"
-    const val STATUS_INQUIRY = "Product Inquiry Only"
+    const val STATUS_INQUIRY = "Product Enquiry"
     const val STATUS_FOLLOW_UP = "Follow-up"
     const val STATUS_ORDER_PLACED = "Order Placed"
     const val STATUS_NOT_INTERESTED = "Not Interested"

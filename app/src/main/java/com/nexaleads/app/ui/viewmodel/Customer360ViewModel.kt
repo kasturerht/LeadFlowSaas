@@ -32,6 +32,20 @@ class Customer360ViewModel @Inject constructor(
     private val _lifetimeValue = MutableStateFlow(0L)
     val lifetimeValue: StateFlow<Long> = _lifetimeValue
     
+    private val _myLtv = MutableStateFlow(0L)
+    val myLtv: StateFlow<Long> = _myLtv
+
+    private val _teamLtv = MutableStateFlow(0L)
+    val teamLtv: StateFlow<Long> = _teamLtv
+
+    private val _myOrdersCount = MutableStateFlow(0)
+    val myOrdersCount: StateFlow<Int> = _myOrdersCount
+
+    private val _teamOrdersCount = MutableStateFlow(0)
+    val teamOrdersCount: StateFlow<Int> = _teamOrdersCount
+
+    val currentUserId: String = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: ""
+    
     private val _activeLeadContext = MutableStateFlow<Lead?>(null)
     val activeLeadContext: StateFlow<Lead?> = _activeLeadContext
     
@@ -70,14 +84,27 @@ class Customer360ViewModel @Inject constructor(
                             val sortedOrders = customerOrders.sortedByDescending { it.createdAtMillis }
                             _orders.value = sortedOrders
                             // Dynamically calculate accurate LTV across all orders, excluding Cancelled and RTO
-                            _lifetimeValue.value = sortedOrders
-                                .filter { it.status != "Order Cancelled" && it.status != "Cancelled" && it.status != "RTO" && it.status != "Returned" }
-                                .sumOf { it.orderAmountNum }
+                            val validOrders = sortedOrders.filter { it.status != "Order Cancelled" && it.status != "Cancelled" && it.status != "RTO" && it.status != "Returned" }
+                            _lifetimeValue.value = validOrders.sumOf { it.orderAmountNum }
+                            
+                            // Split logic
+                            val myValidOrders = validOrders.filter { it.assignedTo == currentUserId }
+                            val teamValidOrders = validOrders.filter { it.assignedTo != currentUserId }
+                            
+                            _myLtv.value = myValidOrders.sumOf { it.orderAmountNum }
+                            _teamLtv.value = teamValidOrders.sumOf { it.orderAmountNum }
+                            
+                            _myOrdersCount.value = sortedOrders.count { it.assignedTo == currentUserId }
+                            _teamOrdersCount.value = sortedOrders.count { it.assignedTo != currentUserId }
                         }
                     }
                 } else {
                     _orders.value = emptyList()
                     _lifetimeValue.value = 0L
+                    _myLtv.value = 0L
+                    _teamLtv.value = 0L
+                    _myOrdersCount.value = 0
+                    _teamOrdersCount.value = 0
                 }
 
                 // Fetch interactions for all these leads (in case there are still unmerged legacy leads)

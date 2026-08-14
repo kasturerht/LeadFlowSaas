@@ -4,6 +4,7 @@ import com.nexaleads.app.Constants
 import com.nexaleads.app.data.model.Interaction
 import com.nexaleads.app.data.model.getCreatedAtString
 import com.nexaleads.app.data.model.Lead
+import com.nexaleads.app.data.model.Order
 import com.nexaleads.app.data.model.getPrimaryCategory
 import com.nexaleads.app.utils.PhoneUtils
 import com.google.firebase.firestore.FirebaseFirestore
@@ -534,6 +535,7 @@ class LeadRepository @Inject constructor(
             val finalUpdates = updates.toMutableMap()
             finalUpdates["updatedAt"] = com.google.firebase.firestore.FieldValue.serverTimestamp()
             leadsCol().document(leadId).update(finalUpdates).await()
+            syncProfileDataAcrossSharedLeads(leadId, updates)
         }
     }
 
@@ -608,10 +610,11 @@ class LeadRepository @Inject constructor(
             val leadRef = leadsCol().document(leadId)
             batch.update(leadRef, leadUpdates)
             val orderRef = ordersCol().document(order.id)
-            batch.set(orderRef, order)
+            batch.set(orderRef, order, com.google.firebase.firestore.SetOptions.merge())
             val interactionRef = interactionsCol().document(interaction.id)
             batch.set(interactionRef, interaction)
             batch.commit().await()
+            syncProfileDataAcrossSharedLeads(leadId, leadUpdates)
         }
     }
 
@@ -620,7 +623,8 @@ class LeadRepository @Inject constructor(
         updates: Map<String, Any?>, 
         interaction: Interaction,
         orderId: String? = null,
-        orderUpdates: Map<String, Any?>? = null
+        orderUpdates: Map<String, Any?>? = null,
+        orderIdToCancel: String? = null
     ) {
         kotlinx.coroutines.withTimeoutOrNull(5000) {
             db.runTransaction { transaction ->
@@ -632,6 +636,11 @@ class LeadRepository @Inject constructor(
                 val interactionRef = interactionsCol().document(interaction.id)
                 transaction.set(interactionRef, interaction)
                 
+                if (orderIdToCancel != null) {
+                    val cancelRef = ordersCol().document(orderIdToCancel)
+                    transaction.update(cancelRef, "status", com.nexaleads.app.Constants.STATUS_ORDER_CANCELLED)
+                }
+
                 if (orderId != null && orderUpdates != null && orderUpdates.isNotEmpty()) {
                     val orderRef = ordersCol().document(orderId)
                     val orderSnapshot = transaction.get(orderRef)
@@ -648,7 +657,51 @@ class LeadRepository @Inject constructor(
                         }
                     }
                 }
+                
+                // Return result from transaction
+                true
             }.await()
+            syncProfileDataAcrossSharedLeads(leadId, updates)
+        }
+    }
+
+    private suspend fun syncProfileDataAcrossSharedLeads(currentLeadId: String, updates: Map<String, Any?>) {
+        try {
+            val phone = updates["phone"] as? String ?: return
+            
+            // We only want to sync core profile fields, not statuses, products, or funnel notes
+            val profileUpdates = mutableMapOf<String, Any?>()
+            val fieldsToSync = listOf("name", "address", "city", "pincode", "state")
+            var hasSyncableData = false
+            
+            for (field in fieldsToSync) {
+                if (updates.containsKey(field)) {
+                    profileUpdates[field] = updates[field]
+                    hasSyncableData = true
+                }
+            }
+            
+            if (!hasSyncableData) return
+            
+            profileUpdates["updatedAt"] = com.google.firebase.firestore.FieldValue.serverTimestamp()
+            
+            val snapshot = leadsCol().whereEqualTo("phone", phone).get().await()
+            if (snapshot.documents.size <= 1) return // No shared leads
+            
+            val batch = db.batch()
+            var hasUpdates = false
+            for (doc in snapshot.documents) {
+                if (doc.id != currentLeadId) {
+                    batch.update(doc.reference, profileUpdates)
+                    hasUpdates = true
+                }
+            }
+            if (hasUpdates) {
+                batch.commit().await()
+                android.util.Log.d("LeadRepository", "Synced profile data to ${snapshot.documents.size - 1} shared leads for phone $phone")
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("LeadRepository", "Error syncing profile data across shared leads", e)
         }
     }
 
@@ -932,14 +985,131 @@ class LeadRepository @Inject constructor(
                     cancellationNotes = doc.getString("cancellationNotes") ?: "",
                     cancellationRequestedAt = doc.getString("cancellationRequestedAt") ?: ""
                 )
-            } else null
+            } else {
+                null
+            }
         } catch (e: Exception) {
             e.printStackTrace()
             null
         }
     }
 
-    suspend fun createManualLeadBatch(lead: Lead, interaction: Interaction): String? {
+    suspend fun getAllMatchingLeads(phone: String): List<Lead> {
+        return try {
+            val sanitized = PhoneUtils.sanitizePhoneNumber(phone)
+            val results = mutableListOf<Lead>()
+            val ids = mutableSetOf<String>()
+
+            val queries = listOf(
+                phone,
+                sanitized,
+                "+91$sanitized",
+                "0$sanitized",
+                if (phone.startsWith("+91")) phone.removePrefix("+91").trim() else ""
+            ).filter { it.isNotEmpty() }
+
+            for (q in queries) {
+                val snapshot = leadsCol().whereEqualTo("phone", q).get().await()
+                for (doc in snapshot.documents) {
+                    if (ids.add(doc.id)) {
+                        results.add(
+                            Lead(
+                                id = doc.id,
+                                name = doc.getString("name") ?: "",
+                                phone = doc.getString("phone") ?: "",
+                                source = doc.getString("source") ?: "",
+                                status = doc.getString("status") ?: "New",
+                                subStatus = doc.getString("subStatus") ?: "",
+                                notes = doc.getString("notes") ?: "",
+                                label = doc.getString("label") ?: "",
+                                followUpDate = doc.getString("followUpDate"),
+                                followUpTimeSlot = doc.getString("followUpTimeSlot") ?: "",
+                                archived = doc.getBoolean("archived") ?: false,
+                                assignedTo = doc.getString("assignedTo") ?: "",
+                                product = doc.getString("product") ?: "",
+                                address = doc.getString("address") ?: "",
+                                city = doc.getString("city") ?: "",
+                                pincode = doc.getString("pincode") ?: "",
+                                paymentMethod = doc.getString("paymentMethod") ?: "",
+                                orderAmount = doc.getString("orderAmount") ?: "",
+                                convertedAt = doc.getString("convertedAt"),
+                                dispatchStatus = doc.getString("dispatchStatus") ?: "",
+                                originalTotalValue = doc.getString("originalTotalValue") ?: "",
+                                discountAmount = doc.getString("discountAmount") ?: "",
+                                paymentStatus = doc.getString("paymentStatus") ?: ""
+                            )
+                        )
+                    }
+                }
+            }
+            results
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emptyList()
+        }
+    }
+
+    suspend fun updateExistingLeadFromDuplicate(
+        leadId: String,
+        status: String,
+        subStatus: String,
+        notes: String,
+        product: String,
+        followUpDate: String?,
+        followUpTimeSlot: String,
+        orderAmount: String,
+        originalTotalValue: String,
+        discountAmount: String,
+        paymentStatus: String,
+        address: String,
+        city: String,
+        state: String,
+        pincode: String,
+        paymentMethod: String,
+        interaction: Interaction
+    ) {
+        val leadRef = leadsCol().document(leadId)
+        val interactionRef = interactionsCol().document(interaction.id)
+
+        val isOrder = status in listOf("Order Placed", Constants.STATUS_ORDER_PLACED)
+
+        db.runTransaction { transaction ->
+            val leadSnap = transaction.get(leadRef)
+            val oldNotes = leadSnap.getString("notes") ?: ""
+            val newNotes = if (oldNotes.isNotEmpty()) "$oldNotes\n\n[Converted to $status]: $notes" else notes
+
+            val updates = mutableMapOf<String, Any?>(
+                "status" to status,
+                "subStatus" to subStatus,
+                "notes" to newNotes,
+                "product" to product,
+                "orderAmount" to orderAmount,
+                "originalTotalValue" to originalTotalValue,
+                "discountAmount" to discountAmount,
+                "paymentStatus" to paymentStatus,
+                "address" to address,
+                "city" to city,
+                "state" to state,
+                "pincode" to pincode,
+                "paymentMethod" to paymentMethod,
+                "updatedAt" to com.google.firebase.firestore.FieldValue.serverTimestamp()
+            )
+
+            // Clear follow-up dates if converted to Order or if instructed
+            if (isOrder) {
+                updates["followUpDate"] = null
+                updates["followUpTimeSlot"] = null
+            } else {
+                updates["followUpDate"] = followUpDate
+                updates["followUpTimeSlot"] = followUpTimeSlot
+            }
+
+            transaction.update(leadRef, updates)
+            transaction.set(interactionRef, interaction)
+        }.await()
+    }
+
+    suspend fun createManualLeadBatch(lead: Lead, interaction: Interaction, order: Order? = null): String? {
         return try {
             val batch = db.batch()
             
@@ -954,6 +1124,49 @@ class LeadRepository @Inject constructor(
 
             val interactionRef = interactionsCol().document(interaction.id)
             batch.set(interactionRef, interaction)
+
+            if (order != null) {
+                val orderRef = ordersCol().document(order.id)
+                batch.set(orderRef, order, com.google.firebase.firestore.SetOptions.merge())
+            }
+
+            batch.commit().await()
+            null
+        } catch (e: Exception) {
+            e.printStackTrace()
+            e.message ?: "Unknown Firebase Error"
+        }
+    }
+
+    suspend fun createSharedLeadBatch(lead: Lead, interaction: Interaction, originalLeadId: String, currentUserName: String, order: Order? = null): String? {
+        return try {
+            val batch = db.batch()
+            
+            val leadRef = leadsCol().document(lead.id)
+            batch.set(leadRef, lead)
+            
+            batch.update(leadRef, 
+                "updatedAt", com.google.firebase.firestore.FieldValue.serverTimestamp(),
+                "createdAt", com.google.firebase.firestore.FieldValue.serverTimestamp()
+            )
+
+            val interactionRef = interactionsCol().document(interaction.id)
+            batch.set(interactionRef, interaction)
+
+            if (order != null) {
+                val orderRef = ordersCol().document(order.id)
+                batch.set(orderRef, order, com.google.firebase.firestore.SetOptions.merge())
+            }
+
+            val alertInteraction = Interaction(
+                id = java.util.UUID.randomUUID().toString(),
+                leadId = originalLeadId,
+                statusAfter = "Shared Inquiry Created",
+                notes = "⚠️ $currentUserName has created a shared inquiry for this customer.",
+                timestamp = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US).apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }.format(java.util.Date())
+            )
+            val alertRef = interactionsCol().document(alertInteraction.id)
+            batch.set(alertRef, alertInteraction)
 
             batch.commit().await()
             null

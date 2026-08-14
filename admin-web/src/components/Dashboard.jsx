@@ -382,7 +382,7 @@ export default function Dashboard() {
       badgeHtml = <span className="badge badge-success">{status}</span>;
     } else if (status === 'Follow-up' || status === 'Visit Scheduled') {
       badgeHtml = <span className="badge badge-warning">{status}</span>;
-    } else if (status === 'Product Inquiry Only' || status === 'Warm Lead') {
+    } else if (status === 'Product Enquiry' || status === 'Product Inquiry Only' || status === 'Warm Lead') {
       badgeHtml = <span className="badge badge-info">{status}</span>;
     } else if (status === 'Call Not Answered' || status === 'No Answer' || status === 'Busy') {
       badgeHtml = <span className="badge badge-danger">{status}</span>;

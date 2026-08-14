@@ -58,7 +58,7 @@ fun CreateLeadBottomSheet(
     orgName: String,
     messagingProfile: com.nexaleads.app.data.model.MessagingProfile?,
     onDismiss: () -> Unit,
-    onExistingLeadFound: (Lead) -> Unit
+    onExistingLeadFound: (Lead, Long?) -> Unit
 ) {
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
@@ -73,6 +73,7 @@ fun CreateLeadBottomSheet(
 
     var callLogs by remember { mutableStateOf<List<CallLogEntry>>(emptyList()) }
     var selectedNumber by remember { mutableStateOf(leadToEdit?.phone ?: draft.selectedNumber) }
+    var selectedCallLogTimestamp by remember { mutableStateOf<Long?>(null) }
     var manualMode by remember { mutableStateOf(leadToEdit != null || draft.manualMode) }
 
     // Form State
@@ -214,6 +215,9 @@ fun CreateLeadBottomSheet(
         unfocusedTextColor = TextPrimary
     )
     var isCheckingDuplicate by remember { mutableStateOf(false) }
+    var sharedInquiryLead by remember { mutableStateOf<Lead?>(null) }
+    var showSelfDuplicateAlert by remember { mutableStateOf<Lead?>(null) }
+    var showMultipleActiveLeadsAlert by remember { mutableStateOf(false) }
 
     // WhatsApp Automation State
     var autoLaunchWhatsApp by remember { mutableStateOf(true) }
@@ -327,6 +331,7 @@ fun CreateLeadBottomSheet(
     }
 
     val processNumberSelect: (CallLogEntry) -> Unit = { log ->
+        selectedCallLogTimestamp = log.timestamp
         if (log.number.isEmpty()) {
             // It's a WhatsApp call with only a name, no number.
             manualMode = true
@@ -343,7 +348,7 @@ fun CreateLeadBottomSheet(
                 if (duplicate != null) {
                     Toast.makeText(context, "Lead already exists! Opening...", Toast.LENGTH_SHORT).show()
                     onDismiss()
-                    onExistingLeadFound(duplicate)
+                    onExistingLeadFound(duplicate, selectedCallLogTimestamp)
                 }
             }
         }
@@ -456,8 +461,11 @@ fun CreateLeadBottomSheet(
                 
                 item {
                     Spacer(modifier = Modifier.height(16.dp))
-                    TextButton(
-                        onClick = { manualMode = true },
+                        OutlinedButton(
+                            onClick = { 
+                                manualMode = true
+                                selectedCallLogTimestamp = null
+                            },
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text("Enter Number Manually", color = ModernViolet, fontWeight = FontWeight.Bold)
@@ -488,6 +496,8 @@ fun CreateLeadBottomSheet(
                                     selectedNumber = ""
                                     manualMode = false
                                     clientName = ""
+                                    selectedNumber = ""
+                                    selectedCallLogTimestamp = null
                                     source = ""
                                     selectedProduct = ""
                                     selectedStatus = ""
@@ -1265,7 +1275,7 @@ fun CreateLeadBottomSheet(
                                         discountAmount = finalDiscountAmount,
                                         paymentStatus = finalPaymentStatus
                                     )
-                                    viewModel.updateLead(updatedLead)
+                                    viewModel.updateLead(updatedLead, selectedCallLogTimestamp)
                                     isSaving = false
                                     Toast.makeText(context, "Lead updated successfully!", Toast.LENGTH_SHORT).show()
                                     if (autoLaunchWhatsApp) {
@@ -1320,88 +1330,120 @@ fun CreateLeadBottomSheet(
                                     }
                                     onDismiss()
                                 } else {
-                                    viewModel.createManualLead(
-                                        name = clientName.trim(),
-                                        phone = purePhone,
-                                        source = source,
-                                        status = selectedStatus,
-                                        subStatus = finalSubStatus,
-                                        notes = remarkNotes,
-                                        followUpDate = finalFollowUpDate,
-                                        followUpTimeSlot = finalTimeSlot,
-                                        product = finalProduct,
-                                        address = finalShippingAddress,
-                                        city = finalShippingCity,
-                                        state = finalShippingState,
-                                        pincode = finalShippingPincode,
-                                        paymentMethod = finalPaymentMethod,
-                                        orderAmount = finalOrderAmount,
-                                        originalTotalValue = finalOriginalTotal,
-                                        discountAmount = finalDiscountAmount,
-                                        paymentStatus = finalPaymentStatus,
-                                        onSuccess = { logId, newLead ->
-                                            isSaving = false
-                                            viewModel.clearDraft()
-                                            Toast.makeText(context, "Lead saved successfully!", Toast.LENGTH_SHORT).show()
-                                            if (autoLaunchWhatsApp) {
-                                                val normalizedStatus = Constants.normalizeStatus(selectedStatus)
-                                                val template = whatsappTemplates.firstOrNull { 
-                                                    it.isActive && Constants.normalizeStatus(it.statusTrigger).equals(normalizedStatus, ignoreCase = true) && 
-                                                    it.language.equals(selectedLanguage, ignoreCase = true) 
-                                                } ?: whatsappTemplates.firstOrNull { it.isActive && Constants.normalizeStatus(it.statusTrigger).equals(normalizedStatus, ignoreCase = true) }
-                                                
-                                                if (template != null) {
-                                                    val messageText = com.nexaleads.app.utils.WhatsAppSender.parseDynamicTemplate(
-                                                        templateText = template.templateText,
-                                                        lead = newLead,
-                                                        orgName = orgName,
-                                                        messagingProfile = messagingProfile,
-                                                        productsList = productsList
-                                                    )
-                                                    com.nexaleads.app.utils.WhatsAppSender.sendCustomMessage(
-                                                        context = context,
-                                                        phone = purePhone,
-                                                        messageText = messageText
-                                                    )
-                                                } else if (normalizedStatus == Constants.STATUS_ORDER_PLACED) {
-                                                    com.nexaleads.app.utils.WhatsAppSender.sendOrderConfirmation(
-                                                        context = context,
-                                                        phone = purePhone,
-                                                        customerName = clientName.trim(),
-                                                        products = selectedProduct,
-                                                        address = listOf(shippingAddress, shippingCity, shippingState, shippingPincode).filter { it.isNotBlank() }.joinToString(", "),
-                                                        paymentMode = if (paymentMethod.equals("Prepaid", ignoreCase = true)) "$paymentMethod - $selectedPaymentStatus" else paymentMethod,
-                                                        includeAddress = includeAddress,
-                                                        includePaymentLink = includePaymentLink,
-                                                        includeDispatchNote = includeDispatchNote,
-                                                        includeSupportPhone = includeSupportPhone,
-                                                        originalTotal = finalOriginalTotal,
-                                                        discountAmount = finalDiscountAmount,
-                                                        language = selectedLanguage,
-                                                        orgName = orgName,
-                                                        messagingProfile = messagingProfile
-                                                    )
-                                                } else {
-                                                    com.nexaleads.app.utils.WhatsAppSender.sendDispositionWhatsApp(
-                                                        context = context,
-                                                        phone = purePhone,
-                                                        status = normalizedStatus,
-                                                        customerName = clientName.trim(),
-                                                        productName = selectedProduct,
-                                                        language = selectedLanguage,
-                                                        orgName = orgName
-                                                    )
-                                                }
+                                    val onSuccessCallback: (String, Lead) -> Unit = { logId, newLead ->
+                                        isSaving = false
+                                        viewModel.clearDraft()
+                                        Toast.makeText(context, "Lead saved successfully!", Toast.LENGTH_SHORT).show()
+                                        if (autoLaunchWhatsApp) {
+                                            val normalizedStatus = Constants.normalizeStatus(selectedStatus)
+                                            val template = whatsappTemplates.firstOrNull { 
+                                                it.isActive && Constants.normalizeStatus(it.statusTrigger).equals(normalizedStatus, ignoreCase = true) && 
+                                                it.language.equals(selectedLanguage, ignoreCase = true) 
+                                            } ?: whatsappTemplates.firstOrNull { it.isActive && Constants.normalizeStatus(it.statusTrigger).equals(normalizedStatus, ignoreCase = true) }
+                                            
+                                            if (template != null) {
+                                                val messageText = com.nexaleads.app.utils.WhatsAppSender.parseDynamicTemplate(
+                                                    templateText = template.templateText,
+                                                    lead = newLead,
+                                                    orgName = orgName,
+                                                    messagingProfile = messagingProfile,
+                                                    productsList = productsList
+                                                )
+                                                com.nexaleads.app.utils.WhatsAppSender.sendCustomMessage(
+                                                    context = context,
+                                                    phone = purePhone,
+                                                    messageText = messageText
+                                                )
+                                            } else if (normalizedStatus == Constants.STATUS_ORDER_PLACED) {
+                                                com.nexaleads.app.utils.WhatsAppSender.sendOrderConfirmation(
+                                                    context = context,
+                                                    phone = purePhone,
+                                                    customerName = clientName.trim(),
+                                                    products = selectedProduct,
+                                                    address = listOf(shippingAddress, shippingCity, shippingState, shippingPincode).filter { it.isNotBlank() }.joinToString(", "),
+                                                    paymentMode = if (paymentMethod.equals("Prepaid", ignoreCase = true)) "$paymentMethod - $selectedPaymentStatus" else paymentMethod,
+                                                    includeAddress = includeAddress,
+                                                    includePaymentLink = includePaymentLink,
+                                                    includeDispatchNote = includeDispatchNote,
+                                                    includeSupportPhone = includeSupportPhone,
+                                                    originalTotal = finalOriginalTotal,
+                                                    discountAmount = finalDiscountAmount,
+                                                    language = selectedLanguage,
+                                                    orgName = orgName,
+                                                    messagingProfile = messagingProfile
+                                                )
+                                            } else {
+                                                com.nexaleads.app.utils.WhatsAppSender.sendDispositionWhatsApp(
+                                                    context = context,
+                                                    phone = purePhone,
+                                                    status = normalizedStatus,
+                                                    customerName = clientName.trim(),
+                                                    productName = selectedProduct,
+                                                    language = selectedLanguage,
+                                                    orgName = orgName
+                                                )
                                             }
-                                            onDismiss()
-                                        },
-                                        onError = { err ->
-                                            isSaving = false
-                                            Toast.makeText(context, "Error: $err", Toast.LENGTH_SHORT).show()
                                         }
-                                    )
-                                }
-                            }
+                                        onDismiss()
+                                    }
+                                    
+                                    val onErrorCallback: (String) -> Unit = { err ->
+                                        isSaving = false
+                                        Toast.makeText(context, "Error: $err", Toast.LENGTH_SHORT).show()
+                                    }
+
+                                    if (sharedInquiryLead != null) {
+                                        viewModel.createSharedLead(
+                                            name = clientName.trim(),
+                                            phone = purePhone,
+                                            source = source,
+                                            status = selectedStatus,
+                                            subStatus = finalSubStatus,
+                                            notes = remarkNotes,
+                                            followUpDate = finalFollowUpDate,
+                                            followUpTimeSlot = finalTimeSlot,
+                                            product = finalProduct,
+                                            address = finalShippingAddress,
+                                            city = finalShippingCity,
+                                            state = finalShippingState,
+                                            pincode = finalShippingPincode,
+                                            paymentMethod = finalPaymentMethod,
+                                            orderAmount = finalOrderAmount,
+                                            originalTotalValue = finalOriginalTotal,
+                                            discountAmount = finalDiscountAmount,
+                                            paymentStatus = finalPaymentStatus,
+                                            originalLeadId = sharedInquiryLead!!.id,
+                                            customCallTimestamp = selectedCallLogTimestamp,
+                                            onSuccess = onSuccessCallback,
+                                            onError = onErrorCallback
+                                        )
+                                    } else {
+                                        viewModel.createManualLead(
+                                            name = clientName.trim(),
+                                            phone = purePhone,
+                                            source = source,
+                                            status = selectedStatus,
+                                            subStatus = finalSubStatus,
+                                            notes = remarkNotes,
+                                            followUpDate = finalFollowUpDate,
+                                            followUpTimeSlot = finalTimeSlot,
+                                            product = finalProduct,
+                                            address = finalShippingAddress,
+                                            city = finalShippingCity,
+                                            state = finalShippingState,
+                                            pincode = finalShippingPincode,
+                                            paymentMethod = finalPaymentMethod,
+                                            orderAmount = finalOrderAmount,
+                                            originalTotalValue = finalOriginalTotal,
+                                            discountAmount = finalDiscountAmount,
+                                            paymentStatus = finalPaymentStatus,
+                                            customCallTimestamp = selectedCallLogTimestamp,
+                                            onSuccess = onSuccessCallback,
+                                            onError = onErrorCallback
+                                        )
+                                    }
+                                } // end of else block (leadToEdit == null)
+                            } // end of submitFn
 
                             val processSaveLogic = {
                                 if (isSaveToContactsToggleOn) {
@@ -1425,16 +1467,25 @@ fun CreateLeadBottomSheet(
                                 }
                             }
 
-                            if (manualMode && leadToEdit == null) {
+                            if (leadToEdit == null && sharedInquiryLead == null) {
                                 isSaving = true
                                 coroutineScope.launch {
                                     val dup = viewModel.checkDuplicateLead(purePhone)
-                                    if (dup != null) {
+                                    val currentUserId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+                                    
+                                    if (dup != null && dup.assignedTo != currentUserId) {
                                         isSaving = false
-                                        Toast.makeText(context, "Lead already exists! Opening...", Toast.LENGTH_SHORT).show()
-                                        onDismiss()
-                                        onExistingLeadFound(dup)
-                                        return@launch
+                                        sharedInquiryLead = dup
+                                    } else if (dup != null && dup.assignedTo == currentUserId) {
+                                        val myActiveLeads = viewModel.getSelfActiveLeads(purePhone)
+                                        isSaving = false
+                                        if (myActiveLeads.isEmpty()) {
+                                            processSaveLogic()
+                                        } else if (myActiveLeads.size == 1) {
+                                            showSelfDuplicateAlert = myActiveLeads[0]
+                                        } else {
+                                            showMultipleActiveLeadsAlert = true
+                                        }
                                     } else {
                                         isSaving = false
                                         processSaveLogic()
@@ -1631,6 +1682,147 @@ fun CreateLeadBottomSheet(
                     Text("Cancel", color = TextSecondary, fontWeight = FontWeight.Medium)
                 }
             }
+        )
+    }
+
+    if (showSelfDuplicateAlert != null) {
+        val dupLead = showSelfDuplicateAlert!!
+        AlertDialog(
+            onDismissRequest = { showSelfDuplicateAlert = null },
+            title = { Text("Pending Inquiry Found", fontWeight = FontWeight.Bold, color = TextPrimary) },
+            text = {
+                Text(
+                    "You have an active inquiry for ${dupLead.name} (${dupLead.product}). Is this new update for that existing inquiry?",
+                    fontSize = 14.sp,
+                    color = TextSecondary
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showSelfDuplicateAlert = null
+                        isSaving = true
+                        val finalTimeSlot = if (followUpDate == "Today") selectedTimeSlot else ""
+                        val finalStatus = selectedStatus
+                        val finalProduct = selectedProduct
+                        val finalPaymentMethod = paymentMethod
+                        val sanitizedPhone = PhoneUtils.sanitizePhoneNumber(selectedNumber)
+                        
+                        viewModel.updateExistingLeadFromDuplicate(
+                            leadId = dupLead.id,
+                            name = clientName.trim(),
+                            phone = sanitizedPhone,
+                            status = finalStatus,
+                            subStatus = selectedSubStatus,
+                            notes = remarkNotes,
+                            followUpDate = followUpDate,
+                            followUpTimeSlot = finalTimeSlot,
+                            product = finalProduct,
+                            address = shippingAddress,
+                            city = shippingCity,
+                            state = shippingState,
+                            pincode = shippingPincode,
+                            paymentMethod = finalPaymentMethod,
+                            orderAmount = orderAmount,
+                            originalTotalValue = originalTotalValue,
+                            discountAmount = discountAmount,
+                            paymentStatus = selectedPaymentStatus,
+                            onSuccess = { msg, _ ->
+                                isSaving = false
+                                Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                                onDismiss()
+                            },
+                            onError = { err ->
+                                isSaving = false
+                                Toast.makeText(context, err, Toast.LENGTH_SHORT).show()
+                            }
+                        )
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = ModernViolet),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text("Yes, Update Existing", color = CleanWhite, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showSelfDuplicateAlert = null
+                        isSaving = true
+                        val finalTimeSlot = if (followUpDate == "Today") selectedTimeSlot else ""
+                        val finalStatus = selectedStatus
+                        val finalProduct = selectedProduct
+                        val finalPaymentMethod = paymentMethod
+                        val sanitizedPhone = PhoneUtils.sanitizePhoneNumber(selectedNumber)
+                        
+                        viewModel.createManualLead(
+                            name = clientName.trim(),
+                            phone = sanitizedPhone,
+                            source = source,
+                            status = finalStatus,
+                            subStatus = selectedSubStatus,
+                            notes = remarkNotes,
+                            followUpDate = followUpDate,
+                            followUpTimeSlot = finalTimeSlot,
+                            product = finalProduct,
+                            address = shippingAddress,
+                            city = shippingCity,
+                            state = shippingState,
+                            pincode = shippingPincode,
+                            paymentMethod = finalPaymentMethod,
+                            orderAmount = orderAmount,
+                            originalTotalValue = originalTotalValue,
+                            discountAmount = discountAmount,
+                            paymentStatus = selectedPaymentStatus,
+                            onSuccess = { msg, _ ->
+                                isSaving = false
+                                Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                                onDismiss()
+                            },
+                            onError = { err ->
+                                isSaving = false
+                                Toast.makeText(context, err, Toast.LENGTH_SHORT).show()
+                            }
+                        )
+                    }
+                ) {
+                    Text("No, Create New", color = TextSecondary)
+                }
+            },
+            containerColor = SurfaceLight
+        )
+    }
+
+    if (showMultipleActiveLeadsAlert) {
+        AlertDialog(
+            onDismissRequest = { showMultipleActiveLeadsAlert = false },
+            title = { Text("Multiple Active Inquiries", fontWeight = FontWeight.Bold, color = TextPrimary) },
+            text = {
+                Text(
+                    "You have multiple active inquiries for this customer. Please go to Customer 360 to manage them to prevent data conflicts.",
+                    fontSize = 14.sp,
+                    color = TextSecondary
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showMultipleActiveLeadsAlert = false
+                        onDismiss()
+                        // Optionally trigger a C360 open if we had a callback for it
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = ModernViolet),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text("Open Customer 360", color = CleanWhite, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showMultipleActiveLeadsAlert = false }) {
+                    Text("Cancel", color = TextSecondary)
+                }
+            },
+            containerColor = SurfaceLight
         )
     }
 }
