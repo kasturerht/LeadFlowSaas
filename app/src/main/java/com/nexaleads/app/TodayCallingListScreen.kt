@@ -727,7 +727,7 @@ fun TodayCallingListScreen(
                 onInitiateReorder = {
                     isDispositionReorderMode = true
                 },
-                onCreateReorder = { newProduct, newAmount, newPaymentMethod, newPaymentStatus, newNotes, newBaseProductsBreakdown, newOriginalTotal, newDiscount ->
+                onCreateReorder = { newProduct, newAmount, newPaymentMethod, newPaymentStatus, newNotes, newBaseProductsBreakdown, newOriginalTotal, newDiscount, onComplete ->
                     viewModel.createReorder(
                         parentLead = activeLead,
                         newProduct = newProduct,
@@ -743,9 +743,10 @@ fun TodayCallingListScreen(
                             isDispositionReorderMode = false
                             contextLeadForDisposition = null
                             selectedLeadToEdit = newLead
+                            onComplete(newLead, null)
                         },
-                        onError = {
-                            // error handling
+                        onError = { errorMsg ->
+                            onComplete(null, errorMsg)
                         }
                     )
                 },

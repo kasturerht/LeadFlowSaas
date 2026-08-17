@@ -707,7 +707,7 @@ fun DashboardScreen(
             onInitiateReorder = {
                 isDispositionReorderMode = true
             },
-            onCreateReorder = { newProduct, newAmount, newPaymentMethod, newPaymentStatus, newNotes, newBaseProductsBreakdown, newOriginalTotal, newDiscount ->
+            onCreateReorder = { newProduct, newAmount, newPaymentMethod, newPaymentStatus, newNotes, newBaseProductsBreakdown, newOriginalTotal, newDiscount, onComplete ->
                 viewModel.createReorder(
                     parentLead = activeLead,
                     newProduct = newProduct,
@@ -719,13 +719,11 @@ fun DashboardScreen(
                     newOriginalTotalValue = newOriginalTotal,
                     newDiscountAmount = newDiscount,
                     onSuccess = { newLead ->
-                        showDispositionSheet = false
-                        isDispositionReorderMode = false
-                        contextLeadForDisposition = null
                         selectedLeadToEdit = newLead
+                        onComplete(newLead, null)
                     },
-                    onError = {
-                        // handled inside disposition sheet ideally, or show toast
+                    onError = { errorMsg ->
+                        onComplete(null, errorMsg)
                     }
                 )
             },
@@ -744,17 +742,6 @@ fun DashboardScreen(
                     viewModel.clearPendingCall()
                 }
                 contextLeadForDisposition = null
-                
-                // Business Logic Filter: Don't send WhatsApp for Invalid or Not Interested
-                if (newStatus != "Invalid" && newStatus != "Not Interested" && newStatus != "Deleted") {
-                    com.nexaleads.app.utils.WhatsAppSender.sendTemplates(
-                        context,
-                        activeLead,
-                        sendText = true,
-                        orgName = orgName,
-                        messagingProfile = messagingProfile
-                    )
-                }
             }
         )
     }

@@ -45,6 +45,14 @@ android {
     }
 }
 
+androidComponents {
+    onVariants { variant ->
+        variant.outputs.forEach { output ->
+            output.outputFileName.set("LeadFlowSaaS-${variant.name}.apk")
+        }
+    }
+}
+
 dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation(platform(libs.androidx.compose.bom))

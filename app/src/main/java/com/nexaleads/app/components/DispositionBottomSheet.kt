@@ -47,7 +47,7 @@ fun DispositionBottomSheet(
     orgName: String,
     messagingProfile: com.nexaleads.app.data.model.MessagingProfile?,
     isReorderMode: Boolean = false,
-    onCreateReorder: ((newProduct: String, newAmount: String, newPaymentMethod: String, newPaymentStatus: String, newNotes: String, newBaseProductsBreakdown: String, newOriginalTotal: String, newDiscount: String) -> Unit)? = null,
+    onCreateReorder: ((newProduct: String, newAmount: String, newPaymentMethod: String, newPaymentStatus: String, newNotes: String, newBaseProductsBreakdown: String, newOriginalTotal: String, newDiscount: String, onComplete: (Lead?, String?) -> Unit) -> Unit)? = null,
     onInitiateReorder: (() -> Unit)? = null,
     onDismiss: () -> Unit,
     onSaveSuccess: (String) -> Unit
@@ -202,6 +202,67 @@ fun DispositionBottomSheet(
         val finalOrderAmount = if (isOrderRelevant) orderAmount else ""
         val finalOriginalTotal = if (isOrderRelevant) originalTotalValue else ""
         val finalDiscountAmount = if (isOrderRelevant) discountAmount else ""
+
+        val triggerWhatsApp = { updatedLead: Lead ->
+            if (autoLaunchWhatsApp) {
+                if (finalPaymentStatus.contains("Verified", ignoreCase = true)) {
+                    viewModel.setPendingInvoice(updatedLead)
+                }
+
+                val normalizedStatus = Constants.normalizeStatus(selectedStatus)
+                val template = whatsappTemplates.firstOrNull { 
+                    it.isActive && Constants.normalizeStatus(it.statusTrigger).equals(normalizedStatus, ignoreCase = true) && 
+                    it.language.equals(selectedLanguage, ignoreCase = true) 
+                } ?: whatsappTemplates.firstOrNull { it.isActive && Constants.normalizeStatus(it.statusTrigger).equals(normalizedStatus, ignoreCase = true) }
+                
+                if (template != null) {
+                    val messageText = com.nexaleads.app.utils.WhatsAppSender.parseDynamicTemplate(
+                        templateText = template.templateText,
+                        lead = updatedLead,
+                        orgName = orgName,
+                        messagingProfile = messagingProfile,
+                        productsList = productsList
+                    )
+                    com.nexaleads.app.utils.WhatsAppSender.sendCustomMessage(
+                        context = context,
+                        phone = updatedLead.phone,
+                        messageText = messageText
+                    )
+                } else if (normalizedStatus == Constants.STATUS_ORDER_PLACED) {
+                    // Fallback for Order Placed
+                    com.nexaleads.app.utils.WhatsAppSender.sendOrderConfirmation(
+                        context = context,
+                        phone = updatedLead.phone,
+                        customerName = updatedLead.name,
+                        products = selectedProduct,
+                        address = listOf(shippingAddress, shippingCity, shippingPincode).filter { it.isNotBlank() }.joinToString(", "),
+                        paymentMode = if (paymentMethod.equals("Prepaid", ignoreCase = true)) "$paymentMethod - $selectedPaymentStatus" else paymentMethod,
+                        originalTotal = finalOriginalTotal,
+                        discountAmount = finalDiscountAmount,
+                        includeAddress = includeAddress,
+                        includePaymentLink = includePaymentLink,
+                        includeDispatchNote = includeDispatchNote,
+                        includeSupportPhone = includeSupportPhone,
+                        language = selectedLanguage,
+                        orgName = orgName,
+                        messagingProfile = messagingProfile
+                    )
+                } else {
+                    val isHighIntentNormalized = normalizedStatus == Constants.STATUS_INQUIRY || normalizedStatus == Constants.STATUS_FOLLOW_UP
+                    if (isHighIntentNormalized) {
+                        com.nexaleads.app.utils.WhatsAppSender.sendDispositionWhatsApp(
+                            context = context,
+                            phone = updatedLead.phone,
+                            status = normalizedStatus,
+                            customerName = updatedLead.name,
+                            productName = selectedProduct,
+                            language = selectedLanguage,
+                            orgName = orgName
+                        )
+                    }
+                }
+            }
+        }
         
         if (isReorderMode && onCreateReorder != null) {
             onCreateReorder(
@@ -213,7 +274,18 @@ fun DispositionBottomSheet(
                 com.nexaleads.app.utils.ProductUtils.calculateBaseProductsBreakdown(finalProduct, productsList),
                 finalOriginalTotal,
                 finalDiscountAmount
-            )
+            ) { newLead, error ->
+                if (error != null) {
+                    isSaving = false
+                    Toast.makeText(context, error, Toast.LENGTH_SHORT).show()
+                } else if (newLead != null) {
+                    triggerWhatsApp(newLead)
+                    coroutineScope.launch { sheetState.hide() }.invokeOnCompletion {
+                        onSaveSuccess(selectedStatus)
+                        isSaving = false
+                    }
+                }
+            }
             return@executeSave
         }
 
@@ -241,66 +313,9 @@ fun DispositionBottomSheet(
             customCallTimestamp = callStartTimestamp,
             onSuccess = { interactionId, updatedLead ->
                 coroutineScope.launch { sheetState.hide() }.invokeOnCompletion {
-                    if (autoLaunchWhatsApp) {
-                        
-                        if (finalPaymentStatus.contains("Verified", ignoreCase = true)) {
-                            viewModel.setPendingInvoice(updatedLead)
-                        }
-
-                        val normalizedStatus = Constants.normalizeStatus(selectedStatus)
-                        val template = whatsappTemplates.firstOrNull { 
-                            it.isActive && Constants.normalizeStatus(it.statusTrigger).equals(normalizedStatus, ignoreCase = true) && 
-                            it.language.equals(selectedLanguage, ignoreCase = true) 
-                        } ?: whatsappTemplates.firstOrNull { it.isActive && Constants.normalizeStatus(it.statusTrigger).equals(normalizedStatus, ignoreCase = true) }
-                        
-                        if (template != null) {
-                            val messageText = com.nexaleads.app.utils.WhatsAppSender.parseDynamicTemplate(
-                                templateText = template.templateText,
-                                lead = updatedLead,
-                                orgName = orgName,
-                                messagingProfile = messagingProfile,
-                                productsList = productsList
-                            )
-                            com.nexaleads.app.utils.WhatsAppSender.sendCustomMessage(
-                                context = context,
-                                phone = currentLead.phone,
-                                messageText = messageText
-                            )
-                        } else if (normalizedStatus == Constants.STATUS_ORDER_PLACED) {
-                            // Fallback for Order Placed
-                            com.nexaleads.app.utils.WhatsAppSender.sendOrderConfirmation(
-                                context = context,
-                                phone = currentLead.phone,
-                                customerName = currentLead.name,
-                                products = selectedProduct,
-                                address = listOf(shippingAddress, shippingCity, shippingPincode).filter { it.isNotBlank() }.joinToString(", "),
-                                paymentMode = if (paymentMethod.equals("Prepaid", ignoreCase = true)) "$paymentMethod - $selectedPaymentStatus" else paymentMethod,
-                                originalTotal = finalOriginalTotal,
-                                discountAmount = finalDiscountAmount,
-                                includeAddress = includeAddress,
-                                includePaymentLink = includePaymentLink,
-                                includeDispatchNote = includeDispatchNote,
-                                includeSupportPhone = includeSupportPhone,
-                                language = selectedLanguage,
-                                orgName = orgName,
-                                messagingProfile = messagingProfile
-                            )
-                        } else {
-                            val isHighIntentNormalized = normalizedStatus == Constants.STATUS_INQUIRY || normalizedStatus == Constants.STATUS_FOLLOW_UP
-                            if (isHighIntentNormalized) {
-                                com.nexaleads.app.utils.WhatsAppSender.sendDispositionWhatsApp(
-                                    context = context,
-                                    phone = currentLead.phone,
-                                    status = normalizedStatus,
-                                    customerName = currentLead.name,
-                                    productName = selectedProduct,
-                                    language = selectedLanguage,
-                                    orgName = orgName
-                                )
-                            }
-                        }
-                    }
+                    triggerWhatsApp(updatedLead)
                     onSaveSuccess(selectedStatus)
+
                     isSaving = false
                     
                     mainScope.launch {

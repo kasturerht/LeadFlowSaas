@@ -111,9 +111,13 @@ fun CreateLeadBottomSheet(
         leadToEdit?.status?.equals("Converted", ignoreCase = true) == true || 
         leadToEdit?.getPrimaryCategory() == "CONVERTED"
     }
-    val isDispatched = remember(leadToEdit?.status, leadToEdit?.dispatchStatus) {
-        leadToEdit?.status?.equals("Dispatched", ignoreCase = true) == true || 
-        (leadToEdit?.dispatchStatus != null && leadToEdit.dispatchStatus.equals("Dispatched", ignoreCase = true))
+    val isDispatchedOrDelivered = remember(leadToEdit?.status, leadToEdit?.dispatchStatus) {
+        val st = leadToEdit?.status
+        val ds = leadToEdit?.dispatchStatus
+        st?.equals("Dispatched", ignoreCase = true) == true || 
+        st?.equals("Delivered", ignoreCase = true) == true ||
+        st?.equals("Returned", ignoreCase = true) == true ||
+        (ds != null && (ds.equals("Dispatched", ignoreCase = true) || ds.equals("Delivered", ignoreCase = true) || ds.equals("Returned", ignoreCase = true)))
     }
     val isCancelled = remember(leadToEdit?.status) {
         leadToEdit?.status?.equals("Order Cancelled", ignoreCase = true) == true || 
@@ -122,7 +126,7 @@ fun CreateLeadBottomSheet(
     val isRto = remember(leadToEdit?.status) {
         Constants.normalizeStatus(leadToEdit?.status) == Constants.STATUS_RTO
     }
-    val isLocked = (isDispatched && !isRto) || isCancelled
+    val isLocked = (isDispatchedOrDelivered && !isRto) || isCancelled
 
     val calculatedTotal = remember(selectedProduct, pricesMap) { calculateTotalAmount(selectedProduct, pricesMap) }
     val calculatedBottomTotal = remember(selectedProduct, bottomPricesMap) { calculateTotalBottomPrice(selectedProduct, bottomPricesMap) }
@@ -569,7 +573,7 @@ fun CreateLeadBottomSheet(
                             }
                         }
                     }
-                } else if (isDispatched) {
+                } else if (isDispatchedOrDelivered) {
                     item {
                         Box(
                             modifier = Modifier
